@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+{% block content %}
+
+    <div class="flex flex-1 items-center justify-center bg-base-100">
+        <div class="bg-base-300 border-base-300 rounded-box border p-8 w-full max-w-lg">
+            <h2 class="h4 text-base-content text-center">Login with Magic Link</h2>
+            <p class="support text-base-content/80 text-center">Please enter the email associated with your account.</p>
+
+
+            <form action="" method="post">
+                {{ form.csrf_token }}
+
+                {{ form.email.label(class="label mt-8") }}
+                {{ form.email(class="input mt-0.5 w-full", id="email", type="email") }}
+                {% for error in form.email.errors %}
+                    <p class="form-error">{{ error }}</p>
+                {% endfor %}
+
+                {{ form.submit(class='btn btn-neutral text-neutral-content mt-4 w-full') }}
+            </form>
+
+            <div class="divider mt-6 mb-4"></div>
+            <p class="standard text-base-content/80 text-center">
+                What is a magic link? It's just a link sent to your phone or email that logs you in without needing a password.<br>
+                They're secure and convenient!
+            </p>
+
+
+        </div>
+    </div>
+
+{% endblock %}

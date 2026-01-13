@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+{% block content %}
+    <div class="flex flex-1 items-center justify-center bg-base-100">
+        <div class="bg-base-300 border-base-300 rounded-box border p-8 w-full max-w-lg">
+            <h2 class="h2 text-base-content text-center">Redirect Requested</h2>
+            <p class="subtitle text-base-content text-center break-words">{{ url }}</p>
+
+            <p class="body text-base-content mt-4 mb-3">You are being redirected to an external website. This site may contain malware or try to steal your information. If you know the URL above is safe, click the button below to continue.</p>
+
+            <div class="mt-6">
+                <a class="btn w-full btn-accent btn-soft" href="{{ url }}">
+                    Continue to External Website
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="size-4 ml-2">
+                        <path fill-rule="evenodd"
+                              d="M8.22 5.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06-1.06L11.94 10 8.22 6.28a.75.75 0 0 1 0-1.06Z"
+                              clip-rule="evenodd"/>
+                    </svg>
+                </a>
+
+                <a href="{{ url_for('core.index') }}" class="btn w-full bg-white text-black border-[#e5e5e5] mt-3">
+                    Cancel
+                </a>
+            </div>
+        </div>
+    </div>
+{% endblock %}

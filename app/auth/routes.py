@@ -1,0 +1,481 @@
+from urllib.parse import urlencode
+import requests
+from app.auth.helper import get_ip_from_request, twilio_verify_send, twilio_verify_check, hibp_password_check, \
+    is_internal_url
+from app.model_managers import UserManager, LoginTokenManager, LoginRecordManager
+from flask_login import login_user, logout_user
+from flask import flash, request, redirect, render_template, url_for, current_app, session
+from app.auth import auth
+from .forms import LoginForm, TwoFactorAuthSelectForm, TwoFactorAuthCodeForm, MagicLinkEmailForm, MagicLinkSelectForm, \
+    ForgotPasswordEmailForm, ResetPasswordForm
+from app import db
+from ..core.helper import send_email, send_sms
+
+LOGIN_RISK_SCORE_THRESHOLD = 50
+CONTACT_ADMINISTRATOR_MESSAGE = 'There was an error logging you in. Please contact an administrator.'
+TOKEN_EXPIRED_MESSAGE = 'The link or token you used has expired. Please try again.'
+REQUIRES_2FA_MESSAGE = 'For security, please complete the two-factor authentication process to log in.'
+WRONG_EMAIL_PASSWORD_MESSAGE = 'Incorrect email or password.'
+
+
+@auth.route('/login', methods=['GET', 'POST'])
+def login():
+    next_url = request.args.get('next', None)
+    form = LoginForm()
+
+    if form.validate_on_submit():
+        user = UserManager.get_user_by_email(form.email.data)
+
+        # If the user isn't found
+        if not user:
+            flash(WRONG_EMAIL_PASSWORD_MESSAGE, 'error')
+            return render_template('login.html', title='Log In', form=form), 401
+
+        # If the user cannot log in
+        if not user.can_login():
+            flash(CONTACT_ADMINISTRATOR_MESSAGE, 'error')
+            return render_template('login.html', title='Log In', form=form), 401
+
+        # If the password is incorrect
+        if not user.check_password(form.password.data):
+            flash(WRONG_EMAIL_PASSWORD_MESSAGE, 'error')
+            return render_template('login.html', title='Log In', form=form), 401
+
+        # If the user has enabled password breach checking
+        if user.get_setting('check_password_breach'):
+            # If their password has been found in a data breach, alert them and require 2FA
+            if hibp_password_check(form.password.data):
+                flash('Your password has been found in a data breach, consider changing it immediately.', 'warning')
+
+        # If the user has 2FA enabled
+        if user.get_setting('2fa_enabled'):
+            flash(REQUIRES_2FA_MESSAGE, 'info')
+            _, raw_token = LoginTokenManager.create_login_token(next_url=next_url, remember_login=form.remember_me.data, user_id=user.id)
+            return redirect(url_for('auth.two_factor_auth', raw_token=raw_token))
+
+        _, raw_token = LoginTokenManager.create_login_token(immediate_login=True, next_url=next_url, remember_login=form.remember_me.data, user_id=user.id)
+        return redirect(url_for('auth.login_with_token', raw_token=raw_token))
+    return render_template('login.html', title='Log In', form=form, next_url=next_url)
+
+
+@auth.route('/forgot-password', methods=['GET', 'POST'])
+@auth.route('/forgot-password/<string:raw_token>', methods=['GET', 'POST'])
+def forgot_password(raw_token: str = None):
+    # If the user has not entered their email
+    if raw_token is None:
+        form = ForgotPasswordEmailForm()
+        if form.validate_on_submit():
+            user = UserManager.get_user_by_email(form.email.data)
+
+            # If the user isn't found
+            if not user:
+                flash('A login link has been sent to your email.', 'info')
+                return redirect(url_for('auth.login', next=request.args.get('next', None)))
+
+            # If the user cannot log in
+            if not user.can_login():
+                flash(CONTACT_ADMINISTRATOR_MESSAGE, 'error')
+                return render_template('forgot_password_email.html', title='Forgot Password', form=form)
+
+            # Create a token and email it to them
+            _, raw_token = LoginTokenManager.create_login_token(user_id=user.id, next_url=request.args.get('next', None), reset_password=True)
+            login_url = url_for('auth.forgot_password', raw_token=raw_token, _external=True)
+            message = f'Click the following link to reset your password: {login_url}<br><br>If you did not request this link, please ignore this email.'
+            send_email(subject=f'Your {current_app.config["APP_NAME"]} Password Reset Link', body=message, recipients=[user.email])
+            flash('A login link has been sent to your email.', 'info')
+            return redirect(url_for('auth.login', next=request.args.get('next', None)))
+        return render_template('forgot_password_email.html', title='Forgot Password', form=form)
+
+    login_token = LoginTokenManager.get_login_token(raw_token)
+
+    # If the hashed token is not found
+    if not login_token:
+        flash(CONTACT_ADMINISTRATOR_MESSAGE, 'error')
+        return redirect(url_for('auth.login'))
+
+    # If the token was found, but not valid
+    if not login_token.is_valid(raw_token):
+        flash(TOKEN_EXPIRED_MESSAGE, 'error')
+        return redirect(url_for('auth.login'))
+
+    # If the token is not for password reset
+    if not login_token.reset_password:
+        flash(CONTACT_ADMINISTRATOR_MESSAGE, 'error')
+        return redirect(url_for('auth.login'))
+
+    # If the user isn't found or cannot log in
+    user = UserManager.get_user_by_id(login_token.user_id)
+    if not user or not user.can_login():
+        flash(CONTACT_ADMINISTRATOR_MESSAGE, 'error')
+        return redirect(url_for('auth.login'))
+
+    form = ResetPasswordForm()
+    if form.validate_on_submit():
+        LoginTokenManager.invalidate_login_token(login_token)
+        user.refresh_uuid36()
+        db.session.commit()
+        user.set_password(form.password.data)
+        db.session.commit()
+        flash('Your password has been reset. You can now log in with your new password.', 'success')
+        return redirect(url_for('auth.login', next=login_token.next_url))
+    return render_template('reset_password.html', title='Reset Password', form=form)
+
+
+@auth.route('/magic-link', methods=['GET', 'POST'])
+@auth.route('/magic-link/<string:raw_token>', methods=['GET', 'POST'])
+def magic_link(raw_token: str = None):
+    # If the user has not entered their email
+    if raw_token is None:
+        form = MagicLinkEmailForm()
+        if form.validate_on_submit():
+            user = UserManager.get_user_by_email(form.email.data)
+
+            # If the user isn't found
+            if not user:
+                flash(CONTACT_ADMINISTRATOR_MESSAGE, 'error')
+                return render_template('magic_link_email.html', title='Login with Magic Link', form=form)
+
+            # If the user cannot log in
+            if not user.can_login():
+                flash(CONTACT_ADMINISTRATOR_MESSAGE, 'error')
+                return render_template('magic_link_email.html', title='Login with Magic Link', form=form)
+
+            _, raw_token = LoginTokenManager.create_login_token(user_id=user.id, next_url=request.args.get('next', None))
+            return redirect(url_for('auth.magic_link', raw_token=raw_token))
+        return render_template('magic_link_email.html', title='Login with Magic Link', form=form)
+
+    login_token = LoginTokenManager.get_login_token(raw_token)
+
+    # If the hashed token is not found
+    if not login_token:
+        flash(CONTACT_ADMINISTRATOR_MESSAGE, 'error')
+        return redirect(url_for('auth.login'))
+
+    # If the token was found, but not valid
+    if not login_token.is_valid(raw_token):
+        flash(TOKEN_EXPIRED_MESSAGE, 'error')
+        return redirect(url_for('auth.login'))
+
+    # If the user isn't found or cannot log in
+    user = UserManager.get_user_by_id(login_token.user_id)
+    if not user or not user.can_login():
+        flash(CONTACT_ADMINISTRATOR_MESSAGE, 'error')
+        return redirect(url_for('auth.login'))
+
+    form = MagicLinkSelectForm()
+    form.method.choices = []
+    if user.email_verified:
+        form.method.choices.append('Email')
+    if user.phone_number_verified:
+        form.method.choices.append('Text')
+
+    # Send the login link when submitting
+    if form.validate_on_submit():
+        if form.method.data == 'Email':
+            # Make sure the user's email is verified
+            if not user.email_verified:
+                flash(CONTACT_ADMINISTRATOR_MESSAGE, 'error')
+                return redirect(url_for('auth.login'))
+            _, new_token = LoginTokenManager.create_login_token(user_id=user.id, immediate_login=True)
+            login_url = url_for('auth.login_with_token', raw_token=new_token, _external=True)
+            message = f'Click the following link to log in to your account: {login_url}<br><br>If you did not request this link, please ignore this email.'
+            send_email(subject=f'Your {current_app.config["APP_NAME"]} Login Link', body=message, recipients=[user.email])
+            flash('A login link has been sent to your email.', 'info')
+            return redirect(url_for('auth.login'))
+        if form.method.data == 'Text':
+            # Make sure the user's phone number is verified
+            if not user.phone_number_verified:
+                flash(CONTACT_ADMINISTRATOR_MESSAGE, 'error')
+                return redirect(url_for('auth.login'))
+            _, new_token = LoginTokenManager.create_login_token(user_id=user.id, immediate_login=True)
+            login_url = url_for('auth.login_with_token', raw_token=new_token, _external=True)
+            message = f'Click the following link to log in to your {current_app.config["APP_NAME"]} account: {login_url}\n\nIf you did not request this link, please ignore this text.'
+            send_sms(body=message, recipients=[user.phone_number])
+            flash('A login link has been sent to your phone via text.', 'info')
+            return redirect(url_for('auth.login'))
+
+    return render_template('magic_link_select_method.html', title='Login with Magic Link', form=form)
+
+
+@auth.route('/oauth/authorize/<string:provider>')
+def oauth_authorize(provider: str):
+    provider_data = current_app.config['OAUTH2_PROVIDERS'].get(provider)
+    next_url = request.args.get('next', None)
+
+    # If the provider isn't supported
+    if provider_data is None:
+        flash(CONTACT_ADMINISTRATOR_MESSAGE, 'error')
+        return redirect(url_for('auth.login'))
+
+    # Save the OAuth2 state parameter in the session for later verification
+    _, raw_token = LoginTokenManager.create_login_token(next_url=next_url)
+    session['oauth2_state'] = raw_token
+
+    # Create a query string with all the OAuth2 parameters
+    query_string = urlencode({
+        'client_id': provider_data['client_id'],
+        'redirect_uri': url_for('auth.oauth_callback', provider=provider, _external=True),
+        'response_type': 'code',
+        'scope': ' '.join(provider_data['scopes']),
+        'state': session['oauth2_state'],
+    })
+
+    # Redirect the user to the OAuth2 provider authorization URL
+    return redirect(provider_data['authorize_url'] + '?' + query_string)
+
+
+@auth.route('/oauth/callback/<string:provider>')
+def oauth_callback(provider: str):
+    provider_data = current_app.config['OAUTH2_PROVIDERS'].get(provider)
+
+    # If the provider isn't supported
+    if provider_data is None:
+        flash(CONTACT_ADMINISTRATOR_MESSAGE, 'error')
+        return redirect(url_for('auth.login'))
+
+    # If there was an authentication error, flash the error messages and exit
+    if 'error' in request.args:
+        for k, v in request.args.items():
+            if k.startswith('error'):
+                flash(f'{k}: {v}', 'error')
+        return redirect(url_for('auth.login'))
+
+    # Make sure that the state parameter matches the one we created in the authorization request
+    if request.args['state'] != session.get('oauth2_state'):
+        flash(CONTACT_ADMINISTRATOR_MESSAGE, 'error')
+        return redirect(url_for('auth.login'))
+
+    # Make sure that the authorization code is present
+    if 'code' not in request.args:
+        flash(CONTACT_ADMINISTRATOR_MESSAGE, 'error')
+        return redirect(url_for('auth.login'))
+
+    # Exchange the authorization code for an access token
+    response = requests.post(provider_data['token_url'], data={
+        'client_id': provider_data['client_id'],
+        'client_secret': provider_data['client_secret'],
+        'code': request.args['code'],
+        'grant_type': 'authorization_code',
+        'redirect_uri': url_for('auth.oauth_callback', provider=provider,
+                                _external=True),
+    }, headers={'Accept': 'application/json'})
+    if response.status_code != 200:
+        flash(CONTACT_ADMINISTRATOR_MESSAGE, 'error')
+        return redirect(url_for('auth.login'))
+    oauth2_token = response.json().get('access_token')
+    if not oauth2_token:
+        flash(CONTACT_ADMINISTRATOR_MESSAGE, 'error')
+        return redirect(url_for('auth.login'))
+
+    # Use the access token to get the user's email address
+    response = requests.get(provider_data['userinfo']['url'], headers={
+        'Authorization': 'Bearer ' + oauth2_token,
+        'Accept': 'application/json',
+    })
+    if response.status_code != 200:
+        flash(CONTACT_ADMINISTRATOR_MESSAGE, 'error')
+        return redirect(url_for('auth.login'))
+    email = provider_data['userinfo']['email'](response.json())
+
+    # Find the user in the database
+    user = UserManager.get_user_by_email(email)
+    if user is None:
+        flash(CONTACT_ADMINISTRATOR_MESSAGE, 'error')
+        return redirect(url_for('auth.login'))
+
+    # Get the login token and make sure we can log the user in
+    login_token = LoginTokenManager.get_login_token(session['oauth2_state'])
+    if not login_token:
+        flash(CONTACT_ADMINISTRATOR_MESSAGE, 'error')
+        return redirect(url_for('auth.login'))
+    login_token.user_id = user.id
+    login_token.immediate_login = True
+    db.session.commit()
+    return redirect(url_for('auth.login_with_token', raw_token=session['oauth2_state']))
+
+
+@auth.route('/2fa/<string:raw_token>', methods=['GET', 'POST'])
+def two_factor_auth(raw_token: str):
+    login_token = LoginTokenManager.get_login_token(raw_token)
+    verification_method = request.args.get('verification_method', None)
+    code_sent = request.args.get('code_sent', False)
+
+    # If the hashed token is not found
+    if not login_token:
+        flash(CONTACT_ADMINISTRATOR_MESSAGE, 'error')
+        return redirect(url_for('auth.login'))
+
+    # If the token was found, but not valid
+    if not login_token.is_valid(raw_token):
+        flash(TOKEN_EXPIRED_MESSAGE, 'error')
+        return redirect(url_for('auth.login'))
+
+    # If the user isn't found or cannot log in
+    user = UserManager.get_user_by_id(login_token.user_id)
+    if not user or not user.can_login():
+        flash(CONTACT_ADMINISTRATOR_MESSAGE, 'error')
+        return redirect(url_for('auth.login'))
+
+    # If no verification method has been sent, show the selection page
+    if not code_sent:
+        form = TwoFactorAuthSelectForm()
+        form.method.choices = []
+        if user.email_verified:
+            form.method.choices.append('Email')
+        if user.phone_number_verified:
+            form.method.choices.append('Text')
+            form.method.choices.append('Call')
+        if user.totp_verified:
+            form.method.choices.append('Authenticator App')
+
+        if form.validate_on_submit():
+            # If the user chose email verification
+            if form.method.data == 'Email' and user.email_verified:
+                twilio_verify_send(to=user.email, channel='email')
+            # If the user chose SMS or call verification
+            elif form.method.data in ['Text', 'Call'] and user.phone_number_verified:
+                # If the user chose SMS verification
+                if form.method.data == 'Text':
+                    twilio_verify_send(to=user.phone_number, channel='sms')
+                # If the user chose call verification
+                elif form.method.data == 'Call':
+                    twilio_verify_send(to=user.phone_number, channel='call')
+            # If the user chose authenticator app verification
+            elif form.method.data == 'Authenticator App' and user.totp_verified:
+                # TODO: implement
+                pass
+            else:
+                flash(CONTACT_ADMINISTRATOR_MESSAGE, 'error')
+                return redirect(url_for('auth.login'))
+            return redirect(url_for('auth.two_factor_auth', raw_token=raw_token, code_sent=True, verification_method=form.method.data.lower().replace(' ', '_')))
+        return render_template('2fa_select_method.html', title='Two-Factor Authentication', form=form)
+
+    # If a code has been sent show the appropriate form
+    form = TwoFactorAuthCodeForm()
+
+    # If the user chose email verification
+    if verification_method == 'email':
+        # Make sure the user's email is verified
+        if not user.email_verified:
+            flash(CONTACT_ADMINISTRATOR_MESSAGE, 'error')
+            return redirect(url_for('auth.login'))
+        # If submitting, check the code
+        if form.validate_on_submit():
+            if twilio_verify_check(to=user.email, code=form.code.data):
+                login_token.immediate_login = True
+                db.session.commit()
+                return redirect(url_for('auth.login_with_token', raw_token=raw_token))
+            else:
+                flash('The code you entered is incorrect. Please try again.', 'warning')
+
+    # If the user chose SMS verification
+    if verification_method == 'text':
+        # Make sure the user's phone number is verified
+        if not user.phone_number_verified:
+            flash(CONTACT_ADMINISTRATOR_MESSAGE, 'error')
+            return redirect(url_for('auth.login'))
+        # If submitting, check the code
+        if form.validate_on_submit():
+            if twilio_verify_check(to=user.phone_number, code=form.code.data):
+                login_token.immediate_login = True
+                db.session.commit()
+                return redirect(url_for('auth.login_with_token', raw_token=raw_token))
+            else:
+                flash('The code you entered is incorrect. Please try again.', 'warning')
+
+    # If the user chose call verification
+    if verification_method == 'call':
+        # Make sure the user's phone number is verified
+        if not user.phone_number_verified:
+            flash(CONTACT_ADMINISTRATOR_MESSAGE, 'error')
+            return redirect(url_for('auth.login'))
+        # If submitting, check the code
+        if form.validate_on_submit():
+            if twilio_verify_check(to=user.phone_number, code=form.code.data):
+                login_token.immediate_login = True
+                db.session.commit()
+                return redirect(url_for('auth.login_with_token', raw_token=raw_token))
+            else:
+                flash('The code you entered is incorrect. Please try again.', 'warning')
+
+    # If the user chose to use an authenticator app
+    if verification_method == 'authenticator_app':
+        # Make sure the user has set up TOTP
+        if not user.totp_verified:
+            flash(CONTACT_ADMINISTRATOR_MESSAGE, 'error')
+            return redirect(url_for('auth.login'))
+        # If submitting, check the code
+        if form.validate_on_submit():
+            if twilio_verify_check(to=user.email, code=form.code.data):  # TODO: Change to TOTP verification
+                login_token.immediate_login = True
+                db.session.commit()
+                return redirect(url_for('auth.login_with_token', raw_token=raw_token))
+            else:
+                flash('The code you entered is incorrect. Please try again.', 'warning')
+    return render_template('2fa_enter_code.html', title='Two-Factor Authentication', raw_token=raw_token, method=verification_method, form=form)
+
+
+@auth.route('/<string:raw_token>')
+def login_with_token(raw_token: str):
+    login_token = LoginTokenManager.get_login_token(raw_token)
+
+    # If the hashed token is not found
+    if not login_token:
+        flash(CONTACT_ADMINISTRATOR_MESSAGE, 'error')
+        return redirect(url_for('auth.login'))
+
+    # If the token was found, but not valid
+    if not login_token.is_valid(raw_token):
+        flash(TOKEN_EXPIRED_MESSAGE, 'error')
+        return redirect(url_for('auth.login'))
+
+    # If the login token does not allow immediate login
+    if not login_token.immediate_login:
+        flash(CONTACT_ADMINISTRATOR_MESSAGE, 'error')
+        return redirect(url_for('auth.login'))
+
+    # If the token is for password reset
+    if login_token.reset_password:
+        flash(CONTACT_ADMINISTRATOR_MESSAGE, 'error')
+        return redirect(url_for('auth.login'))
+
+    # If the token was found and valid
+    if login_token.risk_score > LOGIN_RISK_SCORE_THRESHOLD:
+        login_token.immediate_login = False
+        db.session.commit()
+        flash(REQUIRES_2FA_MESSAGE, 'info')
+        return redirect(url_for('auth.two_factor_auth', raw_token=raw_token))
+
+    user = UserManager.get_user_by_id(login_token.user_id)
+    if not user or not user.can_login():
+        flash(CONTACT_ADMINISTRATOR_MESSAGE, 'error')
+        return redirect(url_for('auth.login'))
+
+    LoginTokenManager.invalidate_login_token(login_token)
+    LoginRecordManager.create_login_record(user.id, get_ip_from_request(request), request.headers.get('User-Agent', ''))
+    login_user(user, remember=login_token.remember_login)
+
+    next_url = login_token.next_url
+    if next_url is None:
+        next_url = '/'
+
+    if is_internal_url(next_url):
+        return redirect(next_url)
+    return redirect((url_for('core.external_redirect', next=next_url)))
+
+
+@auth.route('/logout')
+def logout():
+    logout_user()
+    return redirect(url_for('auth.login'))
+
+
+@auth.route('/setup')
+def setup():
+    # TODO: Delete
+    user = UserManager.create_user(email="xdylan2003x@gmail.com", name="Dylan", phone_number="+12294123111", email_verified=True, phone_number_verified=True)
+    user.set_password("password")
+    user.set_setting('2fa_enabled', True)
+    user.set_setting('check_password_breach', True)
+    db.session.commit()
+    return redirect(url_for('auth.login'))

@@ -1,0 +1,120 @@
+import hashlib
+import sqlalchemy as sa
+from app.models import User, LoginToken, LoginRecord
+from app import db
+from datetime import datetime, timedelta, timezone
+
+
+class UserManager:
+    @staticmethod
+    def create_user(name: str,
+                    email: str,
+                    send_welcome_email: bool = True,
+                    status: str = 'active',
+                    phone_number: str = None,
+                    email_verified: bool = False,
+                    phone_number_verified: bool = False) -> User:
+        user = User(name=name, email=email.lower(), status=status, phone_number=phone_number,
+                    email_verified=email_verified, phone_number_verified=phone_number_verified)
+        db.session.add(user)
+        db.session.commit()
+        # TODO: Setup settings, roles, and send email
+        return user
+
+    @staticmethod
+    def get_user_by_id(id: int) -> User | None:
+        user = db.session.get(User, id)
+        return user
+
+    @staticmethod
+    def get_user_by_uuid36(uuid36: str) -> User | None:
+        user = db.session.scalar(sa.select(User).where(User.uuid36 == uuid36))
+        return user
+
+    @staticmethod
+    def get_user_by_email(email: str) -> User | None:
+        user = db.session.scalar(sa.select(User).where(User.email == email.lower()))
+        return user
+
+    @staticmethod
+    def delete_user(user: User) -> None:
+        user.deleted = True
+        user.deleted_at = datetime.now(tz=timezone.utc)
+        db.session.commit()
+
+
+class LoginTokenManager:
+    @staticmethod
+    def create_login_token(expiration_minutes: int = 5,
+                           immediate_login: bool = False,
+                           next_url: str = "/",
+                           remember_login: bool = False,
+                           reset_password: bool = False,
+                           risk_score: int = 0,
+                           user_id: int = None) -> (LoginToken, str):
+        """
+        Generate and store a new login token.
+
+        :param expiration_minutes: How long until the token expires
+        :param immediate_login: Whether the token allows immediate login or requires some other step before
+        :param next_url: Where the user is directed once logged in
+        :param remember_login: Whether the login session should be persistent
+        :param reset_password: Whether this token is for password reset
+        :param risk_score: How risky the login attempt is, lower is less risky
+        :param user_id
+        :returns LoginToken, str: The login token record and raw token string
+        """
+        if next_url is None:
+            next_url = "/"
+        token = LoginToken(
+            expiration=datetime.now(tz=timezone.utc) + timedelta(minutes=expiration_minutes),
+            immediate_login=immediate_login,
+            next_url=next_url,
+            remember_login=remember_login,
+            reset_password=reset_password,
+            risk_score=risk_score,
+            user_id=user_id
+        )
+        raw_token = token.set_secure_token()
+        db.session.add(token)
+        db.session.commit()
+        return token, raw_token
+
+    @staticmethod
+    def get_login_token(raw_token: str) -> LoginToken | None:
+        hashed_token = hashlib.sha1(raw_token.encode('utf-8')).hexdigest()
+        token = db.session.scalar(sa.select(LoginToken).where(LoginToken.hashed_token == hashed_token))
+        return token
+
+    @staticmethod
+    def invalidate_login_token(login_token: LoginToken):
+        """
+        Mark a login token as used/invalid.
+
+        :param login_token: The LoginToken object to invalidate
+        """
+        login_token.used = True
+        login_token.used_at = datetime.now(tz=timezone.utc)
+        db.session.commit()
+
+    @staticmethod
+    def cleanup_login_tokens():
+        """
+        Remove expired or used tokens from the database.
+        """
+        now = datetime.now(tz=timezone.utc)
+        db.session.execute(sa.delete(LoginToken).where(sa.or_(LoginToken.used == True, LoginToken.expiration < now)))
+        db.session.commit()
+
+
+class LoginRecordManager:
+    @staticmethod
+    def create_login_record(user_id: int, ip_address: str, user_agent: str) -> LoginRecord:
+        record = LoginRecord(
+            user_id=user_id,
+            ip_address=ip_address,
+            user_agent=user_agent,
+        )
+        db.session.add(record)
+        db.session.commit()
+        return record

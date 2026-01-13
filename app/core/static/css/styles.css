@@ -1,0 +1,51 @@
+@import "tailwindcss";
+@import "./custom-themes.css";
+@plugin "daisyui" {
+    themes: all;
+}
+
+@layer components {
+    .title {
+        @apply text-8xl font-black uppercase;
+    }
+
+    .subtitle {
+        @apply text-2xl font-normal;
+    }
+
+    .support {
+        @apply text-sm font-light;
+    }
+
+    .standard {
+        @apply text-base font-normal;
+    }
+
+    .h1 {
+        @apply text-6xl font-black mb-4;
+    }
+
+    .h2 {
+        @apply text-5xl font-extrabold mb-4;
+    }
+
+    .h3 {
+        @apply text-4xl font-bold mb-2;
+    }
+
+    .h4 {
+        @apply text-3xl font-semibold mb-2;
+    }
+
+    .h5 {
+        @apply text-2xl font-medium mb-1;
+    }
+
+    .h6 {
+        @apply text-lg font-medium mb-1;
+    }
+
+    .form-error {
+        @apply label text-red-600;
+    }
+}
