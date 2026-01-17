@@ -1,23 +1,25 @@
 {% extends 'base.html' %}
 {% block content %}
 
-    <div class="flex flex-1 items-center justify-center bg-base-100">
-        <div class="bg-base-300 border-base-300 rounded-box border p-8 w-full max-w-lg">
-            <h2 class="h4 text-base-content text-center">Two-Factor Authentication</h2>
-            <p class="support text-base-content/80 text-center">Please select an authentication method.</p>
+    <div class="centered-container">
+        <div class="card bg-base-300 w-xl max-w-xl">
+            <div class="card-body">
+                <h2 class="h4 text-base-content text-center">Two-Factor Authentication</h2>
+                <p class="support text-base-content/80 text-center">Please select an authentication method.</p>
 
 
-            <form action="" method="post">
-                {{ form.csrf_token }}
+                <form action="" method="post">
+                    {{ form.csrf_token }}
 
-                {{ form.method.label(class="label mt-8") }}
-                {{ form.method(class="select mt-0.5 w-full", id="method") }}
-                {% for error in form.method.errors %}
-                    <p class="form-error">{{ error }}</p>
-                {% endfor %}
+                    {{ form.method.label(class="label mt-8") }}
+                    {{ form.method(class="select mt-1 w-full", id="method") }}
+                    {% for error in form.method.errors %}
+                        <p class="form-error">{{ error }}</p>
+                    {% endfor %}
 
-                {{ form.submit(class='btn btn-neutral text-neutral-content mt-4 w-full') }}
-            </form>
+                    {{ form.submit(class='btn btn-neutral text-neutral-content mt-8 w-full') }}
+                </form>
+            </div>
         </div>
     </div>
 

@@ -1,39 +1,41 @@
 {% extends 'base.html' %}
 {% block content %}
 
-    <div class="flex flex-1 items-center justify-center bg-base-100">
-        <div class="bg-base-300 border-base-300 rounded-box border p-8 w-full max-w-lg">
-            <h2 class="h4 text-base-content text-center">Two-Factor Authentication</h2>
-            <p class="support text-base-content/80 text-center">
-                {% if method == 'email' %}
-                Please enter the authentication code sent to your email.
-                {% elif method == 'text' %}
-                Please enter the authentication code sent to your phone via text message.
-                {% elif method == 'call' %}
-                Please enter the authentication code sent to your phone via voice call.
-                {% elif method == 'authenticator_app' %}
-                Please enter the authentication code from your authenticator app.
-                {% else %}
-                Please enter your authentication code.
-                {% endif %}
-            </p>
+    <div class="centered-container">
+        <div class="card bg-base-300 w-xl max-w-xl">
+            <div class="card-body">
+                <h2 class="h4 text-base-content text-center">Two-Factor Authentication</h2>
+                <p class="support text-base-content/80 text-center">
+                    {% if method == 'email' %}
+                    Please enter the authentication code sent to your email.
+                    {% elif method == 'text' %}
+                    Please enter the authentication code sent to your phone via text message.
+                    {% elif method == 'call' %}
+                    Please enter the authentication code sent to your phone via voice call.
+                    {% elif method == 'authenticator_app' %}
+                    Please enter the authentication code from your authenticator app.
+                    {% else %}
+                    Please enter your authentication code.
+                    {% endif %}
+                </p>
 
-            <form action="" method="post">
-                {{ form.csrf_token }}
+                <form action="" method="post">
+                    {{ form.csrf_token }}
 
-                {{ form.code.label(class="label mt-8") }}
-                {{ form.code(class="input mt-0.5 w-full", id="code", type="text", inputmode="numeric", autocomplete="one-time-code", pattern="[0-9]*", pattern="\d{6}", maxlength="6", autocomplete="off") }}
-                {% for error in form.code.errors %}
-                    <p class="form-error">{{ error }}</p>
-                {% endfor %}
+                    {{ form.code.label(class="label mt-8") }}
+                    {{ form.code(class="input mt-1 w-full", id="code", type="text", inputmode="numeric", autocomplete="one-time-code", pattern="[0-9]*", pattern="\d{6}", maxlength="6", autocomplete="off") }}
+                    {% for error in form.code.errors %}
+                        <p class="form-error">{{ error }}</p>
+                    {% endfor %}
 
-                {{ form.submit(class='btn btn-neutral text-neutral-content mt-4 w-full') }}
-            </form>
+                    {{ form.submit(class='btn btn-neutral text-neutral-content mt-8 w-full') }}
+                </form>
 
-            <div class="divider mt-6 mb-4"></div>
+                <div class="divider mt-6 mb-4"></div>
 
-            <div class="flex justify-between">
-                <a href="{{ url_for('auth.two_factor_auth', raw_token=raw_token) }}" class="standard link link-neutral label justify-end">Try another way</a>
+                <div class="flex justify-between">
+                    <a href="{{ url_for('auth.two_factor_auth', raw_token=raw_token) }}" class="standard link link-neutral label justify-end">Try another way</a>
+                </div>
             </div>
         </div>
     </div>

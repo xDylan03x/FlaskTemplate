@@ -1,54 +1,56 @@
 {% extends 'base.html' %}
 {% block content %}
 
-    <div class="flex flex-1 items-center justify-center">
-        <div class="bg-base-300/70 backdrop-blur-xl border-base-300 rounded-box border p-8 w-full max-w-lg">
-            <h2 class="h4 text-base-content text-center">Log in to {{ app_name }}</h2>
-            <p class="support text-base-content/80 text-center mt-1">Log in with a magic link, an auth provider, or email and password.<br>
-                Please contact an administrator if you need an account.
-            </p>
+    <div class="centered-container">
+        <div class="card bg-base-300 w-xl max-w-xl">
+            <div class="card-body">
+                <h2 class="h4 text-base-content text-center">Log in to {{ app_name }}</h2>
+                <p class="support text-base-content/80 text-center">Log in with a magic link, an auth provider, or email and password.<br>
+                    Please contact an administrator if you need an account.
+                </p>
 
-            <div class="columns-2 mt-8">
-                <a href="{{ url_for('auth.magic_link', next=next_url) }}" class="btn w-full btn-outline btn-primary">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" class="size-4">
-                        <path fill-rule="evenodd" d="M8.914 6.025a.75.75 0 0 1 1.06 0 3.5 3.5 0 0 1 0 4.95l-2 2a3.5 3.5 0 0 1-5.396-4.402.75.75 0 0 1 1.251.827 2 2 0 0 0 3.085 2.514l2-2a2 2 0 0 0 0-2.828.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" />
-                        <path fill-rule="evenodd" d="M7.086 9.975a.75.75 0 0 1-1.06 0 3.5 3.5 0 0 1 0-4.95l2-2a3.5 3.5 0 0 1 5.396 4.402.75.75 0 0 1-1.251-.827 2 2 0 0 0-3.085-2.514l-2 2a2 2 0 0 0 0 2.828.75.75 0 0 1 0 1.06Z" clip-rule="evenodd" />
-                    </svg>
-                    Login with Magic Link
-                </a>
-                <a href="{{ url_for('auth.oauth_authorize', provider='google', next=next_url) }}" class="btn w-full bg-white text-black border-[#e5e5e5]">
-                    <svg aria-label="Google logo" width="16" height="16" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><g><path d="m0 0H512V512H0" fill="#fff"></path><path fill="#34a853" d="M153 292c30 82 118 95 171 60h62v48A192 192 0 0190 341"></path><path fill="#4285f4" d="m386 400a140 175 0 0053-179H260v74h102q-7 37-38 57"></path><path fill="#fbbc02" d="m90 341a208 200 0 010-171l63 49q-12 37 0 73"></path><path fill="#ea4335" d="m153 219c22-69 116-109 179-50l55-54c-78-75-230-72-297 55"></path></g></svg>
-                    Login with Google
-                </a>
-            </div>
-
-            <div class="divider mt-6 mb-4">or</div>
-
-            <form action="" method="post">
-                {{ form.csrf_token }}
-
-                {{ form.email.label(class="label") }}
-                {{ form.email(class="input mt-0.5 w-full validator", id="email", type="email") }}
-                {% for error in form.email.errors %}
-                    <p class="form-error">{{ error }}</p>
-                {% endfor %}
-
-                {{ form.password.label(class="label mt-4") }}
-                {{ form.password(class="input mt-0.5 w-full", id="password", type="password") }}
-                {% for error in form.password.errors %}
-                    <p class="form-error">{{ error }}</p>
-                {% endfor %}
-
-                <div class="flex justify-between mt-4">
-                    <div>
-                        {{ form.remember_me(class="checkbox", id="remember_me", type="checkbox") }}
-                        {{ form.remember_me.label(class="label") }}
-                    </div>
-                    <a href="{{ url_for('auth.forgot_password', next=next_url) }}" class="link link-neutral label justify-end">Forgot Password</a>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-8">
+                    <a href="{{ url_for('auth.magic_link', next=next_url) }}" class="btn w-full btn-outline btn-primary">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" class="size-4">
+                            <path fill-rule="evenodd" d="M8.914 6.025a.75.75 0 0 1 1.06 0 3.5 3.5 0 0 1 0 4.95l-2 2a3.5 3.5 0 0 1-5.396-4.402.75.75 0 0 1 1.251.827 2 2 0 0 0 3.085 2.514l2-2a2 2 0 0 0 0-2.828.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" />
+                            <path fill-rule="evenodd" d="M7.086 9.975a.75.75 0 0 1-1.06 0 3.5 3.5 0 0 1 0-4.95l2-2a3.5 3.5 0 0 1 5.396 4.402.75.75 0 0 1-1.251-.827 2 2 0 0 0-3.085-2.514l-2 2a2 2 0 0 0 0 2.828.75.75 0 0 1 0 1.06Z" clip-rule="evenodd" />
+                        </svg>
+                        Login with Magic Link
+                    </a>
+                    <a href="{{ url_for('auth.oauth_authorize', provider='google', next=next_url) }}" class="btn w-full bg-white text-black border-[#e5e5e5]">
+                        <svg aria-label="Google logo" width="16" height="16" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><g><path d="m0 0H512V512H0" fill="#fff"></path><path fill="#34a853" d="M153 292c30 82 118 95 171 60h62v48A192 192 0 0190 341"></path><path fill="#4285f4" d="m386 400a140 175 0 0053-179H260v74h102q-7 37-38 57"></path><path fill="#fbbc02" d="m90 341a208 200 0 010-171l63 49q-12 37 0 73"></path><path fill="#ea4335" d="m153 219c22-69 116-109 179-50l55-54c-78-75-230-72-297 55"></path></g></svg>
+                        Login with Google
+                    </a>
                 </div>
 
-                {{ form.submit(class='btn btn-neutral text-neutral-content mt-4 w-full') }}
-            </form>
+                <div class="divider mt-6 mb-4">or</div>
+
+                <form action="" method="post">
+                    {{ form.csrf_token }}
+
+                    {{ form.email.label(class="label") }}
+                    {{ form.email(class="input mt-1 w-full validator", id="email", type="email") }}
+                    {% for error in form.email.errors %}
+                        <p class="form-error">{{ error }}</p>
+                    {% endfor %}
+
+                    {{ form.password.label(class="label mt-4") }}
+                    {{ form.password(class="input mt-1 w-full", id="password", type="password") }}
+                    {% for error in form.password.errors %}
+                        <p class="form-error">{{ error }}</p>
+                    {% endfor %}
+
+                    <div class="flex justify-between mt-4">
+                        <div>
+                            {{ form.remember_me(class="checkbox", id="remember_me", type="checkbox") }}
+                            {{ form.remember_me.label(class="label") }}
+                        </div>
+                        <a href="{{ url_for('auth.forgot_password', next=next_url) }}" class="link link-neutral label justify-end">Forgot Password</a>
+                    </div>
+
+                    {{ form.submit(class='btn btn-neutral text-neutral-content mt-8 w-full') }}
+                </form>
+            </div>
         </div>
     </div>
 

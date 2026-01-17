@@ -1,0 +1,24 @@
+{% extends 'account-settings/base.html' %}
+{% block settings_content %}
+
+    <form action="" method="post">
+        {{ form.csrf_token }}
+
+        <div class="mt-4">
+            {{ form.two_factor_auth(class="checkbox", id="two_factor_auth", type="checkbox") }}
+            {{ form.two_factor_auth.label(class="label") }}
+            <p class="form-help">When logging in with a password, also require another form of authentication.</p>
+        </div>
+
+        <div class="mt-4">
+            {{ form.password_breach_check(class="checkbox", id="password_breach_check", type="checkbox") }}
+            {{ form.password_breach_check.label(class="label") }}
+            <p class="form-help">When logging in, check to determine if your password has been found in a data breach.</p>
+        </div>
+
+        <a class="btn btn-outline btn-secondary mt-4" href="{{ url_for('core.change_password') }}">Change Password</a>
+
+        {{ form.submit(class='btn btn-neutral text-neutral-content mt-8 w-full') }}
+    </form>
+
+{% endblock %}

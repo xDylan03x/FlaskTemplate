@@ -1,10 +1,8 @@
 from urllib.parse import urlparse
-
 from flask import request, current_app
 from app import twilio_client
 import hashlib
 import requests
-import time
 
 
 def get_ip_from_request(request_object: request) -> str:

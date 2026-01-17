@@ -1,0 +1,55 @@
+{% extends 'account-settings/base.html' %}
+{% block settings_content %}
+
+    <form action="" method="post">
+        {{ form.csrf_token }}
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-8">
+            <div>
+                {{ form.name.label(class="label") }}
+                {{ form.name(class="input mt-1 w-full", id="name", type="text") }}
+                {% for error in form.name.errors %}
+                    <p class="form-error">{{ error }}</p>
+                {% endfor %}
+            </div>
+            <div>
+                <label for="email" class="label">Email</label>
+                <input class="input mt-1 w-full" id="email" type="email" disabled value="{{ current_user.email }}">
+            </div>
+        </div>
+
+        <div class="form-control w-full mt-4">
+            {{ form.phone_number.label(class="label") }}
+            {% if current_user.phone_number_verified %}
+            <div class="badge badge-sm badge-success">Verified</div>
+            {% else %}
+                <div class="badge badge-sm badge-warning">Not Verified</div>
+            {% endif %}
+
+            <div class="join w-full mt-1">
+                {{ form.country_code(class="select select-bordered join-item w-24", id="country_code") }}
+                {{ form.phone_number(class="input input-bordered join-item flex-1", id="phone_number", type="tel") }}
+                <button type="button" class="btn btn-neutral join-item"
+                        x-data="{ sending: false }"
+                        @click="sending = true"
+                        :disabled="sending || {{ 'true' if current_user.phone_number_verified or not current_user.phone_number else 'false' }}"
+                        hx-post="{{ url_for('core.send_phone_number_verification') }}"
+                        hx-swap="outerHTML">
+                    <span x-show="!sending">Verify</span>
+                    <span x-show="sending">Sending...</span>
+                </button>
+
+            </div>
+
+            {% for error in form.name.errors %}
+                <p class="form-error">{{ error }}</p>
+            {% endfor %}
+        </div>
+        <p class="form-help">Changing your phone number will require you to verify it before it can be used for 2FA.
+            Make sure this number is correct to prevent unauthorized access to your account.</p>
+
+
+        {{ form.submit(class='btn btn-neutral text-neutral-content mt-8 w-full') }}
+    </form>
+
+{% endblock %}

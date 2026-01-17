@@ -1,3 +1,4 @@
+import enum
 import hashlib
 from typing import Optional
 from flask_login import UserMixin
@@ -30,7 +31,9 @@ class User(db.Model, UserMixin):
 
         roles: One-to-many relationship with Role model
         settings: One-to-many relationship with UserSetting model
+        notifications: One-to-many relationship with Notification model
         login_tokens: One-to-many relationship with LoginToken model
+        login_records: One-to-many relationship with LoginRecord model
     """
     id: so.Mapped[int] = so.mapped_column(primary_key=True)
     uuid36: so.Mapped[str] = so.mapped_column(sa.String(36), unique=True, index=True, nullable=False, default=lambda: str(uuid.uuid4()))
@@ -51,6 +54,9 @@ class User(db.Model, UserMixin):
     deleted_at: so.Mapped[Optional[datetime]] = so.mapped_column(sa.DateTime)
 
     settings: so.Mapped[list["UserSetting"]] = so.relationship('UserSetting', backref='user', lazy='dynamic')
+    notifications: so.Mapped[list["UserNotification"]] = so.relationship('UserNotification', backref='user', lazy='dynamic')
+    login_tokens: so.Mapped[list["LoginToken"]] = so.relationship('LoginToken', backref='user', lazy='dynamic')
+    login_records: so.Mapped[list["LoginRecord"]] = so.relationship('LoginRecord', backref='user', lazy='dynamic')
 
     def __repr__(self):
         return '<User {}>'.format(self.email)
@@ -91,7 +97,6 @@ class User(db.Model, UserMixin):
             db.session.add(setting_record)
         else:
             setting_record.value = str(value)
-        db.session.commit()
 
 
 class LoginToken(db.Model):
@@ -108,6 +113,7 @@ class LoginToken(db.Model):
         next_url: URL to redirect to after login
         remember_login
         reset_password: Whether the token is for password reset
+        verify_phone_number: Whether the token is for phone number verification
         risk_score: Risk score associated with the token
         used: Whether the token has been used
 
@@ -124,6 +130,7 @@ class LoginToken(db.Model):
     next_url: so.Mapped[Optional[str]] = so.mapped_column(sa.String(2048))
     remember_login: so.Mapped[bool] = so.mapped_column(sa.Boolean, default=False, nullable=False)
     reset_password: so.Mapped[Optional[bool]] = so.mapped_column(sa.Boolean, default=False)
+    verify_phone_number: so.Mapped[Optional[bool]] = so.mapped_column(sa.Boolean, default=False)
     risk_score: so.Mapped[Optional[int]] = so.mapped_column(sa.Numeric, index=True, default=0, nullable=False)
     used: so.Mapped[bool] = so.mapped_column(sa.Boolean, default=False, nullable=False)
     used_at: so.Mapped[Optional[datetime]] = so.mapped_column(sa.DateTime)
@@ -183,7 +190,59 @@ class UserSetting(db.Model):
     user_id: so.Mapped[int] = so.mapped_column(sa.Integer, sa.ForeignKey('user.id'))
 
     def __repr__(self):
-        return '<UserSetting {}={}>'.format(self.key, self.value)
+        return '<UserSetting {}: {}>'.format(self.key, self.value)
+
+
+class NotificationCategory(enum.Enum):
+    # Account
+    PERIODIC_PASSWORD_RESET = "notifications.security_alerts"
+    PASSWORD_RESET = "notifications.security_alerts"
+    PASSWORD_CHANGE = "notifications.security_alerts"
+    PHONE_NUMBER_CHANGE = "notifications.security_alerts"
+    NEW_DEVICE_LOGIN = "notifications.security_alerts"
+
+
+class UserNotification(db.Model):
+    """
+    Model representing a notification sent to the user
+    A notification record can only be sent through the channel as specified. To send a notification through
+    multiple channels, create multiple records.
+    Attributes:
+        id
+        uuid36
+        created_at
+        updated_at
+        title: Notification title
+        body: Notification body/content
+        link: Optional link associated with the notification
+        sender: User or system that sent the notification
+        category: Notification category/type
+        read: Whether the notification has been read
+        channel: Channel through which the notification was intended (email, text, etc.)
+        external_id: Identifier used to track the notification (like Twilio SIDs)
+        sent_timestamp: Timestamp of the notification
+
+        user_id: Foreign key to the User model
+    """
+    id: so.Mapped[int] = so.mapped_column(primary_key=True)
+    uuid36: so.Mapped[str] = so.mapped_column(sa.String(36), unique=True, index=True, nullable=False, default=lambda: str(uuid.uuid4()))
+    created_at: so.Mapped[datetime] = so.mapped_column(sa.DateTime(timezone=True), nullable=False, default=lambda: datetime.now(tz=timezone.utc))
+    updated_at: so.Mapped[datetime] = so.mapped_column(sa.DateTime(timezone=True), nullable=False, default=lambda: datetime.now(tz=timezone.utc), onupdate=lambda: datetime.now(tz=timezone.utc))
+
+    title: so.Mapped[str] = so.mapped_column(sa.String(512), nullable=False)
+    body: so.Mapped[str] = so.mapped_column(sa.Text, nullable=False)
+    link: so.Mapped[Optional[str]] = so.mapped_column(sa.String(2048))
+    sender: so.Mapped[Optional[str]] = so.mapped_column(sa.String(256))
+    category: so.Mapped[Optional[str]] = so.mapped_column(sa.String(128))
+    read: so.Mapped[bool] = so.mapped_column(sa.Boolean, default=False, nullable=False)
+    channel: so.Mapped[str] = so.mapped_column(sa.String(32), nullable=False)
+    external_id: so.Mapped[Optional[str]] = so.mapped_column(sa.String(512))
+    sent_timestamp: so.Mapped[Optional[datetime]] = so.mapped_column(sa.DateTime(timezone=True))
+
+    user_id: so.Mapped[int] = so.mapped_column(sa.Integer, sa.ForeignKey('user.id'))
+
+    def __repr__(self):
+        return '<Notification {}: {}>'.format(self.uuid36, self.title)
 
 
 class LoginRecord(db.Model):

@@ -1,0 +1,37 @@
+{% extends 'account-settings/base.html' %}
+{% block settings_content %}
+
+    <form action="" method="post">
+        {{ form.csrf_token }}
+
+        <div class="overflow-x-auto">
+            <table class="table table-auto w-full">
+                <thead>
+                <tr>
+                    <th></th>
+                    <th>Email</th>
+                    <th>Text</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr class="hover:bg-base-300">
+                    <td class="max-w-96">
+                        <p class="standard font-bold text-base-content">Security Alerts</p>
+                        <p class="form-help">Changes such as password resets, phone number updates, new device logins, etc.</p>
+                    </td>
+                    <td>
+                        {{ form.security_alerts_email(class="toggle", id="security_alerts_email", type="checkbox") }}
+                    </td>
+                    <td>
+                        {{ form.security_alerts_text(class="toggle", id="security_alerts_text", type="checkbox") }}
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+
+        {{ form.submit(class='btn btn-neutral text-neutral-content mt-8 w-full') }}
+
+    </form>
+
+{% endblock %}

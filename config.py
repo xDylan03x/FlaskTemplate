@@ -18,7 +18,12 @@ class Config:
         # Make sure to set FLASK_ENV to 'production' in a production environment
         self.deployment = os.environ.get("FLASK_ENV") or "development"
 
-        self.SQLALCHEMY_DATABASE_URI = os.environ.get("DATABASE_URL") or "postgresql://localhost/pm_dev"
+        # Admin credentials
+        self.ADMIN_NAME = os.environ.get('ADMIN_NAME', None)
+        self.ADMIN_EMAIL = os.environ.get('ADMIN_EMAIL', None)
+        self.ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', None)
+
+        self.SQLALCHEMY_DATABASE_URI = os.environ.get("DATABASE_URL") or f"postgresql://localhost/{self.APP_ABBR.lower()}_dev"
         self.SECRET_KEY = os.environ.get('SECRET_KEY') or 'dev_secret'
 
         self.SSL_REDIRECT = False
@@ -43,21 +48,24 @@ class Config:
             },
         }
 
-        # Twilio configuration - to use another provider, modify accordingly and update the core/helper.py files
+        # Twilio configuration - to use another provider, modify accordingly and
+        # update the core/helper.py files and auth/helper.py files
         self.TWILIO_ACCOUNT_SID = os.environ.get("TWILIO_ACCOUNT_SID", None)
         self.TWILIO_AUTH_TOKEN = os.environ.get("TWILIO_AUTH_TOKEN", None)
         self.TWILIO_SERVICE_SID = os.environ.get("TWILIO_SERVICE_SID", None)
         self.FROM_PHONE_NUMBER = os.environ.get("FROM_PHONE_NUMBER", None)
 
-        # Sendgrid configuration - to use another provider, modify accordingly and update the core/helper.py files
+        # Sendgrid configuration - to use another provider, modify accordingly and update the core/helper.py
         self.FROM_EMAIL = os.environ.get("FROM_EMAIL", None)
         self.SENDGRID_API_KEY = os.environ.get("SENDGRID_API_KEY", None)
         self.SENDGRID_EMAIL_TEMPLATE_ID = os.environ.get("SENDGRID_EMAIL_TEMPLATE_ID", None)
 
         # Checks
         if self.SECRET_KEY == "dev_secret":
-            logging.warning("WARNING: Using default secret key. This is insecure and should be changed in production.")
+            logging.warning("Using default secret key. This is insecure and should be changed in production.")
         if not self.TWILIO_ACCOUNT_SID or not self.TWILIO_AUTH_TOKEN or not self.TWILIO_SERVICE_SID or not self.FROM_PHONE_NUMBER:
-            logging.fatal("WARNING: Twilio configuration is incomplete.")
+            logging.fatal("Twilio configuration is incomplete.")
         if not self.FROM_EMAIL or not self.SENDGRID_API_KEY or not self.SENDGRID_EMAIL_TEMPLATE_ID:
-            logging.fatal("WARNING: Sendgrid configuration is incomplete.")
+            logging.fatal("Sendgrid configuration is incomplete.")
+        if not self.ADMIN_NAME or not self.ADMIN_EMAIL or not self.ADMIN_PASSWORD:
+            logging.warning("Admin user configuration is incomplete. Set this up to enable default admin user creation.")

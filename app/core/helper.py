@@ -3,7 +3,7 @@ from sendgrid.helpers.mail import Mail, From
 from flask import current_app
 
 
-def send_email(subject: str, body: str, recipients: list[str], preheader="", sender=None, sender_name=None, template_id=None):
+def send_email(subject: str, body: str, recipient: str, preheader="", sender=None, sender_name=None, template_id=None) -> str:
     if sender is None:
         sender = current_app.config["FROM_EMAIL"]
     if sender_name is None:
@@ -11,22 +11,26 @@ def send_email(subject: str, body: str, recipients: list[str], preheader="", sen
     if template_id is None:
         template_id = current_app.config["SENDGRID_EMAIL_TEMPLATE_ID"]
 
-    message = Mail(from_email=From(sender, sender_name), to_emails=recipients)
+    message = Mail(from_email=From(sender, sender_name), to_emails=recipient)
     message.dynamic_template_data = {
-        'body': body,
+        'body': body.replace('\n', '<br>'),
         'subject': subject,
         'preheader': preheader
     }
     message.template_id = template_id
     try:
-        sendgrid_client.send(message)
-    except Exception as e:
-        print(f"Error: {e}")
+        response = sendgrid_client.send(message)
+        # Get the Message-ID from the response headers
+        message_id = response.headers.get('X-Message-Id') or response.headers.get('X-Message-ID')
+        return message_id
+    except Exception:
+        return None
 
 
-def send_sms(body: str, recipients: list[str], sender=None):
+def send_sms(body: str, recipient: str, sender=None) -> str:
     if sender is None:
         sender = current_app.config["FROM_PHONE_NUMBER"]
 
-    for recipient in recipients:
-        twilio_client.messages.create(body=body, from_=sender, to=recipient)
+    message = twilio_client.messages.create(body=body, from_=sender, to=recipient)
+    return message.sid
+

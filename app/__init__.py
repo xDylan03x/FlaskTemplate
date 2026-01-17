@@ -7,6 +7,7 @@ from flask import Flask
 from flask_migrate import Migrate
 from flask_login import LoginManager
 from flask_sqlalchemy import SQLAlchemy
+from .commands import create_admin
 
 # Create global instances of extensions
 db = SQLAlchemy(add_models_to_shell=True)
@@ -39,12 +40,15 @@ def create_app(cfg: Config = Config) -> Flask:
         return dict(app_name=app.config["APP_NAME"])
 
     @app.context_processor
-    def app_appr():
+    def app_abbr():
         return dict(app_abbr=app.config["APP_ABBR"])
 
     @app.context_processor
     def site_theme():
         return dict(site_theme=app.config["SITE_THEME"])
+
+    # Register CLI commands
+    app.cli.add_command(create_admin)
 
     from . import models
 

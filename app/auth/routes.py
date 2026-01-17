@@ -3,6 +3,7 @@ import requests
 from app.auth.helper import get_ip_from_request, twilio_verify_send, twilio_verify_check, hibp_password_check, \
     is_internal_url
 from app.model_managers import UserManager, LoginTokenManager, LoginRecordManager
+from app.models import NotificationCategory
 from flask_login import login_user, logout_user
 from flask import flash, request, redirect, render_template, url_for, current_app, session
 from app.auth import auth
@@ -42,13 +43,13 @@ def login():
             return render_template('login.html', title='Log In', form=form), 401
 
         # If the user has enabled password breach checking
-        if user.get_setting('check_password_breach'):
+        if user.get_setting('security.password_breach_check'):
             # If their password has been found in a data breach, alert them and require 2FA
             if hibp_password_check(form.password.data):
                 flash('Your password has been found in a data breach, consider changing it immediately.', 'warning')
 
         # If the user has 2FA enabled
-        if user.get_setting('2fa_enabled'):
+        if user.get_setting('security.two_factor_auth'):
             flash(REQUIRES_2FA_MESSAGE, 'info')
             _, raw_token = LoginTokenManager.create_login_token(next_url=next_url, remember_login=form.remember_me.data, user_id=user.id)
             return redirect(url_for('auth.two_factor_auth', raw_token=raw_token))
@@ -81,7 +82,7 @@ def forgot_password(raw_token: str = None):
             _, raw_token = LoginTokenManager.create_login_token(user_id=user.id, next_url=request.args.get('next', None), reset_password=True)
             login_url = url_for('auth.forgot_password', raw_token=raw_token, _external=True)
             message = f'Click the following link to reset your password: {login_url}<br><br>If you did not request this link, please ignore this email.'
-            send_email(subject=f'Your {current_app.config["APP_NAME"]} Password Reset Link', body=message, recipients=[user.email])
+            send_email(subject=f'Your {current_app.config["APP_NAME"]} Password Reset Link', body=message, recipient=user.email)
             flash('A login link has been sent to your email.', 'info')
             return redirect(url_for('auth.login', next=request.args.get('next', None)))
         return render_template('forgot_password_email.html', title='Forgot Password', form=form)
@@ -171,15 +172,17 @@ def magic_link(raw_token: str = None):
 
     # Send the login link when submitting
     if form.validate_on_submit():
+        new_token_obj, new_token = LoginTokenManager.create_login_token_from_existing(login_token)
+        new_token_obj.immediate_login = True
+        db.session.commit()
+        login_url = url_for('auth.login_with_token', raw_token=new_token, _external=True)
         if form.method.data == 'Email':
             # Make sure the user's email is verified
             if not user.email_verified:
                 flash(CONTACT_ADMINISTRATOR_MESSAGE, 'error')
                 return redirect(url_for('auth.login'))
-            _, new_token = LoginTokenManager.create_login_token(user_id=user.id, immediate_login=True)
-            login_url = url_for('auth.login_with_token', raw_token=new_token, _external=True)
             message = f'Click the following link to log in to your account: {login_url}<br><br>If you did not request this link, please ignore this email.'
-            send_email(subject=f'Your {current_app.config["APP_NAME"]} Login Link', body=message, recipients=[user.email])
+            send_email(subject=f'Your {current_app.config["APP_NAME"]} Login Link', body=message, recipient=user.email)
             flash('A login link has been sent to your email.', 'info')
             return redirect(url_for('auth.login'))
         if form.method.data == 'Text':
@@ -187,10 +190,8 @@ def magic_link(raw_token: str = None):
             if not user.phone_number_verified:
                 flash(CONTACT_ADMINISTRATOR_MESSAGE, 'error')
                 return redirect(url_for('auth.login'))
-            _, new_token = LoginTokenManager.create_login_token(user_id=user.id, immediate_login=True)
-            login_url = url_for('auth.login_with_token', raw_token=new_token, _external=True)
             message = f'Click the following link to log in to your {current_app.config["APP_NAME"]} account: {login_url}\n\nIf you did not request this link, please ignore this text.'
-            send_sms(body=message, recipients=[user.phone_number])
+            send_sms(body=message, recipient=user.phone_number)
             flash('A login link has been sent to your phone via text.', 'info')
             return redirect(url_for('auth.login'))
 
@@ -429,8 +430,8 @@ def login_with_token(raw_token: str):
         flash(TOKEN_EXPIRED_MESSAGE, 'error')
         return redirect(url_for('auth.login'))
 
-    # If the login token does not allow immediate login
-    if not login_token.immediate_login:
+    # If the login token does not allow immediate login and is not for phone number verification
+    if (not login_token.immediate_login) and (not login_token.verify_phone_number):
         flash(CONTACT_ADMINISTRATOR_MESSAGE, 'error')
         return redirect(url_for('auth.login'))
 
@@ -447,13 +448,24 @@ def login_with_token(raw_token: str):
         return redirect(url_for('auth.two_factor_auth', raw_token=raw_token))
 
     user = UserManager.get_user_by_id(login_token.user_id)
+    # If the user isn't found or cannot log in
     if not user or not user.can_login():
         flash(CONTACT_ADMINISTRATOR_MESSAGE, 'error')
         return redirect(url_for('auth.login'))
 
     LoginTokenManager.invalidate_login_token(login_token)
-    LoginRecordManager.create_login_record(user.id, get_ip_from_request(request), request.headers.get('User-Agent', ''))
-    login_user(user, remember=login_token.remember_login)
+
+    # If the token is to be used to verify a phone number, mark it as verified
+    if login_token.verify_phone_number:
+        user.phone_number_verified = True
+        db.session.commit()
+        flash('Your phone number has been successfully verified.', 'success')
+        body = f'The phone number ({user.phone_number}) associated with your {current_app.config["APP_NAME"]} account has just been verified.\n\nIf you did not perform this action, please secure your account immediately.'
+        UserManager.send_notification('Phone Number Verified', body, user, NotificationCategory.PHONE_NUMBER_CHANGE)
+    # Otherwise, log the user in
+    else:
+        LoginRecordManager.create_login_record(user.id, get_ip_from_request(request), request.headers.get('User-Agent', ''))
+        login_user(user, remember=login_token.remember_login)
 
     next_url = login_token.next_url
     if next_url is None:
@@ -467,15 +479,4 @@ def login_with_token(raw_token: str):
 @auth.route('/logout')
 def logout():
     logout_user()
-    return redirect(url_for('auth.login'))
-
-
-@auth.route('/setup')
-def setup():
-    # TODO: Delete
-    user = UserManager.create_user(email="xdylan2003x@gmail.com", name="Dylan", phone_number="+12294123111", email_verified=True, phone_number_verified=True)
-    user.set_password("password")
-    user.set_setting('2fa_enabled', True)
-    user.set_setting('check_password_breach', True)
-    db.session.commit()
     return redirect(url_for('auth.login'))

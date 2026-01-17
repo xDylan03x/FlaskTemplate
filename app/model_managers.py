@@ -1,6 +1,8 @@
 import hashlib
 import sqlalchemy as sa
-from app.models import User, LoginToken, LoginRecord
+
+from app.core.helper import send_email, send_sms
+from app.models import User, LoginToken, LoginRecord, UserNotification, NotificationCategory
 from app import db
 from datetime import datetime, timedelta, timezone
 
@@ -42,6 +44,50 @@ class UserManager:
         user.deleted_at = datetime.now(tz=timezone.utc)
         db.session.commit()
 
+    @staticmethod
+    def send_notification(title: str,
+                          body: str,
+                          user: User,
+                          category: NotificationCategory,
+                          link: str = None,
+                          sender: str = "System") -> list[UserNotification]:
+        notifications = []
+        channels_to_send = []
+        if user.get_setting(f"{category.value}_email"):
+            channels_to_send.append('email')
+        if user.get_setting(f"{category.value}_text"):
+            channels_to_send.append('text')
+
+        for channel in channels_to_send:
+            notification = UserNotification(
+                title=title,
+                body=body,
+                channel=channel,
+                link=link,
+                sender=sender,
+                category=category.value if category else None,
+                user_id=user.id
+            )
+            db.session.add(notification)
+            db.session.commit()
+
+            message_body = f'From: {notification.sender}\n\n{notification.title}\n{notification.body}'
+            if link:
+                message_body += f'\n\nView on Website: {link}'
+            if notification.channel == 'email' and user.email:
+                notification.external_id = send_email(notification.title, message_body, user.email)
+            elif notification.channel == 'text' and user.phone_number:
+                notification.external_id = send_sms(message_body, user.phone_number)
+
+            if notification.external_id:
+                notification.sent_timestamp = datetime.now(tz=timezone.utc)
+                notification.read = True
+
+            db.session.commit()
+            notifications.append(notification)
+
+        return notifications
+
 
 class LoginTokenManager:
     @staticmethod
@@ -79,6 +125,20 @@ class LoginTokenManager:
         db.session.add(token)
         db.session.commit()
         return token, raw_token
+
+    @staticmethod
+    def create_login_token_from_existing(existing_token: LoginToken, expiration_minutes: int = 5) -> (LoginToken, str):
+        token, raw_token = LoginTokenManager.create_login_token(
+            expiration_minutes=expiration_minutes,
+            immediate_login=existing_token.immediate_login,
+            next_url=existing_token.next_url,
+            remember_login=existing_token.remember_login,
+            reset_password=existing_token.reset_password,
+            risk_score=existing_token.risk_score,
+            user_id=existing_token.user_id
+        )
+        return token, raw_token
+
 
     @staticmethod
     def get_login_token(raw_token: str) -> LoginToken | None:
