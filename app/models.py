@@ -21,6 +21,7 @@ class User(db.Model, UserMixin):
         updated_at
         name: Full name
         email
+        profile_picture_url: URL to profile picture
         password_hash
         status: active, inactive
         phone_number: Phone number in E.164 format
@@ -29,7 +30,6 @@ class User(db.Model, UserMixin):
         deleted: Soft delete flag
         deleted_at
 
-        roles: One-to-many relationship with Role model
         settings: One-to-many relationship with UserSetting model
         notifications: One-to-many relationship with Notification model
         login_tokens: One-to-many relationship with LoginToken model
@@ -42,6 +42,7 @@ class User(db.Model, UserMixin):
 
     name: so.Mapped[str] = so.mapped_column(sa.String(256), nullable=False)
     email: so.Mapped[str] = so.mapped_column(sa.String(120), index=True, unique=True)
+    profile_picture_url: so.Mapped[Optional[str]] = so.mapped_column(sa.String(2048))
     password_hash: so.Mapped[Optional[str]] = so.mapped_column(sa.String(256))
     status: so.Mapped[str] = so.mapped_column(sa.String(32), nullable=False, default='active')
 
@@ -74,7 +75,7 @@ class User(db.Model, UserMixin):
         self.uuid36 = str(uuid.uuid4())
 
     def can_login(self) -> bool:
-        if self.deleted or self.status != 'active' or not self.email_verified:
+        if self.deleted or ((self.status != 'active' or not self.email_verified) and self.status != 'pending'):
             return False
         return True
 

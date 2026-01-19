@@ -1,0 +1,68 @@
+{% extends 'base.html' %}
+{% block content %}
+
+    <div class="centered-container">
+        <div class="card bg-base-300 w-xl max-w-xl">
+            <div class="card-body">
+                <h3 class="h3 text-base-content text-center">Edit User</h3>
+                <p class="support text-base-content/80 text-center">
+                    You're currently editing {{ user.name }} {% if user.uuid36 == current_user.uuid36 %}<span class="badge badge-sm badge-warning">You</span>{% endif %}
+                </p>
+
+
+                <form action="" method="post">
+                    {{ form.csrf_token }}
+
+                    <h4 class="h4 text-base-content mt-8">User Information</h4>
+                    {{ form.name.label(class="label mt-4") }}
+                    {{ form.name(class="input mt-1 w-full", id="name", type="text") }}
+                    {% for error in form.name.errors %}
+                        <p class="form-error">{{ error }}</p>
+                    {% endfor %}
+
+                    {{ form.status.label(class="label mt-4") }}
+                    {{ form.status(class="select mt-1 w-full", id="status") }}
+                    {% for error in form.status.errors %}
+                        <p class="form-error">{{ error }}</p>
+                    {% endfor %}
+                    <p class="form-help">Disabling the user will not log them out, but will prevent them from logging in.</p>
+
+                    {{ form.password.label(class="label mt-4") }}
+                    {{ form.password(class="input mt-1 w-full", id="password", type="password") }}
+                    <p class="form-help">Leave this field blank unless you want to make changes. Editing will log the
+                    user out.</p>
+                    {% for error in form.password.errors %}
+                        <p class="form-error">{{ error }}</p>
+                    {% endfor %}
+
+                    <button type="button" class="btn btn-outline btn-error mt-4" onclick="delete_modal.showModal()">Delete User</button>
+
+
+                    <h4 class="h4 text-base-content mt-8">Roles</h4>
+                    <div class="mt-4">
+                        {{ form.user_manager(class="checkbox", id="user_manager", type="checkbox") }}
+                        {{ form.user_manager.label(class="label") }}
+                        <p class="form-help">User Managers can create, edit, and delete users.</p>
+                    </div>
+
+                    {{ form.submit(class='btn btn-neutral text-neutral-content mt-8 w-full') }}
+                </form>
+
+                <dialog id="delete_modal" class="modal modal-bottom sm:modal-middle">
+                    <div class="modal-box">
+                        <h3 class="text-lg font-bold">Warning</h3>
+                        <p class="py-4">Are you sure you want to delete {{ user.name }}? This action can only be undone by an administrator.</p>
+                        <div class="modal-action">
+                            <form method="dialog">
+                                <button class="btn">Cancel</button>
+                            </form>
+                            <a class="btn btn-error" href="{{ url_for('core.delete_user', uuid36=user.uuid36) }}">Delete User</a>
+                        </div>
+                    </div>
+                </dialog>
+
+            </div>
+        </div>
+    </div>
+
+{% endblock %}

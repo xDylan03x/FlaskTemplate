@@ -1,4 +1,3 @@
-# app/commands.py
 import click
 from flask.cli import with_appcontext
 
@@ -26,7 +25,10 @@ def create_admin():
 
     user = UserManager.create_user(email=email, name=name, email_verified=True)
     user.set_password(password)
-    user.set_setting('security.two_factor_auth', True)  # If you do not have an email service set up, disable this.
-    user.set_setting('security.password_breach_check', True)
+    user.set_setting('security.two_factor_auth', True)  # Disable this if you do not have a way to send emails
+    user.set_setting('security.password_breach_check', False)
+    user.set_setting('notifications.security_alerts_email', True)
+    user.set_setting('notifications.security_alerts_text', False)
+    user.set_setting('role.user_manager', True)
     db.session.commit()
     click.echo('Admin user created.')

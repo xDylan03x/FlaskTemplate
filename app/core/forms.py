@@ -1,5 +1,5 @@
 from flask_wtf import FlaskForm
-from wtforms import SubmitField, PasswordField, StringField, SelectField, BooleanField
+from wtforms import SubmitField, PasswordField, StringField, SelectField, BooleanField, EmailField
 from wtforms.fields.simple import TelField
 from wtforms.validators import DataRequired, EqualTo
 
@@ -21,6 +21,14 @@ COUNTRY_CODE_CHOICES = [
 ]
 
 
+class SetupAccountForm(FlaskForm):
+    name = StringField('Name', validators=[DataRequired()])
+    password = PasswordField('Password', validators=[DataRequired()])
+    confirm_password = PasswordField('Confirm New Password', validators=[DataRequired(), EqualTo('password')])
+    two_factor_auth = BooleanField('Two-Factor Authentication')
+    submit = SubmitField('Setup Account')
+
+
 class ChangePasswordForm(FlaskForm):
     current_password = PasswordField('Current Password', validators=[DataRequired()])
     new_password = PasswordField('New Password', validators=[DataRequired()])
@@ -30,6 +38,7 @@ class ChangePasswordForm(FlaskForm):
 
 class ProfileSettingsForm(FlaskForm):
     name = StringField('Name', validators=[DataRequired()])
+    profile_picture_url = StringField('Profile Picture URL')
     country_code = SelectField("Country Code", choices=COUNTRY_CODE_CHOICES, default="US", validators=[DataRequired()])
     phone_number = TelField('Phone Number')
     submit = SubmitField('Save')
@@ -44,5 +53,19 @@ class NotificationSettingsForm(FlaskForm):
 class SecuritySettingsForm(FlaskForm):
     two_factor_auth = BooleanField('Two-Factor Authentication')
     password_breach_check = BooleanField('Password Breach Checking')
+    submit = SubmitField('Save')
+
+
+class NewUserForm(FlaskForm):
+    name = StringField('Name', validators=[DataRequired()])
+    email = EmailField('Email', validators=[DataRequired()])
+    submit = SubmitField('Create User')
+
+
+class EditUserForm(FlaskForm):
+    name = StringField('Name', validators=[DataRequired()])
+    status = SelectField('Status', choices=[('active', 'Active'), ('disabled', 'Disabled'), ('pending', 'Pending')], validators=[DataRequired()])
+    password = PasswordField('Password')
+    user_manager = BooleanField('User Manager')
     submit = SubmitField('Save')
 

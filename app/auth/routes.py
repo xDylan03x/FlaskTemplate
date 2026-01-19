@@ -25,7 +25,7 @@ def login():
     form = LoginForm()
 
     if form.validate_on_submit():
-        user = UserManager.get_user_by_email(form.email.data)
+        user = UserManager.get_user_by_email(form.email.data.lower().strip())
 
         # If the user isn't found
         if not user:

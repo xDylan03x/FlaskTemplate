@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+{% block content %}
+
+    <div class="centered-container">
+        <div class="card bg-base-300 w-xl max-w-xl">
+            <div class="card-body">
+                <h3 class="h3 text-base-content text-center">Welcome To Your New Account</h3>
+                <p class="support text-base-content/80 text-center">To get started, just fill out a few questions and you'll be ready to use your account.</p>
+
+
+                <form action="" method="post">
+                {{ form.csrf_token }}
+
+                {{ form.name.label(class="label mt-8") }}
+                {{ form.name(class="input mt-1 w-full", id="name", type="text") }}
+                {% for error in form.name.errors %}
+                    <p class="form-error">{{ error }}</p>
+                {% endfor %}
+
+                {{ form.password.label(class="label mt-4") }}
+                {{ form.password(class="input mt-1 w-full", id="password", type="password") }}
+                {% for error in form.password.errors %}
+                    <p class="form-error">{{ error }}</p>
+                {% endfor %}
+
+                {{ form.confirm_password.label(class="label mt-4") }}
+                {{ form.confirm_password(class="input mt-1 w-full", id="confirm_password", type="password") }}
+                {% for error in form.confirm_password.errors %}
+                    <p class="form-error">{{ error }}</p>
+                {% endfor %}
+
+                <div class="mt-4">
+                    {{ form.two_factor_auth(class="checkbox", id="two_factor_auth", type="checkbox") }}
+                    {{ form.two_factor_auth.label(class="label") }}
+                    <p class="form-help">When logging in with a password, also require another form of authentication.</p>
+                </div>
+
+                {{ form.submit(class='btn btn-neutral text-neutral-content mt-8 w-full') }}
+
+                </form>
+
+            </div>
+        </div>
+    </div>
+
+{% endblock %}

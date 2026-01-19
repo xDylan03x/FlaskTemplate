@@ -1,6 +1,6 @@
 import hashlib
 import sqlalchemy as sa
-
+from flask import current_app, url_for
 from app.core.helper import send_email, send_sms
 from app.models import User, LoginToken, LoginRecord, UserNotification, NotificationCategory
 from app import db
@@ -12,15 +12,34 @@ class UserManager:
     def create_user(name: str,
                     email: str,
                     send_welcome_email: bool = True,
-                    status: str = 'active',
                     phone_number: str = None,
                     email_verified: bool = False,
-                    phone_number_verified: bool = False) -> User:
-        user = User(name=name, email=email.lower(), status=status, phone_number=phone_number,
-                    email_verified=email_verified, phone_number_verified=phone_number_verified)
+                    phone_number_verified: bool = False,
+                    status: str = 'active',
+                    profile_picture_url: str = None) -> User:
+        user = User(name=name, email=email.lower(), phone_number=phone_number,
+                    email_verified=email_verified, phone_number_verified=phone_number_verified,
+                    status=status)
+        if not profile_picture_url:
+            profile_picture_url = f'https://api.dicebear.com/9.x/initials/svg?seed={user.name}&radius=50&backgroundColor=00897b,039be5,3949ab,5e35b1,8e24aa,43a047,d81b60,f4511e,fb8c00,fdd835&backgroundType=gradientLinear&fontFamily=Arial&fontSize=41'
+        user.profile_picture_url = profile_picture_url
         db.session.add(user)
         db.session.commit()
-        # TODO: Setup settings, roles, and send email
+        user.set_setting('security.two_factor_auth', False)
+        user.set_setting('security.password_breach_check', True)
+        user.set_setting('notifications.security_alerts_email', True)
+        user.set_setting('notifications.security_alerts_text', False)
+        user.set_setting('role.user_manager', False)
+        db.session.commit()
+        if send_welcome_email:
+            _, raw_token = LoginTokenManager.create_login_token(expiration_minutes=86400, user_id=user.id, next_url=url_for('core.setup_account'), immediate_login=True)
+            welcome_url = url_for('auth.login_with_token', raw_token=raw_token, _external=True)
+            send_email(
+                f'Your {current_app.config["APP_NAME"]} Account Has Been Created',
+                f'Welcome to {current_app.config["APP_NAME"]}!\nTo set up your account, please vising the link below:\n{welcome_url}',
+                user.email,
+                preheader='Follow the link within 60 days to setup your account.'
+            )
         return user
 
     @staticmethod
@@ -39,7 +58,17 @@ class UserManager:
         return user
 
     @staticmethod
+    def get_all_users(include_deleted: bool = False) -> list[User]:
+        if include_deleted:
+            users = db.session.scalars(sa.select(User)).all()
+        else:
+            users = db.session.scalars(sa.select(User).where(User.deleted == False)).all()
+        return users
+
+    @staticmethod
     def delete_user(user: User) -> None:
+        user.refresh_uuid36()
+        user.status = 'deleted'
         user.deleted = True
         user.deleted_at = datetime.now(tz=timezone.utc)
         db.session.commit()

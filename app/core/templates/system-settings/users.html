@@ -1,0 +1,55 @@
+{% extends 'system-settings/base.html' %}
+{% block settings_content %}
+
+    <div class="bg-base-300 flex justify-between items-center p-4 rounded-lg">
+        <p>Showing {{ users|length }}</p>
+        <a class="btn btn-neutral btn-outline join-item" href="{{ url_for('core.new_user') }}">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="size-5">
+                <path d="M10 5a3 3 0 1 1-6 0 3 3 0 0 1 6 0ZM1.615 16.428a1.224 1.224 0 0 1-.569-1.175 6.002 6.002 0 0 1 11.908 0c.058.467-.172.92-.57 1.174A9.953 9.953 0 0 1 7 18a9.953 9.953 0 0 1-5.385-1.572ZM16.25 5.75a.75.75 0 0 0-1.5 0v2h-2a.75.75 0 0 0 0 1.5h2v2a.75.75 0 0 0 1.5 0v-2h2a.75.75 0 0 0 0-1.5h-2v-2Z" />
+            </svg>
+            New User
+        </a>
+    </div>
+
+    <div class="overflow-x-auto mt-8">
+        <table class="table table-auto w-full">
+            <thead>
+            <tr>
+                <th>User</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for user in users %}
+            <tr class="hover:bg-base-300">
+                <td class="max-w-96 flex gap-4 items-center">
+                    <div class="avatar">
+                        <div class="w-10 rounded-full">
+                            <img alt="{{ user.name }} Icon" src="{{ user.profile_picture_url }}" />
+                        </div>
+                    </div>
+                    <div>
+                        <p class="standard font-medium text-base-content">{{ user.name }} {% if user.get_setting('security.two_factor_auth') %}<span class="badge badge-sm badge-success">2FA</span>{% endif %}</p>
+                        <p class="form-help mt-0">{{ user.email }}</p>
+                    </div>
+                </td>
+                <td>
+                    {{ user.status|title }}
+                </td>
+                <td>
+                    <a class="btn btn-neutral btn-sm btn-outline join-item" href="{{ url_for('core.edit_user', uuid36=user.uuid36) }}">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="size-5">
+                            <path d="M10 5a3 3 0 1 1-6 0 3 3 0 0 1 6 0ZM1.615 16.428a1.224 1.224 0 0 1-.569-1.175 6.002 6.002 0 0 1 11.908 0c.058.467-.172.92-.57 1.174A9.953 9.953 0 0 1 7 18a9.953 9.953 0 0 1-5.385-1.572ZM16.25 5.75a.75.75 0 0 0-1.5 0v2h-2a.75.75 0 0 0 0 1.5h2v2a.75.75 0 0 0 1.5 0v-2h2a.75.75 0 0 0 0-1.5h-2v-2Z" />
+                        </svg>
+                        Edit User
+                    </a>
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+
+{% endblock %}
