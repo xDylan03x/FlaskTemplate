@@ -27,5 +27,6 @@ Once you clone the directory (and set up your venv), follow these steps to get s
 1. Run `make setup_project` to install Python and NPM dependencies.
 2. Edit the newly created `.env` file to set your environment variables.
 3. Once your local PostgreSQL database is set up and running, run `flask db init` to set up the migration folder. Then run `flask db migrate -m "Initial setup"` and `flask db upgrade`.
-4. Run `flask create_admin` to set up the admin user.
-5. Use `flask run --port 8080 --debug` to start the development server.
+4. From the project's root directory, run `export FLASK_APP=app`.
+5. Run `flask create_admin` to set up the admin user.
+6. Use `flask run --port 8080 --debug` to start the development server.
