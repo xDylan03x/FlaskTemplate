@@ -11,7 +11,7 @@ class UserManager:
     @staticmethod
     def create_user(name: str,
                     email: str,
-                    send_welcome_email: bool = True,
+                    send_welcome_email: bool = False,
                     phone_number: str = None,
                     email_verified: bool = False,
                     phone_number_verified: bool = False,
