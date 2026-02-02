@@ -17,7 +17,6 @@ def get_ip_from_request(request_object: request) -> str:
 def twilio_verify_send(to: str, channel: str) -> None:
     """Send a verification code to the user's chosen method."""
     sid = current_app.config["TWILIO_SERVICE_SID"]
-    print(sid)
     if channel in ['sms', 'text']:
         twilio_client.verify.v2.services(sid).verifications.create(channel="sms", to=to)
     elif channel == 'email':
