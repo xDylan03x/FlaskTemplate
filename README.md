@@ -41,3 +41,7 @@ To do this, follow these steps:
 4. Run `git remote add origin SSH_URL` to set the new repository as the origin.
 5. Lastly, run `git push -u origin master` to push the initial commit to your new repository.
 From here, you can continue with step 1 of the "Getting Started" section above.
+
+Whenever you want to pull in new updates from this template repository, run the following commands:
+1. git fetch template 
+2. git merge template/master
