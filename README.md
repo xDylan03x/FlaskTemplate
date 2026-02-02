@@ -43,5 +43,5 @@ To do this, follow these steps:
 From here, you can continue with step 1 of the "Getting Started" section above.
 
 Whenever you want to pull in new updates from this template repository, run the following commands:
-1. git fetch template 
-2. git merge template/master
+1. `git fetch template `
+2. `git merge template/master`
