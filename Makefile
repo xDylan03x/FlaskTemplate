@@ -12,8 +12,8 @@ NC = \033[0m
 setup_project:
 	@echo "$(YELLOW)> Setting Up Project$(NC)"
 	@echo "$(YELLOW)> Installing Python Dependencies$(NC)"
-	$(MAKE) requirements
-	@echo "$(YELLOW)> Installing Tailwind CSS CLI$(NC)"
+	pip install -r requirements.txt
+	@echo "$(YELLOW)> Installing NPM Dependencies$(NC)"
 	npm install
 	@echo "$(YELLOW)> Creating .env File$(NC)"
 	cp .env.example .env
