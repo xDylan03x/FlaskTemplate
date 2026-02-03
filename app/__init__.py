@@ -64,4 +64,7 @@ def create_app(cfg: Config = Config) -> Flask:
     # from .api import apiV1 as api_blueprint
     # app.register_blueprint(api_blueprint, url_prefix='/api/v1')
 
+    from .errors import errors
+    app.register_blueprint(errors)
+
     return app
