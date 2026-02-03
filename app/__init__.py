@@ -2,6 +2,7 @@ import inspect
 import logging
 from twilio.rest import Client
 from sendgrid import SendGridAPIClient
+from flask_qrcode import QRcode
 from config import Config
 from flask import Flask
 from flask_migrate import Migrate
@@ -15,6 +16,7 @@ migrate = Migrate()
 login = LoginManager()
 twilio_client = Client()
 sendgrid_client = SendGridAPIClient()
+qr = QRcode()
 
 
 def create_app(cfg: Config = Config) -> Flask:
@@ -34,6 +36,7 @@ def create_app(cfg: Config = Config) -> Flask:
     twilio_client.username = app.config.get('TWILIO_ACCOUNT_SID')
     twilio_client.password = app.config.get('TWILIO_AUTH_TOKEN')
     sendgrid_client.api_key = app.config.get('SENDGRID_API_KEY')
+    qr.init_app(app)
 
     @app.context_processor
     def app_name():

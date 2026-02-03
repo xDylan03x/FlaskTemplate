@@ -341,10 +341,8 @@ def two_factor_auth(raw_token: str):
                 # If the user chose call verification
                 elif form.method.data == 'Call':
                     twilio_verify_send(to=user.phone_number, channel='call')
-            # If the user chose authenticator app verification
             elif form.method.data == 'Authenticator App' and user.totp_verified:
-                # TODO: implement
-                pass
+                pass  # No need to send anything for authenticator apps
             else:
                 flash(CONTACT_ADMINISTRATOR_MESSAGE, 'error')
                 return redirect(url_for('auth.login'))
@@ -407,7 +405,7 @@ def two_factor_auth(raw_token: str):
             return redirect(url_for('auth.login'))
         # If submitting, check the code
         if form.validate_on_submit():
-            if twilio_verify_check(to=user.email, code=form.code.data):  # TODO: Change to TOTP verification
+            if twilio_verify_check(to=user.email, code=form.code.data, totp_entity=user.totp_entity, totp_factor=user.totp_factor):
                 login_token.immediate_login = True
                 db.session.commit()
                 return redirect(url_for('auth.login_with_token', raw_token=raw_token))

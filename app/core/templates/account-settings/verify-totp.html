@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+{% block content %}
+
+    <div class="centered-container">
+        <div class="card bg-base-300 w-xl max-w-xl">
+            <div class="card-body">
+                <h3 class="h3 text-base-content text-center">Verify TOTP</h3>
+                <p class="support text-base-content/80 text-center">Please enter the code from your authenticator app.</p>
+
+
+                <form action="" method="post">
+                    {{ form.csrf_token }}
+
+                    {{ form.code.label(class="label mt-8") }}
+                    {{ form.code(class="input mt-1 w-full", id="code", type="text", inputmode="numeric", autocomplete="one-time-code", pattern="[0-9]*", pattern="\d{6}", maxlength="6", autocomplete="off") }}
+                    {% for error in form.code.errors %}
+                        <p class="form-error">{{ error }}</p>
+                    {% endfor %}
+
+                    {{ form.submit(class='btn btn-neutral text-neutral-content mt-8 w-full') }}
+                </form>
+
+            </div>
+        </div>
+    </div>
+
+{% endblock %}

@@ -51,6 +51,8 @@ class User(db.Model, UserMixin):
     email_verified: so.Mapped[bool] = so.mapped_column(sa.Boolean, default=False)
     phone_number_verified: so.Mapped[bool] = so.mapped_column(sa.Boolean, default=False)
     totp_verified: so.Mapped[bool] = so.mapped_column(sa.Boolean, default=False)
+    totp_entity: so.Mapped[str] = so.mapped_column(sa.String(36), unique=True, nullable=False, default=lambda: str(uuid.uuid4()))
+    totp_factor: so.Mapped[Optional[str]] = so.mapped_column(sa.String(256))
     deleted: so.Mapped[bool] = so.mapped_column(sa.Boolean, default=False, nullable=False)
     deleted_at: so.Mapped[Optional[datetime]] = so.mapped_column(sa.DateTime)
 
@@ -73,6 +75,9 @@ class User(db.Model, UserMixin):
 
     def refresh_uuid36(self) -> None:
         self.uuid36 = str(uuid.uuid4())
+
+    def refresh_totp_entity(self) -> None:
+        self.totp_entity = str(uuid.uuid4())
 
     def can_login(self) -> bool:
         if self.deleted or ((self.status != 'active' or not self.email_verified) and self.status != 'pending'):

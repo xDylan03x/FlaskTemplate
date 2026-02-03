@@ -25,9 +25,19 @@ def twilio_verify_send(to: str, channel: str) -> None:
         twilio_client.verify.v2.services(sid).verifications.create(channel="call", to=to)
 
 
-def twilio_verify_check(to: str, code: str) -> bool:
+def twilio_verify_check(to: str, code: str, totp_entity: str = False, totp_factor: str = None) -> bool:
     """Check the verification code provided by the user."""
     sid = current_app.config["TWILIO_SERVICE_SID"]
+    if totp_entity and totp_factor:
+        challenge = (
+            twilio_client.verify.v2.services(sid)
+            .entities(totp_entity)
+            .challenges.create(auth_payload=code, factor_sid=totp_factor)
+        )
+        if challenge.status == 'approved':
+            return True
+        else:
+            return False
     verify = twilio_client.verify.v2.services(sid).verification_checks.create(to=to, code=code)
     if verify.status == "approved":
         return True

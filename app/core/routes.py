@@ -1,9 +1,9 @@
 from flask import render_template, request, flash, redirect, url_for, current_app, abort
 from flask_login import login_required, current_user, login_user
 from app.core import core
-from app import db
+from app import db, twilio_client
 from .forms import ChangePasswordForm, ProfileSettingsForm, NotificationSettingsForm, SecuritySettingsForm, \
-    SetupAccountForm, NewUserForm, EditUserForm
+    SetupAccountForm, NewUserForm, EditUserForm, TOTPVerifyForm
 import phonenumbers
 from app.model_managers import UserManager
 from .helper import send_sms
@@ -160,6 +160,52 @@ def change_password():
         flash('Your password has been updated.', 'success')
         return redirect(url_for('core.security_settings'))
     return render_template('account-settings/change-password.html', title="Change Password", form=form)
+
+
+@core.route('/account-settings/security/enable-totp', methods=['GET', 'POST'])
+@login_required
+def enable_totp():
+    if current_user.totp_verified:
+        flash('TOTP is already enabled for your account.', 'info')
+        return redirect(url_for('core.security_settings'))
+    verify = request.args.get('verify', False)
+    sid = current_app.config["TWILIO_SERVICE_SID"]
+    if not verify:
+        new_factor = (
+            twilio_client.verify.v2.services(sid)
+            .entities(current_user.totp_entity)
+            .new_factors.create(friendly_name=current_app.config["APP_NAME"], factor_type="totp")
+        )
+        current_user.totp_factor = new_factor.sid
+        db.session.commit()
+        return render_template('account-settings/enable-totp.html', title="Enable TOTP", binding_url=new_factor.binding['uri'])
+    form = TOTPVerifyForm()
+    if form.validate_on_submit():
+        factor = (
+            twilio_client.verify.v2.services(sid)
+            .entities(current_user.totp_entity)
+            .factors(current_user.totp_factor)
+            .update(form.code.data.strip())
+        )
+        if factor.status == 'verified':
+            current_user.totp_verified = True
+            db.session.commit()
+            flash('TOTP has been enabled for your account.', 'success')
+            return redirect(url_for('core.security_settings'))
+        else:
+            flash('The code you entered is incorrect. Please try again.', 'error')
+    return render_template('account-settings/verify-totp.html', title="Verify TOTP", form=form)
+
+
+@core.route('/account-settings/security/disable-totp')
+@login_required
+def disable_totp():
+    current_user.totp_verified = False
+    current_user.refresh_totp_entity()
+    current_user.totp_factor = None
+    db.session.commit()
+    flash('Your TOTP method has been disabled.', 'info')
+    return redirect(url_for('core.security_settings'))
 
 
 @core.route('/system-settings/users')

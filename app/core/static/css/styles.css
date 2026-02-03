@@ -15,11 +15,11 @@
     }
 
     .support {
-        @apply text-sm font-light;
+        @apply text-sm font-light text-pretty;
     }
 
     .standard {
-        @apply text-base font-normal;
+        @apply text-base font-normal text-pretty;
     }
 
     .h1 {

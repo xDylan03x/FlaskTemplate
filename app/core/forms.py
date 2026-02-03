@@ -69,3 +69,7 @@ class EditUserForm(FlaskForm):
     user_manager = BooleanField('User Manager')
     submit = SubmitField('Save')
 
+
+class TOTPVerifyForm(FlaskForm):
+    code = StringField('Authentication Code', validators=[DataRequired()])
+    submit = SubmitField('Submit')

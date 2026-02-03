@@ -16,9 +16,29 @@
             <p class="form-help">When logging in, check to determine if your password has been found in a data breach.</p>
         </div>
 
-        <a class="btn btn-outline btn-secondary mt-4" href="{{ url_for('core.change_password') }}">Change Password</a>
+        <div class="mt-4 flex gap-4">
+            <a class="btn btn-outline btn-secondary" href="{{ url_for('core.change_password') }}">Change Password</a>
+            {% if current_user.totp_verified %}
+                <button type="button" class="btn btn-outline btn-error" onclick="totp_modal.showModal()">Disable TOTP</button>
+            {% else %}
+                <a class="btn btn-outline btn-neutral" href="{{ url_for('core.enable_totp') }}">Enable TOTP</a>
+            {% endif %}
+        </div>
 
         {{ form.submit(class='btn btn-neutral text-neutral-content mt-8 w-full') }}
     </form>
+
+    <dialog id="totp_modal" class="modal modal-bottom sm:modal-middle">
+        <div class="modal-box">
+            <h3 class="text-lg font-bold">Warning</h3>
+            <p class="py-4">Are you sure you want to disable TOTP as a two-factor-authentication method?</p>
+            <div class="modal-action">
+                <form method="dialog">
+                    <button class="btn">Cancel</button>
+                </form>
+                <a class="btn btn-error" href="{{ url_for('core.disable_totp') }}">Disable TOTP</a>
+            </div>
+        </div>
+    </dialog>
 
 {% endblock %}
