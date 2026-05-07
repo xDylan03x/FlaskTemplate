@@ -29,6 +29,12 @@ class SetupAccountForm(FlaskForm):
     submit = SubmitField('Setup Account')
 
 
+class CreateAccountForm(FlaskForm):
+    name = StringField('Name', validators=[DataRequired()])
+    email = EmailField('Email', validators=[DataRequired()])
+    submit = SubmitField('Create Account')
+
+
 class ChangePasswordForm(FlaskForm):
     current_password = PasswordField('Current Password', validators=[DataRequired()])
     new_password = PasswordField('New Password', validators=[DataRequired()])

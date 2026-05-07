@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+{% block content %}
+
+    <div class="centered-container">
+        <div class="card bg-base-300 w-xl max-w-xl">
+            <div class="card-body">
+                <h3 class="h3 text-base-content text-center">Create An Account</h3>
+                <p class="support text-base-content/80 text-center">To create your account, fill out the information below. After submitting, you'll receive an email where you can access your account.</p>
+
+
+                <form action="" method="post">
+                {{ form.csrf_token }}
+
+                {{ form.name.label(class="label mt-8") }}
+                {{ form.name(class="input mt-1 w-full", id="name", type="text") }}
+                {% for error in form.name.errors %}
+                    <p class="form-error">{{ error }}</p>
+                {% endfor %}
+
+                {{ form.email.label(class="label mt-8") }}
+                {{ form.email(class="input mt-1 w-full", id="email", type="email") }}
+                {% for error in form.email.errors %}
+                    <p class="form-error">{{ error }}</p>
+                {% endfor %}
+
+                {{ form.submit(class='btn btn-neutral text-neutral-content mt-8 w-full') }}
+
+                </form>
+
+            </div>
+        </div>
+    </div>
+
+{% endblock %}

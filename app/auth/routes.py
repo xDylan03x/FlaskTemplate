@@ -23,7 +23,7 @@ WRONG_EMAIL_PASSWORD_MESSAGE = 'Incorrect email or password.'
 def login():
     next_url = request.args.get('next', None)
     form = LoginForm()
-
+    create_accounts = current_app.config['ALLOW_ACCOUNT_CREATION']
     if form.validate_on_submit():
         user = UserManager.get_user_by_email(form.email.data.lower().strip())
 
@@ -56,7 +56,7 @@ def login():
 
         _, raw_token = LoginTokenManager.create_login_token(immediate_login=True, next_url=next_url, remember_login=form.remember_me.data, user_id=user.id)
         return redirect(url_for('auth.login_with_token', raw_token=raw_token))
-    return render_template('login.html', title='Log In', form=form, next_url=next_url)
+    return render_template('login.html', title='Log In', form=form, next_url=next_url, create_accounts=create_accounts)
 
 
 @auth.route('/forgot-password', methods=['GET', 'POST'])
@@ -286,7 +286,7 @@ def oauth_callback(provider: str):
 
     # Get the login token and make sure we can log the user in
     login_token = LoginTokenManager.get_login_token(session['oauth2_state'])
-    if not login_token:
+    if not login_token or not user.can_login():
         flash(CONTACT_ADMINISTRATOR_MESSAGE, 'error')
         return redirect(url_for('auth.login'))
     login_token.user_id = user.id
@@ -446,12 +446,20 @@ def login_with_token(raw_token: str):
         return redirect(url_for('auth.two_factor_auth', raw_token=raw_token))
 
     user = UserManager.get_user_by_id(login_token.user_id)
-    # If the user isn't found or cannot log in
-    if not user or not user.can_login():
+
+    # If the user does not exist
+    if not user:
         flash(CONTACT_ADMINISTRATOR_MESSAGE, 'error')
         return redirect(url_for('auth.login'))
 
-    LoginTokenManager.invalidate_login_token(login_token)
+    # For create-account tokens
+    if login_token.create_account:
+        if user and not user.email_verified:
+            user.email_verified = True
+            db.session.commit()
+    else:
+        # For normal tokens
+        LoginTokenManager.invalidate_login_token(login_token)
 
     # If the token is to be used to verify a phone number, mark it as verified
     if login_token.verify_phone_number:
@@ -466,7 +474,9 @@ def login_with_token(raw_token: str):
         login_user(user, remember=login_token.remember_login)
 
     next_url = login_token.next_url
-    if next_url is None:
+    if user.status == 'pending':
+        next_url = url_for('core.setup_account')
+    elif next_url is None:
         next_url = '/'
 
     if is_internal_url(next_url):

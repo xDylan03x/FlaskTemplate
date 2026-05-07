@@ -3,7 +3,7 @@ from flask_login import login_required, current_user, login_user
 from app.core import core
 from app import db, twilio_client
 from .forms import ChangePasswordForm, ProfileSettingsForm, NotificationSettingsForm, SecuritySettingsForm, \
-    SetupAccountForm, NewUserForm, EditUserForm, TOTPVerifyForm
+    SetupAccountForm, NewUserForm, EditUserForm, TOTPVerifyForm, CreateAccountForm
 import phonenumbers
 from app.model_managers import UserManager
 from .helper import send_sms
@@ -27,14 +27,29 @@ def setup_account():
         current_user.status = 'active'
         current_user.set_setting('security.two_factor_auth', form.two_factor_auth.data)
         db.session.commit()
-        flash('Your account has been set up. You can now login using email and password.', 'success')
-        flash('You can change account settings such as your profile information, notification preferences, and security option here.', 'info')
+        flash('Your account has been set up. You can now login using email and password or social logins.', 'success')
+        flash('You can change account settings such as your profile information, notification preferences, and security options here.', 'info')
+        LoginTokenManager.invalidate_create_account_token(current_user.id)
         return redirect(url_for('core.profile_settings'))
-    current_user.email_verified = True
-    db.session.commit()
     form.name.data = current_user.name
     form.two_factor_auth.data = current_user.get_setting('security.two_factor_auth')
     return render_template('setup-account.html', title="Setup Account", form=form)
+
+
+@core.route('/create-account', methods=['GET', 'POST'])
+def create_account():
+    if not current_app.config['ALLOW_ACCOUNT_CREATION']:
+        flash('Account creation is not enabled. Please contact an administrator for an account.', 'error')
+        abort(403)
+    form = CreateAccountForm()
+    if form.validate_on_submit():
+        if UserManager.get_user_by_email(form.email.data.lower().strip()):
+            flash('An account with that email already exists. Please login or reset your password to continue.', 'error')
+            return redirect(url_for('auth.login'))
+        UserManager.create_user(name=form.name.data.strip(), email=form.email.data.strip().lower(), send_welcome_email=True, status='pending')
+        flash('Your account has been created. Please check your email to finish setting up your account.', 'success')
+        return redirect(url_for('auth.login'))
+    return render_template('create-account.html', title="Create Account", form=form)
 
 
 @core.route('/account-settings/profile', methods=['GET', 'POST'])
@@ -224,6 +239,9 @@ def new_user():
         abort(403)
     form = NewUserForm()
     if form.validate_on_submit():
+        if UserManager.get_user_by_email(form.email.data.lower().strip()):
+            flash('An account with that email already exists.', 'error')
+            return render_template('system-settings/new-user.html', title="New User", form=form)
         UserManager.create_user(form.name.data.strip(), form.email.data.strip(), send_welcome_email=True, status='pending')
         flash('New user has been created and a welcome email has been sent.', 'success')
         return redirect(url_for('core.user_settings'))

@@ -32,7 +32,7 @@ class UserManager:
         user.set_setting('role.user_manager', False)
         db.session.commit()
         if send_welcome_email:
-            _, raw_token = LoginTokenManager.create_login_token(expiration_minutes=86400, user_id=user.id, next_url=url_for('core.setup_account'), immediate_login=True)
+            _, raw_token = LoginTokenManager.create_login_token(expiration_minutes=86400, user_id=user.id, next_url=url_for('core.setup_account'), immediate_login=True, create_account=True)
             welcome_url = url_for('auth.login_with_token', raw_token=raw_token, _external=True)
             send_email(
                 f'Your {current_app.config["APP_NAME"]} Account Has Been Created',
@@ -125,6 +125,7 @@ class LoginTokenManager:
                            next_url: str = "/",
                            remember_login: bool = False,
                            reset_password: bool = False,
+                           create_account: bool = False,
                            risk_score: int = 0,
                            user_id: int = None) -> (LoginToken, str):
         """
@@ -135,6 +136,7 @@ class LoginTokenManager:
         :param next_url: Where the user is directed once logged in
         :param remember_login: Whether the login session should be persistent
         :param reset_password: Whether this token is for password reset
+        :param create_account: Whether this token is for account creation
         :param risk_score: How risky the login attempt is, lower is less risky
         :param user_id
         :returns LoginToken, str: The login token record and raw token string
@@ -147,6 +149,7 @@ class LoginTokenManager:
             next_url=next_url,
             remember_login=remember_login,
             reset_password=reset_password,
+            create_account=create_account,
             risk_score=risk_score,
             user_id=user_id
         )
@@ -168,7 +171,6 @@ class LoginTokenManager:
         )
         return token, raw_token
 
-
     @staticmethod
     def get_login_token(raw_token: str) -> LoginToken | None:
         hashed_token = hashlib.sha1(raw_token.encode('utf-8')).hexdigest()
@@ -185,6 +187,15 @@ class LoginTokenManager:
         login_token.used = True
         login_token.used_at = datetime.now(tz=timezone.utc)
         db.session.commit()
+
+    @staticmethod
+    def invalidate_create_account_token(user_id: int):
+        """
+        Mark the account creation token as used/invalid.
+        """
+        token = db.session.scalar(sa.select(LoginToken).where(LoginToken.user_id == user_id, LoginToken.create_account == True))
+        if token:
+            LoginTokenManager.invalidate_login_token(token)
 
     @staticmethod
     def cleanup_login_tokens():

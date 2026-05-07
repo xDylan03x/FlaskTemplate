@@ -15,6 +15,9 @@ class Config:
         self.APP_ABBR = os.environ.get("APP_ABBR") or "UA"
         self.SITE_THEME = os.environ.get("SITE_THEME") or "light"
 
+        # Static Site Settings - Change these as needed
+        self.ALLOW_ACCOUNT_CREATION = True  # Allow users to create their own account without an account manager
+
         # Make sure to set FLASK_ENV to 'production' in a production environment
         self.deployment = os.environ.get("FLASK_ENV") or "development"
 

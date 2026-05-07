@@ -3,6 +3,13 @@ from flask import current_app, render_template
 from app import db
 
 
+@errors.app_errorhandler(403)
+def not_found_error(error):
+    if current_app.config["DEBUG"]:
+        return render_template("403.html", error=error), 403
+    return render_template('403.html'), 403
+
+
 @errors.app_errorhandler(404)
 def not_found_error(error):
     if current_app.config["DEBUG"]:

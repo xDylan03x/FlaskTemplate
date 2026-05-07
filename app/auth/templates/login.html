@@ -6,7 +6,11 @@
             <div class="card-body">
                 <h3 class="h3 text-base-content text-center">Log in to {{ app_name }}</h3>
                 <p class="support text-base-content/80 text-center">Log in with a magic link, an auth provider, or email and password.<br>
-                    Please contact an administrator if you need an account.
+                    {% if not create_accounts %}
+                        Please contact an administrator if you need an account.
+                    {% else %}
+                        Don't have an account? <a href="{{ url_for('core.create_account', next=next_url) }}" class="link link-neutral">Create one here.</a>
+                    {% endif %}
                 </p>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-8">

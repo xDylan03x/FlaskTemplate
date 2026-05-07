@@ -23,7 +23,7 @@ class User(db.Model, UserMixin):
         email
         profile_picture_url: URL to profile picture
         password_hash
-        status: active, inactive
+        status: active, diasbled, pending
         phone_number: Phone number in E.164 format
         email_verified
         phone_number_verified
@@ -80,9 +80,9 @@ class User(db.Model, UserMixin):
         self.totp_entity = str(uuid.uuid4())
 
     def can_login(self) -> bool:
-        if self.deleted or ((self.status != 'active' or not self.email_verified) and self.status != 'pending'):
+        if self.deleted or not self.email_verified:
             return False
-        return True
+        return self.status == 'active'
 
     def get_setting(self, key: str) -> str | bool:
         setting_record = self.settings.filter_by(key=key).first()
@@ -120,6 +120,7 @@ class LoginToken(db.Model):
         remember_login
         reset_password: Whether the token is for password reset
         verify_phone_number: Whether the token is for phone number verification
+        create_account: Whether the token is used for account creation
         risk_score: Risk score associated with the token
         used: Whether the token has been used
 
@@ -137,6 +138,7 @@ class LoginToken(db.Model):
     remember_login: so.Mapped[bool] = so.mapped_column(sa.Boolean, default=False, nullable=False)
     reset_password: so.Mapped[Optional[bool]] = so.mapped_column(sa.Boolean, default=False)
     verify_phone_number: so.Mapped[Optional[bool]] = so.mapped_column(sa.Boolean, default=False)
+    create_account: so.Mapped[Optional[bool]] = so.mapped_column(sa.Boolean, default=False)
     risk_score: so.Mapped[Optional[int]] = so.mapped_column(sa.Numeric, index=True, default=0, nullable=False)
     used: so.Mapped[bool] = so.mapped_column(sa.Boolean, default=False, nullable=False)
     used_at: so.Mapped[Optional[datetime]] = so.mapped_column(sa.DateTime)
