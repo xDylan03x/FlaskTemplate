@@ -77,7 +77,7 @@ def profile_settings():
                         current_user.phone_number = phonenumbers.format_number(parsed, phonenumbers.PhoneNumberFormat.E164)
                         current_user.phone_number_verified = False
                         # Send text to verify phone number.
-                        new_token_obj, new_token = LoginTokenManager.create_login_token(expiration_minutes=30, user_id=current_user.id)
+                        new_token_obj, new_token = LoginTokenManager.create_login_token(expiration_minutes=30, user_id=current_user.id, auth_source='phone number verification')
                         new_token_obj.verify_phone_number = True
                         db.session.commit()
                         verify_url = url_for('auth.login_with_token', raw_token=new_token, _external=True)
@@ -121,7 +121,7 @@ def profile_settings():
 def send_phone_number_verification():
     if 'HX-Request' not in request.headers:
         return abort(404)
-    new_token_obj, new_token = LoginTokenManager.create_login_token(expiration_minutes=30, user_id=current_user.id)
+    new_token_obj, new_token = LoginTokenManager.create_login_token(expiration_minutes=30, user_id=current_user.id, auth_source='phone number verification')
     new_token_obj.verify_phone_number = True
     db.session.commit()
     verify_url = url_for('auth.login_with_token', raw_token=new_token, _external=True)

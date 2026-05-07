@@ -123,6 +123,7 @@ class LoginToken(db.Model):
         create_account: Whether the token is used for account creation
         risk_score: Risk score associated with the token
         used: Whether the token has been used
+        auth_source: Source of authentication (traditional username/password, magic link, social, etc.)
 
         user_id: Foreign key to the User model
     """
@@ -142,6 +143,7 @@ class LoginToken(db.Model):
     risk_score: so.Mapped[Optional[int]] = so.mapped_column(sa.Numeric, index=True, default=0, nullable=False)
     used: so.Mapped[bool] = so.mapped_column(sa.Boolean, default=False, nullable=False)
     used_at: so.Mapped[Optional[datetime]] = so.mapped_column(sa.DateTime)
+    auth_source: so.Mapped[Optional[str]] = so.mapped_column(sa.String(128))
 
     user_id: so.Mapped[Optional[int]] = so.mapped_column(sa.Integer, sa.ForeignKey('user.id'))
 
@@ -263,14 +265,15 @@ class LoginRecord(db.Model):
         user_id: Foreign key to the User model
         ip_address: IP address of the login attempt
         user_agent: User agent string of the client
+        login_token_id: Foreign key to the LoginToken model
     """
     id: so.Mapped[int] = so.mapped_column(primary_key=True)
     uuid36: so.Mapped[str] = so.mapped_column(sa.String(36), unique=True, index=True, nullable=False, default=lambda: str(uuid.uuid4()))
     occurred_at: so.Mapped[datetime] = so.mapped_column(sa.DateTime(timezone=True), nullable=False, default=lambda: datetime.now(tz=timezone.utc))
-
     user_id: so.Mapped[int] = so.mapped_column(sa.Integer, sa.ForeignKey('user.id'))
     ip_address: so.Mapped[Optional[str]] = so.mapped_column(sa.String(45))
     user_agent: so.Mapped[Optional[str]] = so.mapped_column(sa.String(512))
+    login_token_id: so.Mapped[int] = so.mapped_column(sa.Integer, sa.ForeignKey('login_token.id'))
 
     def __repr__(self):
         return '<LoginRecord {}>'.format(self.uuid36)

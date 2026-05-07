@@ -51,10 +51,10 @@ def login():
         # If the user has 2FA enabled
         if user.get_setting('security.two_factor_auth'):
             flash(REQUIRES_2FA_MESSAGE, 'info')
-            _, raw_token = LoginTokenManager.create_login_token(next_url=next_url, remember_login=form.remember_me.data, user_id=user.id)
+            _, raw_token = LoginTokenManager.create_login_token(next_url=next_url, remember_login=form.remember_me.data, user_id=user.id, auth_source='traditional login needing 2fa')
             return redirect(url_for('auth.two_factor_auth', raw_token=raw_token))
 
-        _, raw_token = LoginTokenManager.create_login_token(immediate_login=True, next_url=next_url, remember_login=form.remember_me.data, user_id=user.id)
+        _, raw_token = LoginTokenManager.create_login_token(immediate_login=True, next_url=next_url, remember_login=form.remember_me.data, user_id=user.id, auth_source='traditional login')
         return redirect(url_for('auth.login_with_token', raw_token=raw_token))
     return render_template('login.html', title='Log In', form=form, next_url=next_url, create_accounts=create_accounts)
 
@@ -79,7 +79,7 @@ def forgot_password(raw_token: str = None):
                 return render_template('forgot_password_email.html', title='Forgot Password', form=form)
 
             # Create a token and email it to them
-            _, raw_token = LoginTokenManager.create_login_token(user_id=user.id, next_url=request.args.get('next', None), reset_password=True)
+            _, raw_token = LoginTokenManager.create_login_token(user_id=user.id, next_url=request.args.get('next', None), reset_password=True, auth_source='forgot password')
             login_url = url_for('auth.forgot_password', raw_token=raw_token, _external=True)
             message = f'Click the following link to reset your password: {login_url}<br><br>If you did not request this link, please ignore this email.'
             send_email(subject=f'Your {current_app.config["APP_NAME"]} Password Reset Link', body=message, recipient=user.email)
@@ -141,7 +141,7 @@ def magic_link(raw_token: str = None):
                 flash(CONTACT_ADMINISTRATOR_MESSAGE, 'error')
                 return render_template('magic_link_email.html', title='Login with Magic Link', form=form)
 
-            _, raw_token = LoginTokenManager.create_login_token(user_id=user.id, next_url=request.args.get('next', None))
+            _, raw_token = LoginTokenManager.create_login_token(user_id=user.id, next_url=request.args.get('next', None), auth_source='magic link')
             return redirect(url_for('auth.magic_link', raw_token=raw_token))
         return render_template('magic_link_email.html', title='Login with Magic Link', form=form)
 
@@ -209,7 +209,7 @@ def oauth_authorize(provider: str):
         return redirect(url_for('auth.login'))
 
     # Save the OAuth2 state parameter in the session for later verification
-    _, raw_token = LoginTokenManager.create_login_token(next_url=next_url)
+    _, raw_token = LoginTokenManager.create_login_token(next_url=next_url, auth_source='oauth authorization state')
     session['oauth2_state'] = raw_token
 
     # Create a query string with all the OAuth2 parameters
@@ -470,7 +470,7 @@ def login_with_token(raw_token: str):
         UserManager.send_notification('Phone Number Verified', body, user, NotificationCategory.PHONE_NUMBER_CHANGE)
     # Otherwise, log the user in
     else:
-        LoginRecordManager.create_login_record(user.id, get_ip_from_request(request), request.headers.get('User-Agent', ''))
+        LoginRecordManager.create_login_record(user.id, get_ip_from_request(request), request.headers.get('User-Agent', ''), login_token)
         login_user(user, remember=login_token.remember_login)
 
     next_url = login_token.next_url

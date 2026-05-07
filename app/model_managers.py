@@ -32,7 +32,7 @@ class UserManager:
         user.set_setting('role.user_manager', False)
         db.session.commit()
         if send_welcome_email:
-            _, raw_token = LoginTokenManager.create_login_token(expiration_minutes=86400, user_id=user.id, next_url=url_for('core.setup_account'), immediate_login=True, create_account=True)
+            _, raw_token = LoginTokenManager.create_login_token(expiration_minutes=86400, user_id=user.id, next_url=url_for('core.setup_account'), immediate_login=True, create_account=True, auth_source='welcome email')
             welcome_url = url_for('auth.login_with_token', raw_token=raw_token, _external=True)
             send_email(
                 f'Your {current_app.config["APP_NAME"]} Account Has Been Created',
@@ -127,6 +127,7 @@ class LoginTokenManager:
                            reset_password: bool = False,
                            create_account: bool = False,
                            risk_score: int = 0,
+                           auth_source: str = None,
                            user_id: int = None) -> (LoginToken, str):
         """
         Generate and store a new login token.
@@ -138,6 +139,7 @@ class LoginTokenManager:
         :param reset_password: Whether this token is for password reset
         :param create_account: Whether this token is for account creation
         :param risk_score: How risky the login attempt is, lower is less risky
+        :param auth_source: Source of authentication
         :param user_id
         :returns LoginToken, str: The login token record and raw token string
         """
@@ -151,6 +153,7 @@ class LoginTokenManager:
             reset_password=reset_password,
             create_account=create_account,
             risk_score=risk_score,
+            auth_source=auth_source,
             user_id=user_id
         )
         raw_token = token.set_secure_token()
@@ -167,7 +170,8 @@ class LoginTokenManager:
             remember_login=existing_token.remember_login,
             reset_password=existing_token.reset_password,
             risk_score=existing_token.risk_score,
-            user_id=existing_token.user_id
+            user_id=existing_token.user_id,
+            auth_source=existing_token.auth_source
         )
         return token, raw_token
 
@@ -209,11 +213,12 @@ class LoginTokenManager:
 
 class LoginRecordManager:
     @staticmethod
-    def create_login_record(user_id: int, ip_address: str, user_agent: str) -> LoginRecord:
+    def create_login_record(user_id: int, ip_address: str, user_agent: str, login_token: LoginToken) -> LoginRecord:
         record = LoginRecord(
             user_id=user_id,
             ip_address=ip_address,
             user_agent=user_agent,
+            login_token_id=login_token.id
         )
         db.session.add(record)
         db.session.commit()
