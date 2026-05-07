@@ -18,9 +18,6 @@ class Config:
         # Static Site Settings - Change these as needed
         self.ALLOW_ACCOUNT_CREATION = True  # Allow users to create their own account without an account manager
 
-        # Make sure to set FLASK_ENV to 'production' in a production environment
-        self.deployment = os.environ.get("FLASK_ENV") or "development"
-
         # Admin credentials
         self.ADMIN_NAME = os.environ.get('ADMIN_NAME', None)
         self.ADMIN_EMAIL = os.environ.get('ADMIN_EMAIL', None)
@@ -62,6 +59,9 @@ class Config:
         self.FROM_EMAIL = os.environ.get("FROM_EMAIL", None)
         self.SENDGRID_API_KEY = os.environ.get("SENDGRID_API_KEY", None)
         self.SENDGRID_EMAIL_TEMPLATE_ID = os.environ.get("SENDGRID_EMAIL_TEMPLATE_ID", None)
+
+        # Sentry configuration
+        self.SENTRY_DSN = os.environ.get("SENTRY_DSN", None)
 
         # Checks
         if self.SECRET_KEY == "dev_secret":

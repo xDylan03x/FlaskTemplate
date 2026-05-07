@@ -8,6 +8,7 @@ from flask import Flask
 from flask_migrate import Migrate
 from flask_login import LoginManager
 from flask_sqlalchemy import SQLAlchemy
+import sentry_sdk
 from .commands import create_admin
 
 # Create global instances of extensions
@@ -37,6 +38,13 @@ def create_app(cfg: Config = Config) -> Flask:
     twilio_client.password = app.config.get('TWILIO_AUTH_TOKEN')
     sendgrid_client.api_key = app.config.get('SENDGRID_API_KEY')
     qr.init_app(app)
+    if app.config.get('SENTRY_DSN'):
+        sentry_sdk.init(
+            dsn=app.config.get('SENTRY_DSN'),
+            send_default_pii=True,
+            traces_sample_rate=1.0,
+            environment=app.config.get('FLASK_ENV'),
+        )
 
     @app.context_processor
     def app_name():
