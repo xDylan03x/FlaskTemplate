@@ -17,7 +17,7 @@
                     <p class="form-error">{{ error }}</p>
                 {% endfor %}
 
-                {{ form.email.label(class="label mt-8") }}
+                {{ form.email.label(class="label mt-4") }}
                 {{ form.email(class="input mt-1 w-full", id="email", type="email") }}
                 {% for error in form.email.errors %}
                     <p class="form-error">{{ error }}</p>
