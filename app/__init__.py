@@ -46,6 +46,7 @@ def create_app(cfg: Config = Config) -> Flask:
             environment=app.config.get('FLASK_ENV'),
         )
 
+    # Context processors
     @app.context_processor
     def app_name():
         return dict(app_name=app.config["APP_NAME"])

@@ -2,7 +2,7 @@ import hashlib
 import sqlalchemy as sa
 from flask import current_app, url_for
 from app.core.helper import send_email, send_sms
-from app.models import User, LoginToken, LoginRecord, UserNotification, NotificationCategory
+from app.models import User, LoginToken, LoginRecord, UserNotification, NotificationCategory, UserDevice
 from app import db
 from datetime import datetime, timedelta, timezone
 
@@ -126,7 +126,7 @@ class LoginTokenManager:
                            remember_login: bool = False,
                            reset_password: bool = False,
                            create_account: bool = False,
-                           risk_score: int = 0,
+                           risk_score: int = 40,
                            auth_source: str = None,
                            user_id: int = None) -> (LoginToken, str):
         """
@@ -173,6 +173,8 @@ class LoginTokenManager:
             user_id=existing_token.user_id,
             auth_source=existing_token.auth_source
         )
+        token.risk_assessment = existing_token.risk_assessment
+        db.session.commit()
         return token, raw_token
 
     @staticmethod
@@ -214,12 +216,44 @@ class LoginTokenManager:
 class LoginRecordManager:
     @staticmethod
     def create_login_record(user_id: int, ip_address: str, user_agent: str, login_token: LoginToken) -> LoginRecord:
-        record = LoginRecord(
+        login_record = LoginRecord(
             user_id=user_id,
             ip_address=ip_address,
-            user_agent=user_agent,
             login_token_id=login_token.id
         )
-        db.session.add(record)
+        db.session.add(login_record)
+        device_record = UserDeviceManager.find_device(user_id, user_agent)
+        if device_record:
+            device_record.logins.append(login_record)
+            device_record.last_login = datetime.now(tz=timezone.utc)
         db.session.commit()
-        return record
+        return login_record
+
+
+class UserDeviceManager:
+    @staticmethod
+    def create_user_device(user_id: int, user_agent: str) -> UserDevice:
+        """
+        Creates a device for the user for login tracking.
+
+        Returns:
+            device: The created device record
+            device_identifier: The device identifier for the device to be stored in a cookie
+        """
+        device = UserDevice(
+            user_agent=user_agent,
+            user_id=user_id
+        )
+        db.session.add(device)
+        db.session.commit()
+        return device
+
+    @staticmethod
+    def find_device(user_id: int, user_agent: str) -> UserDevice | None:
+        device = db.session.scalar(sa.select(UserDevice).where(UserDevice.user_id == user_id, UserDevice.user_agent == user_agent))
+        return device
+
+    @staticmethod
+    def get_device_by_uuid36(uuid36: str) -> UserDevice | None:
+        device = db.session.scalar(sa.select(UserDevice).where(UserDevice.uuid36 == uuid36))
+        return device

@@ -3,10 +3,10 @@ from flask_login import login_required, current_user, login_user
 from app.core import core
 from app import db, twilio_client
 from .forms import ChangePasswordForm, ProfileSettingsForm, NotificationSettingsForm, SecuritySettingsForm, \
-    SetupAccountForm, NewUserForm, EditUserForm, TOTPVerifyForm, CreateAccountForm
+    SetupAccountForm, NewUserForm, EditUserForm, TOTPVerifyForm, CreateAccountForm, DeviceManagerForm
 import phonenumbers
-from app.model_managers import UserManager
-from .helper import send_sms
+from app.model_managers import UserManager, UserDeviceManager
+from .helper import send_sms, parse_device
 from ..model_managers import LoginTokenManager
 
 
@@ -50,6 +50,23 @@ def create_account():
         flash('Your account has been created. Please check your email to finish setting up your account.', 'success')
         return redirect(url_for('auth.login'))
     return render_template('create-account.html', title="Create Account", form=form)
+
+
+@core.route('/manage-device/<string:uuid36>', methods=['GET', 'POST'])
+def manage_device(uuid36):
+    device = UserDeviceManager.get_device_by_uuid36(uuid36)
+    if not device or device.device_trusted:
+        abort(403)
+
+    form = DeviceManagerForm()
+    if form.validate_on_submit():
+        device.device_trusted = form.device_trusted.data
+        db.session.commit()
+        flash('Device trust status has been updated.', 'success')
+        return redirect(url_for('auth.login'))
+    form.device_trusted.data = device.device_trusted
+    parsed_device = parse_device(device.user_agent)
+    return render_template('manage-device.html', title="Manage Device", device=device, parsed_device=parsed_device, user_ip=request.remote_addr, form=form)
 
 
 @core.route('/account-settings/profile', methods=['GET', 'POST'])

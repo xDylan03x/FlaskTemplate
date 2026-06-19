@@ -2,15 +2,15 @@ from urllib.parse import urlencode
 import requests
 from app.auth.helper import get_ip_from_request, twilio_verify_send, twilio_verify_check, hibp_password_check, \
     is_internal_url
-from app.model_managers import UserManager, LoginTokenManager, LoginRecordManager
-from app.models import NotificationCategory
+from app.models import NotificationCategory, RiskAction
+from app.model_managers import UserManager, LoginTokenManager, LoginRecordManager, UserDeviceManager
 from flask_login import login_user, logout_user
 from flask import flash, request, redirect, render_template, url_for, current_app, session
 from app.auth import auth
 from .forms import LoginForm, TwoFactorAuthSelectForm, TwoFactorAuthCodeForm, MagicLinkEmailForm, MagicLinkSelectForm, \
     ForgotPasswordEmailForm, ResetPasswordForm
 from app import db
-from ..core.helper import send_email, send_sms
+from ..core.helper import send_email, send_sms, parse_device
 
 LOGIN_RISK_SCORE_THRESHOLD = 50
 CONTACT_ADMINISTRATOR_MESSAGE = 'There was an error logging you in. Please contact an administrator.'
@@ -174,6 +174,7 @@ def magic_link(raw_token: str = None):
     if form.validate_on_submit():
         new_token_obj, new_token = LoginTokenManager.create_login_token_from_existing(login_token)
         new_token_obj.immediate_login = True
+        new_token_obj.update_risk_score(RiskAction.MAGIC_LINK_LOGIN)
         db.session.commit()
         login_url = url_for('auth.login_with_token', raw_token=new_token, _external=True)
         if form.method.data == 'Email':
@@ -349,7 +350,7 @@ def two_factor_auth(raw_token: str):
             return redirect(url_for('auth.two_factor_auth', raw_token=raw_token, code_sent=True, verification_method=form.method.data.lower().replace(' ', '_')))
         return render_template('2fa_select_method.html', title='Two-Factor Authentication', form=form)
 
-    # If a code has been sent show the appropriate form
+    # If a code has been sent, show the appropriate form
     form = TwoFactorAuthCodeForm()
 
     # If the user chose email verification
@@ -362,6 +363,7 @@ def two_factor_auth(raw_token: str):
         if form.validate_on_submit():
             if twilio_verify_check(to=user.email, code=form.code.data):
                 login_token.immediate_login = True
+                login_token.update_risk_score(RiskAction.TWO_FACTOR_AUTH)
                 db.session.commit()
                 return redirect(url_for('auth.login_with_token', raw_token=raw_token))
             else:
@@ -377,6 +379,7 @@ def two_factor_auth(raw_token: str):
         if form.validate_on_submit():
             if twilio_verify_check(to=user.phone_number, code=form.code.data):
                 login_token.immediate_login = True
+                login_token.update_risk_score(RiskAction.TWO_FACTOR_AUTH)
                 db.session.commit()
                 return redirect(url_for('auth.login_with_token', raw_token=raw_token))
             else:
@@ -392,6 +395,7 @@ def two_factor_auth(raw_token: str):
         if form.validate_on_submit():
             if twilio_verify_check(to=user.phone_number, code=form.code.data):
                 login_token.immediate_login = True
+                login_token.update_risk_score(RiskAction.TWO_FACTOR_AUTH)
                 db.session.commit()
                 return redirect(url_for('auth.login_with_token', raw_token=raw_token))
             else:
@@ -407,6 +411,7 @@ def two_factor_auth(raw_token: str):
         if form.validate_on_submit():
             if twilio_verify_check(to=user.email, code=form.code.data, totp_entity=user.totp_entity, totp_factor=user.totp_factor):
                 login_token.immediate_login = True
+                login_token.update_risk_score(RiskAction.TWO_FACTOR_AUTH)
                 db.session.commit()
                 return redirect(url_for('auth.login_with_token', raw_token=raw_token))
             else:
@@ -417,6 +422,12 @@ def two_factor_auth(raw_token: str):
 @auth.route('/<string:raw_token>')
 def login_with_token(raw_token: str):
     login_token = LoginTokenManager.get_login_token(raw_token)
+    user_agent = request.headers.get('User-Agent', '')
+
+    # If suspicious user agents are not allowed to log in
+    if current_app.config.get("STRICT_LOGIN", False) and parse_device(user_agent)["is_bot"]:
+        flash(CONTACT_ADMINISTRATOR_MESSAGE, 'error')
+        return redirect(url_for('auth.login'))
 
     # If the hashed token is not found
     if not login_token:
@@ -438,13 +449,6 @@ def login_with_token(raw_token: str):
         flash(CONTACT_ADMINISTRATOR_MESSAGE, 'error')
         return redirect(url_for('auth.login'))
 
-    # If the token was found and valid
-    if login_token.risk_score > LOGIN_RISK_SCORE_THRESHOLD:
-        login_token.immediate_login = False
-        db.session.commit()
-        flash(REQUIRES_2FA_MESSAGE, 'info')
-        return redirect(url_for('auth.two_factor_auth', raw_token=raw_token))
-
     user = UserManager.get_user_by_id(login_token.user_id)
 
     # If the user does not exist
@@ -457,9 +461,26 @@ def login_with_token(raw_token: str):
         if user and not user.email_verified:
             user.email_verified = True
             db.session.commit()
+
+    # Determine if the user is using a new device
+    user_device = UserDeviceManager.find_device(user.id, user_agent)
+    if user_device and user_device.device_trusted:
+        login_token.update_risk_score(RiskAction.EXISTING_DEVICE)
+    elif user_device and not user_device.device_trusted:
+        pass
     else:
-        # For normal tokens
-        LoginTokenManager.invalidate_login_token(login_token)
+        user_device = UserDeviceManager.create_user_device(user_id=user.id, user_agent=user_agent)
+        login_token.update_risk_score(RiskAction.NEW_DEVICE)
+        manage_url = url_for('core.manage_device', uuid36=user_device.uuid36, _external=True)
+        UserManager.send_notification("New Device Login", "A new device has logged in to your account. Please use the link below to manage it.", user=user, category=NotificationCategory.NEW_DEVICE_LOGIN, link=manage_url)
+    db.session.commit()
+
+    # If the token was found and valid
+    if login_token.risk_score < LOGIN_RISK_SCORE_THRESHOLD:
+        login_token.immediate_login = False
+        db.session.commit()
+        flash(REQUIRES_2FA_MESSAGE, 'info')
+        return redirect(url_for('auth.two_factor_auth', raw_token=raw_token))
 
     # If the token is to be used to verify a phone number, mark it as verified
     if login_token.verify_phone_number:
@@ -470,8 +491,9 @@ def login_with_token(raw_token: str):
         UserManager.send_notification('Phone Number Verified', body, user, NotificationCategory.PHONE_NUMBER_CHANGE)
     # Otherwise, log the user in
     else:
-        LoginRecordManager.create_login_record(user.id, get_ip_from_request(request), request.headers.get('User-Agent', ''), login_token)
+        LoginRecordManager.create_login_record(user.id, get_ip_from_request(request), user_agent, login_token)
         login_user(user, remember=login_token.remember_login)
+    LoginTokenManager.invalidate_login_token(login_token)
 
     next_url = login_token.next_url
     if user.status == 'pending':

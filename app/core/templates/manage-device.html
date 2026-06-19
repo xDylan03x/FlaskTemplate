@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+{% block content %}
+
+    <div class="centered-container">
+        <div class="card bg-base-300 w-xl max-w-xl">
+            <div class="card-body">
+                <h3 class="h3 text-base-content text-center">Manage This Device</h3>
+                <p class="support text-base-content/80 text-center">Please either verify this device or take action to secure your account.</p>
+
+                <h5 class="h5 text-base-content mt-4">Device Information</h5>
+                <p class="body text-base-content">{{ parsed_device.get('device_os', '') }} {{ parsed_device.get('device_model', '') }} {% if parsed_device.get('device_os') %}running {{ parsed_device.get('device_os') }}{% endif %} ({{ parsed_device.get('device_type') }})</p>
+
+                <h5 class="h5 text-base-content mt-4">Device Logins</h5>
+                <p class="support text-base-content">Your IP: {{ user_ip }}</p>
+                <ul class="body text-base-content list-disc">
+                    {% for login in device.logins %}
+                        <li>{{ login.ip_address }}</li>
+                    {% endfor %}
+                </ul>
+
+                <form action="" method="post">
+                    {{ form.csrf_token }}
+
+                    <div class="mt-4">
+                        {{ form.device_trusted(class="checkbox", id="device_trusted", type="checkbox") }}
+                        {{ form.device_trusted.label(class="label") }}
+                        <p class="form-help">Reduce the need for two-factor authentication when logging in on this device.</p>
+                    </div>
+
+                    {{ form.submit(class='btn btn-neutral text-neutral-content mt-8 w-full') }}
+
+                </form>
+
+                <div class="divider mt-6 mb-4">or</div>
+
+                <div class="flex justify-between">
+                    <a href="{{ url_for('auth.login') }}" class="standard link link-neutral label justify-end">Login and secure your account</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+{% endblock %}

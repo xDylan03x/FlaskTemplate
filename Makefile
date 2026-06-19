@@ -7,9 +7,13 @@ MAGENTA = \033[0;35m
 YELLOW = \033[0;33m
 NC = \033[0m
 
-.PHONY: tailwind db requirements build setup_project
+default: help
+.PHONY: help tailwind db requirements build setup_project
 
-setup_project:
+help: # Show this help message
+	@grep -E '^[a-zA-Z0-9 -]+:.*#'  Makefile | sort | while read -r l; do printf "\033[1;32m$$(echo $$l | cut -f 1 -d':')\033[00m:$$(echo $$l | cut -f 2- -d'#')\n"; done
+
+setup_project: # Set up the project by installing dependencies and configuring environment variables
 	@echo "$(YELLOW)> Setting Up Project$(NC)"
 	@echo "$(YELLOW)> Installing Python Dependencies$(NC)"
 	pip install -r requirements.txt
@@ -19,16 +23,16 @@ setup_project:
 	cp .env.example .env
 	@echo "$(YELLOW)> Project Setup Complete - Modify .env file before continuing$(NC)"
 
-tailwind:
+tailwind: # Compile Tailwind CSS for production
 	npx @tailwindcss/cli -i $(CSS_INPUT) -o $(CSS_OUTPUT) --minify
 
-db:
+db: # Create the database status
 	flask db check
 
-requirements:
+requirements: # Update the requirements.txt file with the current environment's dependencies
 	pip freeze > requirements.txt
 
-build:
+build: # Build the project for production - combines other individual steps
 	@echo "$(MAGENTA)> Building Project$(NC)"
 	@echo "$(MAGENTA)> [1/3] Running Tailwind CSS Build$(NC)"
 	@echo ""

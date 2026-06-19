@@ -1,6 +1,7 @@
 from app import sendgrid_client, twilio_client
 from sendgrid.helpers.mail import Mail, From
 from flask import current_app
+from device_detector import DeviceDetector
 
 
 def send_email(subject: str, body: str, recipient: str, preheader="", sender=None, sender_name=None, template_id=None) -> str:
@@ -34,3 +35,25 @@ def send_sms(body: str, recipient: str, sender=None) -> str:
     message = twilio_client.messages.create(body=body, from_=sender, to=recipient)
     return message.sid
 
+
+def parse_device(user_agent: str):
+    """
+    Parses a user agent string to extract device information and determine if it is a bot.
+
+    :param user_agent:
+    Returns:
+        A dictionary containing:
+            - user_agent: The original user agent string.
+            - is_bot: Whether the user agent is identified as a bot.
+            - device_os: The detected operating system name, if available.
+            - device_brand: The detected device brand, if available.
+            - device_model: The detected device model, if available.
+            - device_type: The detected device type, if available.
+    """
+    device = DeviceDetector(user_agent).parse()
+    is_bot = device.is_bot()
+    device_os = device.os_name()
+    device_brand = device.device_brand()
+    device_model = device.device_model()
+    device_type = device.device_type().value
+    return {"user_agent": user_agent, "is_bot": is_bot, "device_os": device_os, "device_brand": device_brand, "device_model": device_model, "device_type": device_type}

@@ -35,6 +35,11 @@ class CreateAccountForm(FlaskForm):
     submit = SubmitField('Create Account')
 
 
+class DeviceManagerForm(FlaskForm):
+    device_trusted = BooleanField('Trust This Device')
+    submit = SubmitField('Save')
+
+
 class ChangePasswordForm(FlaskForm):
     current_password = PasswordField('Current Password', validators=[DataRequired()])
     new_password = PasswordField('New Password', validators=[DataRequired()])

@@ -17,6 +17,7 @@ class Config:
 
         # Static Site Settings - Change these as needed
         self.ALLOW_ACCOUNT_CREATION = True  # Allow users to create their own account without an account manager
+        self.STRICT_LOGIN = True  # Will not allow suspicious user agent's to log in
 
         # Admin credentials
         self.ADMIN_NAME = os.environ.get('ADMIN_NAME', None)
