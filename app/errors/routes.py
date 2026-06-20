@@ -4,7 +4,7 @@ from app import db
 
 
 @errors.app_errorhandler(403)
-def not_found_error(error):
+def forbidden_error(error):
     if current_app.config["DEBUG"]:
         return render_template("403.html", error=error), 403
     return render_template('403.html'), 403
@@ -18,7 +18,7 @@ def not_found_error(error):
 
 
 @errors.app_errorhandler(405)
-def not_found_error(error):
+def not_allowed_error(error):
     if current_app.config["DEBUG"]:
         return render_template("405.html", error=error), 405
     return render_template('405.html'), 405

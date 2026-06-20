@@ -1,8 +1,6 @@
 import enum
 import hashlib
 from typing import Optional
-
-import geocoder
 from flask_login import UserMixin
 import sqlalchemy as sa
 import sqlalchemy.orm as so
@@ -106,6 +104,14 @@ class User(db.Model, UserMixin):
             db.session.add(setting_record)
         else:
             setting_record.value = str(value)
+
+    def can(self, key: str) -> bool:
+        """
+        Shorthand for getting a user's permission setting.
+        Example usage:
+            current_user.can('users.create') => current_user.get_setting('perm.users.create') => True or False
+        """
+        return self.get_setting(f'perm.{key}')
 
 
 class RiskAction(enum.Enum):
