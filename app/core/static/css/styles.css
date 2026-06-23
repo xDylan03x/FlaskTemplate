@@ -23,27 +23,27 @@
     }
 
     .h1 {
-        @apply text-5xl font-black mb-4;
+        @apply text-5xl font-black mb-3;
     }
 
     .h2 {
-        @apply text-4xl font-extrabold mb-4;
+        @apply text-4xl font-extrabold mb-2;
     }
 
     .h3 {
-        @apply text-3xl font-bold mb-2;
+        @apply text-3xl font-bold mb-1;
     }
 
     .h4 {
-        @apply text-2xl font-semibold mb-2;
+        @apply text-2xl font-semibold mb-0.5;
     }
 
     .h5 {
-        @apply text-xl font-medium mb-1;
+        @apply text-xl font-medium;
     }
 
     .h6 {
-        @apply text-lg font-medium mb-1;
+        @apply text-lg font-medium;
     }
 
     .form-error {
