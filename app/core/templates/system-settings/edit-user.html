@@ -20,6 +20,9 @@
                         <p class="form-error">{{ error }}</p>
                     {% endfor %}
 
+                    <label class="label mt-4">Email</label>
+                    <input class="input mt-1 w-full" id="email" type="email" value="{{ user.email }}" disabled>
+
                     {{ form.status.label(class="label mt-4") }}
                     {{ form.status(class="select mt-1 w-full", id="status") }}
                     {% for error in form.status.errors %}
@@ -35,15 +38,33 @@
                         <p class="form-error">{{ error }}</p>
                     {% endfor %}
 
-                    <button type="button" class="btn btn-outline btn-error mt-4" onclick="delete_modal.showModal()">Delete User</button>
+                    <button type="button" class="btn btn-outline btn-error mt-4" onclick="delete_modal.showModal()" {% if not current_user.can('users.delete') %}disabled{% endif %}>Delete User</button>
 
 
-                    <h4 class="h4 text-base-content mt-8">Roles</h4>
-                    <div class="mt-4">
-                        {{ form.user_manager(class="checkbox", id="user_manager", type="checkbox") }}
-                        {{ form.user_manager.label(class="label") }}
-                        <p class="form-help">User Managers can create, edit, and delete users.</p>
-                    </div>
+                    <h4 class="h4 text-base-content mt-8">Permissions</h4>
+                    {% for group, permissions in permission_groups.items() %}
+                        <div class="mt-4">
+                            <h5 class="h5 text-base-content">{{ group }}</h5>
+
+                            {% for permission in permissions %}
+                                {% set field_name = permission.permission_field_name %}
+                                {% set field = form[field_name] %}
+
+                                <div class="mt-4">
+                                    {{ field(class="checkbox", id=field_name, type="checkbox") }}
+                                    {{ field.label(class="label") }}
+
+                                    {% if permission.description %}
+                                        <p class="form-help">{{ permission.description }}</p>
+                                    {% endif %}
+
+                                    {% for error in field.errors %}
+                                        <p class="form-error">{{ error }}</p>
+                                    {% endfor %}
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% endfor %}
 
                     {{ form.submit(class='btn btn-neutral text-neutral-content mt-8 w-full') }}
                 </form>

@@ -3,7 +3,7 @@ import sqlalchemy as sa
 from flask import current_app, url_for
 from app.core.helper import send_email, send_sms
 from app.models import User, LoginToken, LoginRecord, UserNotification, NotificationCategory, UserDevice
-from app import db
+from app import db, pm
 from datetime import datetime, timedelta, timezone
 
 
@@ -25,11 +25,14 @@ class UserManager:
         user.profile_picture_url = profile_picture_url
         db.session.add(user)
         db.session.commit()
+        # Default settings
         user.set_setting('security.two_factor_auth', False)
         user.set_setting('security.password_breach_check', True)
         user.set_setting('notifications.security_alerts_email', True)
         user.set_setting('notifications.security_alerts_text', False)
-        user.set_setting('role.user_manager', False)
+        # Default permissions
+        for perm in pm.all():
+            user.set_permission(perm.permission, perm.default)
         db.session.commit()
         if send_welcome_email:
             _, raw_token = LoginTokenManager.create_login_token(expiration_minutes=86400, user_id=user.id, next_url=url_for('core.setup_account'), immediate_login=True, create_account=True, auth_source='welcome email')

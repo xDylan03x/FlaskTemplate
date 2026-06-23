@@ -29,6 +29,5 @@ def create_admin():
     user.set_setting('security.password_breach_check', False)
     user.set_setting('notifications.security_alerts_email', True)
     user.set_setting('notifications.security_alerts_text', False)
-    user.set_setting('role.user_manager', True)
     db.session.commit()
     click.echo('Admin user created.')

@@ -3,11 +3,14 @@ from flask_login import login_required, current_user, login_user
 from app.core import core
 from app import db, twilio_client
 from .forms import ChangePasswordForm, ProfileSettingsForm, NotificationSettingsForm, SecuritySettingsForm, \
-    SetupAccountForm, NewUserForm, EditUserForm, TOTPVerifyForm, CreateAccountForm, DeviceManagerForm
+    SetupAccountForm, NewUserForm, TOTPVerifyForm, CreateAccountForm, DeviceManagerForm, \
+    build_edit_user_form
 import phonenumbers
 from app.model_managers import UserManager, UserDeviceManager
 from .helper import send_sms, parse_device
 from ..model_managers import LoginTokenManager
+from app.extensions import require_permission
+from app import pm
 
 
 @core.route('/')
@@ -242,18 +245,16 @@ def disable_totp():
 
 @core.route('/system-settings/users')
 @login_required
+@require_permission('users')
 def user_settings():
-    if not current_user.get_setting('role.user_manager'):
-        abort(403)
     all_users = UserManager.get_all_users()
     return render_template('system-settings/users.html', title="User Management", page='users', users=all_users)
 
 
 @core.route('/system-settings/users/new', methods=['GET', 'POST'])
 @login_required
+@require_permission('users.create')
 def new_user():
-    if not current_user.get_setting('role.user_manager'):
-        abort(403)
     form = NewUserForm()
     if form.validate_on_submit():
         if UserManager.get_user_by_email(form.email.data.lower().strip()):
@@ -267,35 +268,47 @@ def new_user():
 
 @core.route('/system-settings/users/<string:uuid36>', methods=['GET', 'POST'])
 @login_required
+@require_permission('users.update')
 def edit_user(uuid36):
-    if not current_user.get_setting('role.user_manager'):
-        abort(403)
     user = UserManager.get_user_by_uuid36(uuid36)
+
     if not user:
         abort(404)
 
+    EditUserForm = build_edit_user_form(pm)
     form = EditUserForm()
+
     if form.validate_on_submit():
         user.name = form.name.data.strip()
         user.status = form.status.data.strip()
+
         if form.password.data:
             user.set_password(form.password.data)
             user.refresh_uuid36()
-        user.set_setting('role.user_manager', form.user_manager.data)
+
+        for field_name, permission_key in form.permission_field_map.items():
+            field = getattr(form, field_name)
+            user.set_permission(permission_key, field.data)
+
         db.session.commit()
+
         flash('Your changes have been saved.', 'success')
         return redirect(url_for('core.user_settings'))
+
     form.name.data = user.name
     form.status.data = user.status
-    form.user_manager.data = user.get_setting('role.user_manager')
-    return render_template('system-settings/edit-user.html', title="Edit User", form=form, user=user)
+
+    for field_name, permission_key in form.permission_field_map.items():
+        field = getattr(form, field_name)
+        field.data = user.can(permission_key)
+
+    return render_template('system-settings/edit-user.html', title="Edit User", form=form, user=user, permission_groups=pm.grouped())
 
 
 @core.route('/system-settings/users/delete/<string:uuid36>')
 @login_required
+@require_permission('users.delete')
 def delete_user(uuid36):
-    if not current_user.get_setting('role.user_manager'):
-        abort(403)
     user = UserManager.get_user_by_uuid36(uuid36)
     if not user:
         abort(404)
@@ -308,3 +321,17 @@ def delete_user(uuid36):
 def external_redirect():
     next_url = request.args.get("next", None)
     return render_template("external-redirect.html", url=next_url)
+
+
+@core.route('/test')
+@require_permission('users')
+def test():
+    return_str = ""
+    x = [perm_spec.permission for perm_spec in pm.all()]
+    return_str += f"All Permissions ({len(x)}):<br>{x}<br><br>Detail View:<br>"
+    for perm in pm.all():
+        return_str += f"{perm.label} - {perm.description}<br>"
+    return_str += "<br>Your Permissions:<br>"
+    for perm in current_user.permissions:
+        return_str += f"{perm.key} - {perm.value}<br>"
+    return return_str

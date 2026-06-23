@@ -10,6 +10,7 @@ from flask_login import LoginManager
 from flask_sqlalchemy import SQLAlchemy
 import sentry_sdk
 from .commands import create_admin
+from .extensions import PermissionManager
 
 # Create global instances of extensions
 db = SQLAlchemy(add_models_to_shell=True)
@@ -18,6 +19,7 @@ login = LoginManager()
 twilio_client = Client()
 sendgrid_client = SendGridAPIClient()
 qr = QRcode()
+pm = PermissionManager()
 
 
 def create_app(cfg: Config = Config) -> Flask:
@@ -38,6 +40,7 @@ def create_app(cfg: Config = Config) -> Flask:
     twilio_client.password = app.config.get('TWILIO_AUTH_TOKEN')
     sendgrid_client.api_key = app.config.get('SENDGRID_API_KEY')
     qr.init_app(app)
+    pm.init_app(app)
     if app.config.get('SENTRY_DSN'):
         sentry_sdk.init(
             dsn=app.config.get('SENTRY_DSN'),

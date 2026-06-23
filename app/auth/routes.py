@@ -493,6 +493,7 @@ def login_with_token(raw_token: str):
     else:
         LoginRecordManager.create_login_record(user.id, get_ip_from_request(request), user_agent, login_token)
         login_user(user, remember=login_token.remember_login)
+        # identity_changed.send(current_app._get_current_object(), identity=Identity(user.id))
     LoginTokenManager.invalidate_login_token(login_token)
 
     next_url = login_token.next_url
@@ -509,4 +510,5 @@ def login_with_token(raw_token: str):
 @auth.route('/logout')
 def logout():
     logout_user()
+    # identity_changed.send(current_app._get_current_object(), identity=AnonymousIdentity())
     return redirect(url_for('auth.login'))

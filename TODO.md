@@ -1,7 +1,7 @@
 # TODO
 ## Planned Features
 A list of planned features to be implemented. See more information for each feature below.
-- [ ] Permissions and Authorizations
+- [x] Permissions and Authorizations
 - [ ] Audit Logging
 - [ ] File System
 - [ ] Notifications

@@ -73,7 +73,7 @@ class NewUserForm(FlaskForm):
     submit = SubmitField('Create User')
 
 
-class EditUserForm(FlaskForm):
+class BasicEditUserForm(FlaskForm):
     name = StringField('Name', validators=[DataRequired()])
     status = SelectField('Status', choices=[('active', 'Active'), ('disabled', 'Disabled'), ('pending', 'Pending')], validators=[DataRequired()])
     password = PasswordField('Password')
@@ -84,3 +84,31 @@ class EditUserForm(FlaskForm):
 class TOTPVerifyForm(FlaskForm):
     code = StringField('Authentication Code', validators=[DataRequired()])
     submit = SubmitField('Submit')
+
+
+def build_edit_user_form(permission_manager):
+    fields = {}
+    permission_field_map = {}
+    permission_specs = []
+
+    for permission in permission_manager.all():
+        field_name = permission.permission_field_name
+
+        fields[field_name] = BooleanField(
+            label=permission.label,
+            description=permission.description,
+        )
+
+        permission_field_map[field_name] = permission.permission
+        permission_specs.append(permission)
+
+    DynamicEditUserForm = type(
+        "DynamicEditUserForm",
+        (BasicEditUserForm,),
+        fields,
+    )
+
+    DynamicEditUserForm.permission_field_map = permission_field_map
+    DynamicEditUserForm.permission_specs = permission_specs
+
+    return DynamicEditUserForm

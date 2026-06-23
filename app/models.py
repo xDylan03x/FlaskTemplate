@@ -7,7 +7,7 @@ import sqlalchemy.orm as so
 from datetime import datetime, timezone, timedelta
 import uuid
 from werkzeug.security import generate_password_hash, check_password_hash
-from app import login, db
+from app import login, db, pm
 import secrets
 
 
@@ -23,7 +23,7 @@ class User(db.Model, UserMixin):
         email
         profile_picture_url: URL to profile picture
         password_hash
-        status: active, diasbled, pending
+        status: active, disabled, pending
         phone_number: Phone number in E.164 format
         email_verified
         phone_number_verified
@@ -31,6 +31,7 @@ class User(db.Model, UserMixin):
         deleted_at
 
         settings: One-to-many relationship with UserSetting model
+        permissions: One-to-many relationship with UserPermission model
         notifications: One-to-many relationship with Notification model
         login_tokens: One-to-many relationship with LoginToken model
         login_records: One-to-many relationship with LoginRecord model
@@ -57,6 +58,7 @@ class User(db.Model, UserMixin):
     deleted_at: so.Mapped[Optional[datetime]] = so.mapped_column(sa.DateTime)
 
     settings: so.Mapped[list["UserSetting"]] = so.relationship('UserSetting', backref='user', lazy='dynamic')
+    permissions: so.Mapped[list["UserPermission"]] = so.relationship('UserPermission', backref='user', lazy='dynamic')
     notifications: so.Mapped[list["UserNotification"]] = so.relationship('UserNotification', backref='user', lazy='dynamic')
     login_tokens: so.Mapped[list["LoginToken"]] = so.relationship('LoginToken', backref='user', lazy='dynamic')
     devices: so.Mapped[list["UserDevice"]] = so.relationship('UserDevice', backref='user', lazy='dynamic')
@@ -105,13 +107,30 @@ class User(db.Model, UserMixin):
         else:
             setting_record.value = str(value)
 
-    def can(self, key: str) -> bool:
-        """
-        Shorthand for getting a user's permission setting.
-        Example usage:
-            current_user.can('users.create') => current_user.get_setting('perm.users.create') => True or False
-        """
-        return self.get_setting(f'perm.{key}')
+    def set_permission(self, permission: str, value: bool) -> None:
+        permission_record = self.permissions.filter_by(key=permission).first()
+        if permission_record is None:
+            if permission not in [perm_spec.permission for perm_spec in pm.all()]:
+                raise ValueError(f"Invalid permission: {permission}")
+            permission_record = UserPermission(key=permission, value=value, user_id=self.id)
+            db.session.add(permission_record)
+        else:
+            permission_record.value = value
+
+    def can(self, permission: str) -> bool:
+        permission = permission.lower()
+        # If looking for a specific permission
+        if "." in permission:
+            perm_record = self.permissions.filter_by(key=permission).first()
+            if perm_record is not None and perm_record.value:
+                return True
+            return False
+        # If looking for a group permission
+        perm_records = self.permissions.filter(UserPermission.key.startswith(permission + ".")).all()
+        for perm_record in perm_records:
+            if perm_record.value:
+                return True
+        return False
 
 
 class RiskAction(enum.Enum):
@@ -262,6 +281,33 @@ class UserSetting(db.Model):
         return '<UserSetting {}: {}>'.format(self.key, self.value)
 
 
+class UserPermission(db.Model):
+    """
+    Model representing a user permission as a key-value pair.
+    Attributes:
+        id
+        uuid36
+        created_at
+        updated_at
+        key: Setting key
+        value: Setting value
+
+        user_id: Foreign key to the User model
+    """
+    id: so.Mapped[int] = so.mapped_column(primary_key=True)
+    uuid36: so.Mapped[str] = so.mapped_column(sa.String(36), unique=True, index=True, nullable=False, default=lambda: str(uuid.uuid4()))
+    created_at: so.Mapped[datetime] = so.mapped_column(sa.DateTime(timezone=True), nullable=False, default=lambda: datetime.now(tz=timezone.utc))
+    updated_at: so.Mapped[datetime] = so.mapped_column(sa.DateTime(timezone=True), nullable=False, default=lambda: datetime.now(tz=timezone.utc), onupdate=lambda: datetime.now(tz=timezone.utc))
+
+    key: so.Mapped[str] = so.mapped_column(sa.String(128), nullable=False)
+    value: so.Mapped[bool] = so.mapped_column(sa.Boolean, default=False, nullable=False)
+
+    user_id: so.Mapped[int] = so.mapped_column(sa.Integer, sa.ForeignKey('user.id'))
+
+    def __repr__(self):
+        return '<UserPermission {}: {}>'.format(self.key, self.value)
+
+
 class NotificationCategory(enum.Enum):
     # Account
     PERIODIC_PASSWORD_RESET = "notifications.security_alerts"
@@ -344,3 +390,13 @@ def load_user(uuid36):
         return db.session.scalar(sa.select(User).where(User.uuid36 == uuid36))
     except Exception:
         return None
+
+
+# @identity_loaded.connect
+# def on_identity_loaded(sender, identity):
+#     identity.user = current_user
+#     if current_user.is_authenticated:
+#         identity.provides.add(UserNeed(current_user.id))
+#         for permission in current_user.permissions:
+#             if permission.value:
+#                 identity.provides.add(RoleNeed(permission.key))
