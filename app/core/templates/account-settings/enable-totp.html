@@ -8,7 +8,7 @@
                 <p class="support text-base-content/80 text-center">To enable 2FA via TOTP, please scan the QR code below with
                 an authenticator app. Then, hit next to verify and enable it.</p>
 
-                <img src="{{ qrcode(binding_url)  }}" class="mt-8 w-80 h-auto mx-auto" alt="TOTP QR Code">
+                <img src="{{ qrcode(binding_url, border=2)  }}" class="mt-8 w-80 h-auto mx-auto" alt="TOTP QR Code">
 
                 <a class="btn btn-neutral text-neutral-content mt-8 w-full" href="{{ url_for('core.enable_totp', verify=True) }}">Next</a>
 

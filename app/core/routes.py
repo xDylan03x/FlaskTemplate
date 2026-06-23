@@ -9,7 +9,7 @@ import phonenumbers
 from app.model_managers import UserManager, UserDeviceManager
 from .helper import send_sms, parse_device
 from ..model_managers import LoginTokenManager
-from app.extensions import require_permission
+from ..extensions.flask_permissions import require_permission
 from app import pm
 
 

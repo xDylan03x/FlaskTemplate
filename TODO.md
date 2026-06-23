@@ -27,8 +27,5 @@ developers can define each permission they need and what the default values are 
 - Add support for detailed audit logging of user actions and system events.
 - Add support for developer functions to audit events automatically.
 
-### File System
-- Add support for cloud-based file storage and delivery.
-
 ### Notifications
 - Add support for sending notifications to users in the app

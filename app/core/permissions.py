@@ -1,4 +1,4 @@
-from app.extensions import PermissionSpec
+from ..extensions.flask_permissions import PermissionSpec
 
 permissions = [
     PermissionSpec(action="Create", group="Users", description="Create new users"),
