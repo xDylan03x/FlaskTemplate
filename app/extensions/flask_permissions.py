@@ -17,7 +17,7 @@ class PermissionSpec:
         """
         Returns the permission in the format of <group>.<action> (all lowercase)
         """
-        return f"{self.group.lower()}.{self.action.lower()}"
+        return f"{self.group.lower().replace(' ', '_')}.{self.action.lower().replace(' ', '_')}"
 
     @property
     def label(self):
