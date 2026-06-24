@@ -12,6 +12,7 @@ from flask_compress import Compress
 import sentry_sdk
 from .commands import create_admin
 from .extensions.flask_permissions import PermissionManager
+from .extensions.flask_audit import AuditManager
 
 # Create global instances of extensions
 db = SQLAlchemy(add_models_to_shell=True)
@@ -22,6 +23,7 @@ sendgrid_client = SendGridAPIClient()
 qr = QRcode()
 compress = Compress()
 pm = PermissionManager()
+audit = AuditManager()
 
 
 def create_app(cfg: Config = Config) -> Flask:
@@ -44,6 +46,7 @@ def create_app(cfg: Config = Config) -> Flask:
     qr.init_app(app)
     compress.init_app(app)
     pm.init_app(app)
+    audit.init_app(app, db)
     if app.config.get('SENTRY_DSN'):
         sentry_sdk.init(
             dsn=app.config.get('SENTRY_DSN'),

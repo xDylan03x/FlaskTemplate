@@ -1,7 +1,7 @@
 from flask import render_template, request, flash, redirect, url_for, current_app, abort
 from flask_login import login_required, current_user, login_user
 from app.core import core
-from app import db, twilio_client
+from app import db, twilio_client, audit
 from .forms import ChangePasswordForm, ProfileSettingsForm, NotificationSettingsForm, SecuritySettingsForm, \
     SetupAccountForm, NewUserForm, TOTPVerifyForm, CreateAccountForm, DeviceManagerForm, \
     build_edit_user_form
@@ -11,7 +11,6 @@ from .helper import send_sms, parse_device
 from ..model_managers import LoginTokenManager
 from ..extensions.flask_permissions import require_permission
 from app import pm
-
 
 @core.route('/')
 def index():
@@ -25,10 +24,11 @@ def setup_account():
         abort(403)
     form = SetupAccountForm()
     if form.validate_on_submit():
-        current_user.name = form.name.data.strip()
-        current_user.set_password(form.password.data)
-        current_user.status = 'active'
-        current_user.set_setting('security.two_factor_auth', form.two_factor_auth.data)
+        with audit.track(current_user, actor=current_user, message="User setting up account"):
+            current_user.name = form.name.data.strip()
+            current_user.set_password(form.password.data)
+            current_user.status = 'active'
+            current_user.set_setting('security.two_factor_auth', form.two_factor_auth.data)
         db.session.commit()
         flash('Your account has been set up. You can now login using email and password or social logins.', 'success')
         flash('You can change account settings such as your profile information, notification preferences, and security options here.', 'info')
@@ -60,10 +60,12 @@ def manage_device(uuid36):
     device = UserDeviceManager.get_device_by_uuid36(uuid36)
     if not device or device.device_trusted:
         abort(403)
+    user = UserManager.get_user_by_id(device.user_id)
 
     form = DeviceManagerForm()
     if form.validate_on_submit():
-        device.device_trusted = form.device_trusted.data
+        with audit.track(device, actor=user, message="User managing new device"):
+            device.device_trusted = form.device_trusted.data
         db.session.commit()
         flash('Device trust status has been updated.', 'success')
         return redirect(url_for('auth.login'))
@@ -78,39 +80,40 @@ def profile_settings():
     form = ProfileSettingsForm()
 
     if form.validate_on_submit():
-        current_user.name = form.name.data.strip()
-        if form.profile_picture_url.data:
-            current_user.profile_picture_url = form.profile_picture_url.data.strip()
-        else:
-            current_user.profile_picture_url = f'https://api.dicebear.com/9.x/initials/svg?seed={current_user.name}&radius=50&backgroundColor=00897b,039be5,3949ab,5e35b1,8e24aa,43a047,d81b60,f4511e,fb8c00,fdd835&backgroundType=gradientLinear&fontFamily=Arial&fontSize=41'
-        # Get the user entered phone number and country code
-        raw_phone = form.phone_number.data.strip()
-        region = form.country_code.data or "US"
-        # If the user hasn't entered an empty value
-        if raw_phone:
-            try:
-                parsed = phonenumbers.parse(raw_phone, region)
-                # If the phone number has changed
-                if phonenumbers.format_number(parsed, phonenumbers.PhoneNumberFormat.E164) != current_user.phone_number:
-                    # Validate the phone number
-                    if phonenumbers.is_valid_number(parsed):
-                        current_user.phone_number = phonenumbers.format_number(parsed, phonenumbers.PhoneNumberFormat.E164)
-                        current_user.phone_number_verified = False
-                        # Send text to verify phone number.
-                        new_token_obj, new_token = LoginTokenManager.create_login_token(expiration_minutes=30, user_id=current_user.id, auth_source='phone number verification')
-                        new_token_obj.verify_phone_number = True
-                        db.session.commit()
-                        verify_url = url_for('auth.login_with_token', raw_token=new_token, _external=True)
-                        message = f'Click the following link to verify the phone number in your {current_app.config["APP_NAME"]} account: {verify_url}\n\nIf you did not request this link, please ignore this text.'
-                        send_sms(body=message, recipient=current_user.phone_number)
-                        flash('A link has been sent to your phone via text. Please click this link to verify your phone number.', 'info')
-                    else:
-                        flash("Phone number is not valid", "error")
-            except phonenumbers.NumberParseException:
-                flash("Error validating phone number", "error")
-        else:
-            current_user.phone_number = None
-            current_user.phone_number_verified = False
+        with audit.track(current_user, actor=current_user, message="User updating profile settings"):
+            current_user.name = form.name.data.strip()
+            if form.profile_picture_url.data:
+                current_user.profile_picture_url = form.profile_picture_url.data.strip()
+            else:
+                current_user.profile_picture_url = f'https://api.dicebear.com/9.x/initials/svg?seed={current_user.name}&radius=50&backgroundColor=00897b,039be5,3949ab,5e35b1,8e24aa,43a047,d81b60,f4511e,fb8c00,fdd835&backgroundType=gradientLinear&fontFamily=Arial&fontSize=41'
+            # Get the user entered phone number and country code
+            raw_phone = form.phone_number.data.strip()
+            region = form.country_code.data or "US"
+            # If the user hasn't entered an empty value
+            if raw_phone:
+                try:
+                    parsed = phonenumbers.parse(raw_phone, region)
+                    # If the phone number has changed
+                    if phonenumbers.format_number(parsed, phonenumbers.PhoneNumberFormat.E164) != current_user.phone_number:
+                        # Validate the phone number
+                        if phonenumbers.is_valid_number(parsed):
+                            current_user.phone_number = phonenumbers.format_number(parsed, phonenumbers.PhoneNumberFormat.E164)
+                            current_user.phone_number_verified = False
+                            # Send text to verify phone number.
+                            new_token_obj, new_token = LoginTokenManager.create_login_token(expiration_minutes=30, user_id=current_user.id, auth_source='phone number verification')
+                            new_token_obj.verify_phone_number = True
+                            db.session.commit()
+                            verify_url = url_for('auth.login_with_token', raw_token=new_token, _external=True)
+                            message = f'Click the following link to verify the phone number in your {current_app.config["APP_NAME"]} account: {verify_url}\n\nIf you did not request this link, please ignore this text.'
+                            send_sms(body=message, recipient=current_user.phone_number)
+                            flash('A link has been sent to your phone via text. Please click this link to verify your phone number.', 'info')
+                        else:
+                            flash("Phone number is not valid", "error")
+                except phonenumbers.NumberParseException:
+                    flash("Error validating phone number", "error")
+            else:
+                current_user.phone_number = None
+                current_user.phone_number_verified = False
         db.session.commit()
         flash('Your profile has been updated.', 'success')
         return redirect(url_for('core.profile_settings'))
@@ -141,6 +144,7 @@ def profile_settings():
 def send_phone_number_verification():
     if 'HX-Request' not in request.headers:
         return abort(404)
+    audit.log("User requested phone number verification", actor=current_user)
     new_token_obj, new_token = LoginTokenManager.create_login_token(expiration_minutes=30, user_id=current_user.id, auth_source='phone number verification')
     new_token_obj.verify_phone_number = True
     db.session.commit()
@@ -155,8 +159,9 @@ def send_phone_number_verification():
 def notification_settings():
     form = NotificationSettingsForm()
     if form.validate_on_submit():
-        current_user.set_setting('notifications.security_alerts_email', form.security_alerts_email.data)
-        current_user.set_setting('notifications.security_alerts_text', form.security_alerts_text.data)
+        with audit.track(current_user, actor=current_user, message="User updating notification settings"):
+            current_user.set_setting('notifications.security_alerts_email', form.security_alerts_email.data)
+            current_user.set_setting('notifications.security_alerts_text', form.security_alerts_text.data)
         db.session.commit()
         flash('Your notification settings have been updated.', 'success')
         return redirect(url_for('core.notification_settings'))
@@ -170,8 +175,9 @@ def notification_settings():
 def security_settings():
     form = SecuritySettingsForm()
     if form.validate_on_submit():
-        current_user.set_setting('security.two_factor_auth', form.two_factor_auth.data)
-        current_user.set_setting('security.password_breach_check', form.password_breach_check.data)
+        with audit.track(current_user, actor=current_user, message="User updating security settings"):
+            current_user.set_setting('security.two_factor_auth', form.two_factor_auth.data)
+            current_user.set_setting('security.password_breach_check', form.password_breach_check.data)
         db.session.commit()
         flash('Your security settings have been updated.', 'success')
         return redirect(url_for('core.security_settings'))
@@ -188,6 +194,7 @@ def change_password():
         if not current_user.check_password(form.current_password.data):
             flash('Current password is incorrect.', 'error')
             return render_template('account-settings/change-password.html', title="Change Password", form=form), 401
+        audit.log("User changed their password", actor=current_user)
         current_user.set_password(form.new_password.data)
         current_user.refresh_uuid36()
         db.session.commit()
@@ -223,6 +230,7 @@ def enable_totp():
             .update(form.code.data.strip())
         )
         if factor.status == 'verified':
+            audit.log("User enabled TOTP", actor=current_user)
             current_user.totp_verified = True
             db.session.commit()
             flash('TOTP has been enabled for your account.', 'success')
@@ -235,6 +243,7 @@ def enable_totp():
 @core.route('/account-settings/security/disable-totp')
 @login_required
 def disable_totp():
+    audit.log("User disabled TOTP", actor=current_user)
     current_user.totp_verified = False
     current_user.refresh_totp_entity()
     current_user.totp_factor = None
@@ -279,16 +288,17 @@ def edit_user(uuid36):
     form = EditUserForm()
 
     if form.validate_on_submit():
-        user.name = form.name.data.strip()
-        user.status = form.status.data.strip()
+        with audit.track(user, actor=current_user, message="User updating other user's settings"):
+            user.name = form.name.data.strip()
+            user.status = form.status.data.strip()
 
-        if form.password.data:
-            user.set_password(form.password.data)
-            user.refresh_uuid36()
+            if form.password.data:
+                user.set_password(form.password.data)
+                user.refresh_uuid36()
 
-        for field_name, permission_key in form.permission_field_map.items():
-            field = getattr(form, field_name)
-            user.set_permission(permission_key, field.data)
+            for field_name, permission_key in form.permission_field_map.items():
+                field = getattr(form, field_name)
+                user.set_permission(permission_key, field.data)
 
         db.session.commit()
 
@@ -326,6 +336,9 @@ def external_redirect():
 @core.route('/test')
 @require_permission('users')
 def test():
+    audit.log("Performed some action on the backend")
+    with audit.track(current_user):
+        current_user.name = "BoB mArLeY!"
     return_str = ""
     x = [perm_spec.permission for perm_spec in pm.all()]
     return_str += f"All Permissions ({len(x)}):<br>{x}<br><br>Detail View:<br>"

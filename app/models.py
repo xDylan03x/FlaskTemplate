@@ -384,6 +384,25 @@ class LoginRecord(db.Model):
         return '<LoginRecord {}>'.format(self.uuid36)
 
 
+class AuditEvent(db.Model):
+    """
+    Model representing an event for auditing purposes.
+    Attributes:
+        id
+        uuid36
+        occurred_at
+        message: Event message with the details
+    """
+    id: so.Mapped[int] = so.mapped_column(primary_key=True)
+    uuid36: so.Mapped[str] = so.mapped_column(sa.String(36), unique=True, index=True, nullable=False, default=lambda: str(uuid.uuid4()))
+    occurred_at: so.Mapped[datetime] = so.mapped_column(sa.DateTime(timezone=True), nullable=False, default=lambda: datetime.now(tz=timezone.utc))
+
+    message: so.Mapped[str] = so.mapped_column(sa.Text, nullable=False)
+
+    def __repr__(self):
+        return '<AuditEvent {}>'.format(self.uuid36)
+
+
 @login.user_loader
 def load_user(uuid36):
     try:

@@ -33,7 +33,7 @@ class PermissionSpec:
 
 class PermissionManager:
     def __init__(self, app=None):
-        self.app = None
+        self.app = app
         self._registry = {}
 
         if app is not None:
