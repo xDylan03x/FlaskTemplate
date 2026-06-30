@@ -1,16 +1,20 @@
-from flask import render_template, request, flash, redirect, url_for, current_app, abort
+from flask import render_template, request, flash, redirect, url_for, current_app, abort, session
 from flask_login import login_required, current_user, login_user
 from app.core import core
 from app import db, twilio_client, audit
 from .forms import ChangePasswordForm, ProfileSettingsForm, NotificationSettingsForm, SecuritySettingsForm, \
     SetupAccountForm, NewUserForm, TOTPVerifyForm, CreateAccountForm, DeviceManagerForm, \
-    build_edit_user_form
+    build_edit_user_form, ApplicationSettingsForm
 import phonenumbers
 from app.model_managers import UserManager, UserDeviceManager
 from .helper import send_sms, parse_device
 from ..model_managers import LoginTokenManager
 from ..extensions.flask_permissions import require_permission
 from app import pm
+import sqlalchemy as sa
+import sqlalchemy.orm as so
+from ..models import LoginRecord
+
 
 @core.route('/')
 def index():
@@ -139,6 +143,21 @@ def profile_settings():
     return render_template('account-settings/profile.html', title="Profile Settings", page='profile', form=form)
 
 
+@core.route('/account-settings/application', methods=['GET', 'POST'])
+@login_required
+def application_settings():
+    form = ApplicationSettingsForm()
+    if form.validate_on_submit():
+        with audit.track(current_user, actor=current_user, message="User updating application settings"):
+            current_user.set_setting('preferences.theme', form.theme.data)
+            session['theme'] = form.theme.data
+        db.session.commit()
+        flash('Your notification settings have been updated.', 'success')
+        return redirect(url_for('core.application_settings'))
+    form.theme.data = current_user.get_setting('preferences.theme')
+    return render_template('account-settings/application.html', title="Application Settings", page='application', form=form)
+
+
 @core.route('/account-settings/profile/verify-phone-number', methods=['POST'])
 @login_required
 def send_phone_number_verification():
@@ -201,7 +220,7 @@ def change_password():
         login_user(current_user)
         flash('Your password has been updated.', 'success')
         return redirect(url_for('core.security_settings'))
-    return render_template('account-settings/change-password.html', title="Change Password", form=form)
+    return render_template('account-settings/change-password.html', title="Change Password", page="security", form=form)
 
 
 @core.route('/account-settings/security/enable-totp', methods=['GET', 'POST'])
@@ -250,6 +269,31 @@ def disable_totp():
     db.session.commit()
     flash('Your TOTP method has been disabled.', 'info')
     return redirect(url_for('core.security_settings'))
+
+
+@core.route('/account-settings/security/login-history')
+@login_required
+def login_history():
+    records = db.session.scalars(
+        sa.select(LoginRecord)
+        .where(LoginRecord.user_id == current_user.id)
+        .options(
+            so.selectinload(LoginRecord.user_device),
+            so.selectinload(LoginRecord.login_token),
+        )
+        .order_by(LoginRecord.occurred_at.desc())
+    ).all()
+    return render_template('account-settings/login-history.html', title="Login History", page="security", records=records)
+
+
+@core.route('/account-settings/security/device-information/<string:uuid36>')
+@login_required
+def device_information(uuid36):
+    device = UserDeviceManager.get_device_by_uuid36(uuid36)
+    if not device:
+        abort(404)
+    parsed_device = parse_device(device.user_agent)
+    return f'<p class="body">{" &middot; ".join(filter(None, [parsed_device.get("device_type", ""), parsed_device.get("device_model", ""), parsed_device.get("device_os", ""), parsed_device.get("browser", "")]))}</p>'
 
 
 @core.route('/system-settings/users')

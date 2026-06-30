@@ -30,6 +30,7 @@ class UserManager:
         user.set_setting('security.password_breach_check', True)
         user.set_setting('notifications.security_alerts_email', True)
         user.set_setting('notifications.security_alerts_text', False)
+        user.set_setting('preferences.theme', 'light')
         # Default permissions
         for perm in pm.all():
             user.set_permission(perm.permission, perm.default)

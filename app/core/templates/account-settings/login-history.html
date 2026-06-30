@@ -1,0 +1,24 @@
+{% extends 'account-settings/base.html' %}
+{% block settings_content %}
+
+    <ul class="list">
+    {% for record in records %}
+        <li class="list-row">
+            <div>
+                <div>{{ record.occurred_at }}</div>
+                <div class="form-help">via {{ record.login_token.auth_source }} - IP: {{ record.ip_address }}</div>
+            </div>
+            <div></div>
+            <div class="tooltip" hx-get="{{ url_for('core.device_information', uuid36=record.user_device.uuid36) }}" hx-trigger="mouseenter once" hx-target="#device-{{ record.uuid36 }}" hx-swap="innerHTML">
+                <div id="device-{{ record.uuid36 }}" class="tooltip-content">Loading device information...</div>
+                {% if record.user_device.device_trusted %}
+                    <span class="badge badge-success">Trusted Device</span>
+                {% else %}
+                    <span class="badge badge-warning">Untrusted Device</span>
+                {% endif %}
+            </div>
+        </li>
+    {% endfor %}
+    </ul>
+
+{% endblock %}

@@ -20,6 +20,53 @@ COUNTRY_CODE_CHOICES = [
     ("BR", "BR +55"),
 ]
 
+THEME_CHOICES = {
+    "Core Themes": [
+        ("light", "Light"),
+        ("dark", "Dark"),
+    ],
+    "Other Themes": [
+        ("cupcake", "Cupcake"),
+        ("bumblebee", "Bumblebee"),
+        ("emerald", "Emerald"),
+        ("corporate", "Corporate"),
+        ("synthwave", "Synthwave"),
+        ("retro", "Retro"),
+        ("cyberpunk", "Cyberpunk"),
+        ("valentine", "Valentine"),
+        ("halloween", "Halloween"),
+        ("garden", "Garden"),
+        ("forest", "Forest"),
+        ("aqua", "Aqua"),
+        ("lofi", "Lofi"),
+        ("pastel", "Pastel"),
+        ("fantasy", "Fantasy"),
+        ("wireframe", "Wireframe"),
+        ("black", "Black"),
+        ("luxury", "Luxury"),
+        ("dracula", "Dracula"),
+        ("cmyk", "Cmyk"),
+        ("autumn", "Autumn"),
+        ("business", "Business"),
+        ("acid", "Acid"),
+        ("lemonade", "Lemonade"),
+        ("night", "Night"),
+        ("coffee", "Coffee"),
+        ("winter", "Winter"),
+        ("dim", "Dim"),
+        ("nord", "Nord"),
+        ("sunset", "Sunset"),
+        ("caramellatte", "Caramellatte"),
+        ("abyss", "Abyss"),
+        ("silk", "Silk"),
+    ],
+    "Custom Themes": [
+        ("compactlight", "Compact Light"),
+        ("compactdark", "Compact Dark"),
+        ("bluepastel", "Blue Pastel"),
+    ]
+}
+
 
 class SetupAccountForm(FlaskForm):
     name = StringField('Name', validators=[DataRequired()])
@@ -52,6 +99,11 @@ class ProfileSettingsForm(FlaskForm):
     profile_picture_url = StringField('Profile Picture URL')
     country_code = SelectField("Country Code", choices=COUNTRY_CODE_CHOICES, default="US", validators=[DataRequired()])
     phone_number = TelField('Phone Number')
+    submit = SubmitField('Save')
+
+
+class ApplicationSettingsForm(FlaskForm):
+    theme = SelectField("Visual Theme", choices=THEME_CHOICES, default="light", validators=[DataRequired()])
     submit = SubmitField('Save')
 
 

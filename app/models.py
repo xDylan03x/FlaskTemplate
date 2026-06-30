@@ -378,6 +378,7 @@ class LoginRecord(db.Model):
     user_id: so.Mapped[int] = so.mapped_column(sa.Integer, sa.ForeignKey('user.id'))
     ip_address: so.Mapped[Optional[str]] = so.mapped_column(sa.String(45))
     login_token_id: so.Mapped[int] = so.mapped_column(sa.Integer, sa.ForeignKey('login_token.id'))
+    login_token: so.Mapped["LoginToken"] = so.relationship("LoginToken")
     user_device_id: so.Mapped[Optional[int]] = so.mapped_column(sa.Integer, sa.ForeignKey('user_device.id'))
 
     def __repr__(self):
@@ -409,13 +410,3 @@ def load_user(uuid36):
         return db.session.scalar(sa.select(User).where(User.uuid36 == uuid36))
     except Exception:
         return None
-
-
-# @identity_loaded.connect
-# def on_identity_loaded(sender, identity):
-#     identity.user = current_user
-#     if current_user.is_authenticated:
-#         identity.provides.add(UserNeed(current_user.id))
-#         for permission in current_user.permissions:
-#             if permission.value:
-#                 identity.provides.add(RoleNeed(permission.key))

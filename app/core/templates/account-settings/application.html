@@ -1,0 +1,16 @@
+{% extends 'account-settings/base.html' %}
+{% block settings_content %}
+
+    <form action="" method="post">
+        {{ form.csrf_token }}
+
+        <div class="mt-4">
+            {{ form.theme.label(class="label") }}
+            {{ form.theme(class="select mt-1 w-full", id="theme") }}
+        </div>
+
+        {{ form.submit(class='btn btn-neutral text-neutral-content mt-8 w-full') }}
+
+    </form>
+
+{% endblock %}

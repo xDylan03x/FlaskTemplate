@@ -35,37 +35,37 @@
 
 
 @plugin "daisyui/theme" {
-    name: "simplecompact";
-    default: true;
+    name: "compactlight";
+    default: false;
     prefersdark: false;
     color-scheme: "light";
-    --color-base-100: oklch(98% 0.001 106.423);
-    --color-base-200: oklch(97% 0.001 106.424);
-    --color-base-300: oklch(92% 0.003 48.717);
-    --color-base-content: oklch(13% 0.028 261.692);
-    --color-primary: oklch(13% 0.028 261.692);
-    --color-primary-content: oklch(98% 0.002 247.839);
-    --color-secondary: oklch(48% 0.243 264.376);
-    --color-secondary-content: oklch(97% 0.014 254.604);
-    --color-accent: oklch(70% 0.213 47.604);
-    --color-accent-content: oklch(98% 0.022 95.277);
-    --color-neutral: #030712;
+    --color-base-100: oklch(97% 0 0);
+    --color-base-200: oklch(92% 0 0);
+    --color-base-300: oklch(87% 0 0);
+    --color-base-content: oklch(14% 0 0);
+    --color-primary: oklch(85% 0.138 181.071);
+    --color-primary-content: oklch(27% 0.046 192.524);
+    --color-secondary: oklch(83% 0.145 321.434);
+    --color-secondary-content: oklch(29% 0.136 325.661);
+    --color-accent: oklch(87% 0.169 91.605);
+    --color-accent-content: oklch(27% 0.077 45.635);
+    --color-neutral: oklch(26% 0 0);
     --color-neutral-content: oklch(98% 0 0);
-    --color-info: oklch(74% 0.16 232.661);
-    --color-info-content: oklch(29% 0.066 243.157);
-    --color-success: oklch(79% 0.209 151.711);
-    --color-success-content: oklch(26% 0.065 152.934);
+    --color-info: oklch(70% 0.165 254.624);
+    --color-info-content: oklch(28% 0.091 267.935);
+    --color-success: oklch(77% 0.152 181.912);
+    --color-success-content: oklch(27% 0.046 192.524);
     --color-warning: oklch(82% 0.189 84.429);
     --color-warning-content: oklch(27% 0.077 45.635);
     --color-error: oklch(71% 0.194 13.428);
     --color-error-content: oklch(27% 0.105 12.094);
-    --radius-selector: 0.25rem;
-    --radius-field: 0.25rem;
+    --radius-selector: 0rem;
+    --radius-field: 0rem;
     --radius-box: 0.25rem;
     --size-selector: 0.21875rem;
-    --size-field: 0.21875rem;
-    --border: 0.5px;
-    --depth: 1;
+    --size-field: 0.25rem;
+    --border: 1px;
+    --depth: 0;
     --noise: 0;
 }
 

@@ -8,7 +8,14 @@
                 <p class="support text-base-content/80 text-center">Please either verify this device or take action to secure your account.</p>
 
                 <h5 class="h5 text-base-content mt-4">Device Information</h5>
-                <p class="body text-base-content">{{ parsed_device.get('device_os', '') }} {{ parsed_device.get('device_model', '') }} {% if parsed_device.get('device_os') %}running {{ parsed_device.get('device_os') }}{% endif %} ({{ parsed_device.get('device_type') }})</p>
+                {% set device_parts = [parsed_device.get('device_type', ''), parsed_device.get('device_model', ''), parsed_device.get('device_os', ''), parsed_device.get('browser', '')] %}
+                <p class="body text-base-content">
+                    {% for part in device_parts if part %}
+                        {{ part }}{% if not loop.last %} &middot; {% endif %}
+                    {% else %}
+                        Unknown device
+                    {% endfor %}
+                </p>
 
                 <h5 class="h5 text-base-content mt-4">Device Logins</h5>
                 <p class="support text-base-content">Your IP: {{ user_ip }}</p>
