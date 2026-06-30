@@ -5,7 +5,7 @@ from flask import current_app, url_for
 from flask_sqlalchemy.pagination import Pagination
 from app.core.helper import send_email, send_sms
 from app.models import User, LoginToken, LoginRecord, UserNotification, NotificationCategory, UserDevice
-from app import db, pm
+from app import db, pm, sm
 from datetime import datetime, timedelta, timezone
 
 
@@ -28,11 +28,8 @@ class UserManager:
         db.session.add(user)
         db.session.commit()
         # Default settings
-        user.set_setting('security.two_factor_auth', False)
-        user.set_setting('security.password_breach_check', True)
-        user.set_setting('notifications.security_alerts_email', True)
-        user.set_setting('notifications.security_alerts_text', False)
-        user.set_setting('preferences.theme', 'light')
+        for setting in sm.all():
+            user.set_setting(setting.setting, setting.default)
         # Default permissions
         for perm in pm.all():
             user.set_permission(perm.permission, perm.default)

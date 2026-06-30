@@ -7,7 +7,7 @@ import sqlalchemy.orm as so
 from datetime import datetime, timezone, timedelta
 import uuid
 from werkzeug.security import generate_password_hash, check_password_hash
-from app import login, db, pm
+from app import login, db, pm, sm
 import secrets
 
 
@@ -99,10 +99,12 @@ class User(db.Model, UserMixin):
             else:
                 return setting_record.value
 
-    def set_setting(self, key: str, value: str | bool) -> None:
-        setting_record = self.settings.filter_by(key=key).first()
+    def set_setting(self, setting: str, value: str | bool) -> None:
+        setting_record = self.settings.filter_by(key=setting).first()
         if setting_record is None:
-            setting_record = UserSetting(key=key, value=str(value), user_id=self.id)
+            if setting not in [setting_spec.setting for setting_spec in sm.all()]:
+                raise ValueError(f"Invalid permission: {setting}")
+            setting_record = UserSetting(key=setting, value=str(value), user_id=self.id)
             db.session.add(setting_record)
         else:
             setting_record.value = str(value)

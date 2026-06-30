@@ -4,12 +4,13 @@ from flask import abort, current_app
 from flask_login import current_user
 
 
-@dataclass(frozen=True)
+@dataclass
 class PermissionSpec:
     action: str  # The Create, Read, Update, or Delete action (or others) to be performed
     group: str  # The group the action belongs to
     description: str = ""  # A description of the action/permission
     default: bool = False  # The default permission value for new users
+    order: int = -1  # The order in which the permission should be displayed in the UI
     # When printed out, the permission will be shown as Action Group (i.e. Create Users)
 
     @property
@@ -49,7 +50,13 @@ class PermissionManager:
         for permission in permissions:
             if permission.permission in self._registry:
                 raise ValueError(f"Permission already registered: {permission.permission}")
-
+            # If the permission has an order of -1, assign the order as the next available in the group
+            if permission.order < 0:
+                permission.order = self._group_next_order(permission.group)
+            else:
+                # If the order is available, allow the permission to keep it, otherwise, assign the next available order in the group
+                if permission.order in [p.order for p in self.grouped().get(permission.group, [])]:
+                    permission.order = self._group_next_order(permission.group)
             self._registry[permission.permission] = permission
 
     def register_many(self, permissions: list[PermissionSpec]):
@@ -69,6 +76,8 @@ class PermissionManager:
 
         for permission in self.all():
             groups.setdefault(permission.group, []).append(permission)
+        for group in groups:
+            groups[group] = sorted(groups[group], key=lambda p: p.order)
 
         return groups
 
@@ -77,6 +86,12 @@ class PermissionManager:
             return False
 
         return current_user.can(permission)
+
+    def _group_next_order(self, group: str) -> int:
+        groups = self.grouped()
+        if group not in groups:
+            return 0
+        return max(p.order for p in groups[group]) + 1
 
 
 def require_permission(permission: str):

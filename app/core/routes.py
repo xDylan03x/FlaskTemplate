@@ -176,13 +176,13 @@ def notification_settings():
     form = NotificationSettingsForm()
     if form.validate_on_submit():
         with audit.track(current_user, actor=current_user, message="User updating notification settings"):
-            current_user.set_setting('notifications.security_alerts_email', form.security_alerts_email.data)
-            current_user.set_setting('notifications.security_alerts_text', form.security_alerts_text.data)
+            current_user.set_setting('notifications.security_alerts_via_email', form.security_alerts_email.data)
+            current_user.set_setting('notifications.security_alerts_via_text', form.security_alerts_text.data)
         db.session.commit()
         flash('Your notification settings have been updated.', 'success')
         return redirect(url_for('core.notification_settings'))
-    form.security_alerts_email.data = current_user.get_setting('notifications.security_alerts_email')
-    form.security_alerts_text.data = current_user.get_setting('notifications.security_alerts_text')
+    form.security_alerts_email.data = current_user.get_setting('notifications.security_alerts_via_email')
+    form.security_alerts_text.data = current_user.get_setting('notifications.security_alerts_via_text')
     return render_template('account-settings/notifications.html', title="Notification Settings", tab='notifications', form=form)
 
 
