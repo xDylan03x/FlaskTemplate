@@ -1,7 +1,7 @@
 from flask import render_template, request, flash, redirect, url_for, current_app, abort, session
 from flask_login import login_required, current_user, login_user
 from app.core import core
-from app import db, twilio_client, audit
+from app import db, twilio_client, audit, sm
 from .forms import ChangePasswordForm, ProfileSettingsForm, NotificationSettingsForm, SecuritySettingsForm, \
     SetupAccountForm, NewUserForm, TOTPVerifyForm, CreateAccountForm, DeviceManagerForm, \
     build_edit_user_form, ApplicationSettingsForm
@@ -366,20 +366,3 @@ def delete_user(uuid36):
 def external_redirect():
     next_url = request.args.get("next", None)
     return render_template("external-redirect.html", url=next_url)
-
-
-@core.route('/test')
-@require_permission('users')
-def test():
-    audit.log("Performed some action on the backend")
-    with audit.track(current_user):
-        current_user.name = "BoB mArLeY!"
-    return_str = ""
-    x = [perm_spec.permission for perm_spec in pm.all()]
-    return_str += f"All Permissions ({len(x)}):<br>{x}<br><br>Detail View:<br>"
-    for perm in pm.all():
-        return_str += f"{perm.label} - {perm.description}<br>"
-    return_str += "<br>Your Permissions:<br>"
-    for perm in current_user.permissions:
-        return_str += f"{perm.key} - {perm.value}<br>"
-    return return_str

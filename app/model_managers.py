@@ -85,9 +85,9 @@ class UserManager:
                           sender: str = "System") -> list[UserNotification]:
         notifications = []
         channels_to_send = []
-        if user.get_setting(f"{category.value}_email"):
+        if user.get_setting(f"{category.value}_via_email"):
             channels_to_send.append('email')
-        if user.get_setting(f"{category.value}_text"):
+        if user.get_setting(f"{category.value}_via_text"):
             channels_to_send.append('text')
 
         for channel in channels_to_send:
