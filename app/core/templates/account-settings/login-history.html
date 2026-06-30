@@ -2,7 +2,7 @@
 {% block settings_content %}
 
     <ul class="list">
-    {% for record in records %}
+    {% for record in records.items %}
         <li class="list-row">
             <div>
                 <div>{{ record.occurred_at }}</div>
@@ -20,5 +20,10 @@
         </li>
     {% endfor %}
     </ul>
+
+    <div class="join mt-8">
+        <a class="join-item btn btn-sm btn-neutral btn-outline" href="{{ url_for('core.login_history', page=records.prev_num) }}" {% if not records.has_prev %}disabled{% endif %}>Previous</a>
+        <a class="join-item btn btn-sm btn-neutral btn-outline" href="{{ url_for('core.login_history', page=records.next_num) }}" {% if not records.has_next %}disabled{% endif %}>Next</a>
+    </div>
 
 {% endblock %}

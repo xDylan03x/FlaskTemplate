@@ -1,6 +1,8 @@
 import hashlib
 import sqlalchemy as sa
+from sqlalchemy import orm as so
 from flask import current_app, url_for
+from flask_sqlalchemy.pagination import Pagination
 from app.core.helper import send_email, send_sms
 from app.models import User, LoginToken, LoginRecord, UserNotification, NotificationCategory, UserDevice
 from app import db, pm
@@ -62,11 +64,11 @@ class UserManager:
         return user
 
     @staticmethod
-    def get_all_users(include_deleted: bool = False) -> list[User]:
-        if include_deleted:
-            users = db.session.scalars(sa.select(User)).all()
-        else:
-            users = db.session.scalars(sa.select(User).where(User.deleted == False)).all()
+    def get_all_users(include_deleted: bool = False, page: int = 1) -> Pagination:
+        base_statement = sa.select(User)
+        if not include_deleted:
+            base_statement = base_statement.where(User.deleted == False)
+        users = db.paginate(base_statement, page=page, per_page=10, error_out=False)
         return users
 
     @staticmethod
@@ -120,6 +122,12 @@ class UserManager:
             notifications.append(notification)
 
         return notifications
+
+    @staticmethod
+    def get_logins(user_id: int, page: int = 1) -> Pagination:
+        base_statement = sa.select(LoginRecord).where(LoginRecord.user_id == user_id).options(so.selectinload(LoginRecord.user_device), so.selectinload(LoginRecord.login_token)).order_by(LoginRecord.occurred_at.desc())
+        logins = db.paginate(base_statement, page=page, per_page=15, error_out=False)
+        return logins
 
 
 class LoginTokenManager:

@@ -20,7 +20,7 @@
             </tr>
             </thead>
             <tbody>
-            {% for user in users %}
+            {% for user in users.items %}
             <tr class="hover:bg-base-300">
                 <td class="max-w-96 flex gap-4 items-center">
                     <div class="avatar">
@@ -49,6 +49,11 @@
             {% endfor %}
             </tbody>
         </table>
+    </div>
+
+    <div class="join mt-8">
+        <a class="join-item btn btn-sm btn-neutral btn-outline" href="{{ url_for('core.user_settings', page=users.prev_num) }}" {% if not users.has_prev %}disabled{% endif %}>Previous</a>
+        <a class="join-item btn btn-sm btn-neutral btn-outline" href="{{ url_for('core.user_settings', page=users.next_num) }}" {% if not users.has_next %}disabled{% endif %}>Next</a>
     </div>
 
 

@@ -11,9 +11,6 @@ from .helper import send_sms, parse_device
 from ..model_managers import LoginTokenManager
 from ..extensions.flask_permissions import require_permission
 from app import pm
-import sqlalchemy as sa
-import sqlalchemy.orm as so
-from ..models import LoginRecord
 
 
 @core.route('/')
@@ -140,7 +137,7 @@ def profile_settings():
         form.country_code.data = "US"
         form.phone_number.data = ""
 
-    return render_template('account-settings/profile.html', title="Profile Settings", page='profile', form=form)
+    return render_template('account-settings/profile.html', title="Profile Settings", tab='profile', form=form)
 
 
 @core.route('/account-settings/application', methods=['GET', 'POST'])
@@ -155,7 +152,7 @@ def application_settings():
         flash('Your notification settings have been updated.', 'success')
         return redirect(url_for('core.application_settings'))
     form.theme.data = current_user.get_setting('preferences.theme')
-    return render_template('account-settings/application.html', title="Application Settings", page='application', form=form)
+    return render_template('account-settings/application.html', title="Application Settings", tab='application', form=form)
 
 
 @core.route('/account-settings/profile/verify-phone-number', methods=['POST'])
@@ -186,7 +183,7 @@ def notification_settings():
         return redirect(url_for('core.notification_settings'))
     form.security_alerts_email.data = current_user.get_setting('notifications.security_alerts_email')
     form.security_alerts_text.data = current_user.get_setting('notifications.security_alerts_text')
-    return render_template('account-settings/notifications.html', title="Notification Settings", page='notifications', form=form)
+    return render_template('account-settings/notifications.html', title="Notification Settings", tab='notifications', form=form)
 
 
 @core.route('/account-settings/security', methods=['GET', 'POST'])
@@ -202,7 +199,7 @@ def security_settings():
         return redirect(url_for('core.security_settings'))
     form.two_factor_auth.data = current_user.get_setting('security.two_factor_auth')
     form.password_breach_check.data = current_user.get_setting('security.password_breach_check')
-    return render_template('account-settings/security.html', title="Security Settings", page='security', form=form)
+    return render_template('account-settings/security.html', title="Security Settings", tab='security', form=form)
 
 
 @core.route('/account-settings/security/change-password', methods=['GET', 'POST'])
@@ -220,7 +217,7 @@ def change_password():
         login_user(current_user)
         flash('Your password has been updated.', 'success')
         return redirect(url_for('core.security_settings'))
-    return render_template('account-settings/change-password.html', title="Change Password", page="security", form=form)
+    return render_template('account-settings/change-password.html', title="Change Password", tab="security", form=form)
 
 
 @core.route('/account-settings/security/enable-totp', methods=['GET', 'POST'])
@@ -274,16 +271,9 @@ def disable_totp():
 @core.route('/account-settings/security/login-history')
 @login_required
 def login_history():
-    records = db.session.scalars(
-        sa.select(LoginRecord)
-        .where(LoginRecord.user_id == current_user.id)
-        .options(
-            so.selectinload(LoginRecord.user_device),
-            so.selectinload(LoginRecord.login_token),
-        )
-        .order_by(LoginRecord.occurred_at.desc())
-    ).all()
-    return render_template('account-settings/login-history.html', title="Login History", page="security", records=records)
+    page = request.args.get('page', 1, type=int)
+    records = UserManager.get_logins(current_user.id, page=page)
+    return render_template('account-settings/login-history.html', title="Login History", tab="security", records=records)
 
 
 @core.route('/account-settings/security/device-information/<string:uuid36>')
@@ -300,8 +290,9 @@ def device_information(uuid36):
 @login_required
 @require_permission('users')
 def user_settings():
-    all_users = UserManager.get_all_users()
-    return render_template('system-settings/users.html', title="User Management", page='users', users=all_users)
+    page = request.args.get('page', 1, type=int)
+    users = UserManager.get_all_users(page=page)
+    return render_template('system-settings/users.html', title="User Management", tab='users', users=users)
 
 
 @core.route('/system-settings/users/new', methods=['GET', 'POST'])
@@ -316,7 +307,7 @@ def new_user():
         UserManager.create_user(form.name.data.strip(), form.email.data.strip(), send_welcome_email=True, status='pending')
         flash('New user has been created and a welcome email has been sent.', 'success')
         return redirect(url_for('core.user_settings'))
-    return render_template('system-settings/new-user.html', title="New User", form=form)
+    return render_template('system-settings/new-user.html', title="New User", tab='users', form=form)
 
 
 @core.route('/system-settings/users/<string:uuid36>', methods=['GET', 'POST'])
@@ -356,7 +347,7 @@ def edit_user(uuid36):
         field = getattr(form, field_name)
         field.data = user.can(permission_key)
 
-    return render_template('system-settings/edit-user.html', title="Edit User", form=form, user=user, permission_groups=pm.grouped())
+    return render_template('system-settings/edit-user.html', title="Edit User", tab="users", form=form, user=user, permission_groups=pm.grouped())
 
 
 @core.route('/system-settings/users/delete/<string:uuid36>')
