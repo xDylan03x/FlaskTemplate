@@ -5,8 +5,8 @@
     {% for record in records.items %}
         <li class="list-row">
             <div>
-                <div>{{ record.occurred_at }}</div>
-                <div class="form-help">via {{ record.login_token.auth_source }} - IP: {{ record.ip_address }}</div>
+                <time x-data="{date: new Date($el.innerText)}" x-text="date.toLocaleString()">{{ record.occurred_at }}</time>
+                <div class="form-help">via {{ record.login_token.auth_source }} from {{ record.ip_address }}</div>
             </div>
             <div></div>
             <div class="tooltip" hx-get="{{ url_for('core.device_information', uuid36=record.user_device.uuid36) }}" hx-trigger="mouseenter once" hx-target="#device-{{ record.uuid36 }}" hx-swap="innerHTML">

@@ -16,13 +16,13 @@
             <p class="form-help">When logging in, check to determine if your password has been found in a data breach.</p>
         </div>
 
-        <div class="join join-vertical lg:join-horizontal mt-4">
+        <div class="join mt-4">
             <a class="btn btn-sm btn-secondary join-item" href="{{ url_for('core.change_password') }}">Change Password</a>
-            <a class="btn btn-sm btn-neutral join-item" href="{{ url_for('core.login_history') }}">Login History</a>
+            <a class="btn btn-sm btn-outline btn-neutral join-item" href="{{ url_for('core.login_history') }}">Login History</a>
             {% if current_user.totp_verified %}
-                <button type="button" class="btn btn-sm btn-error join-item" onclick="totp_modal.showModal()">Disable TOTP</button>
+                <button type="button" class="btn btn-sm btn-outline btn-error join-item" onclick="totp_modal.showModal()">Disable TOTP</button>
             {% else %}
-                <a class="btn btn-sm btn-neutral join-item" href="{{ url_for('core.enable_totp') }}">Enable TOTP</a>
+                <a class="btn btn-sm btn-outline btn-neutral join-item" href="{{ url_for('core.enable_totp') }}">Enable TOTP</a>
             {% endif %}
         </div>
 

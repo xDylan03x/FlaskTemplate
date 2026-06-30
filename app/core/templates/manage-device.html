@@ -19,9 +19,9 @@
 
                 <h5 class="h5 text-base-content mt-4">Device Logins</h5>
                 <p class="support text-base-content">Your IP: {{ user_ip }}</p>
-                <ul class="body text-base-content list-disc">
+                <ul class="body text-base-content list-disc list-inside">
                     {% for login in device.logins %}
-                        <li>{{ login.ip_address }}</li>
+                        <li><time x-data="{date: new Date($el.innerText)}" x-text="date.toLocaleString()">{{ login.occurred_at }}</time> from {{ login.ip_address }}</li>
                     {% endfor %}
                 </ul>
 
