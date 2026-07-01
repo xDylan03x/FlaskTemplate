@@ -51,9 +51,24 @@
         </table>
     </div>
 
-    <div class="join mt-8">
-        <a class="join-item btn btn-sm btn-neutral btn-outline" href="{{ url_for('core.user_settings', page=users.prev_num) }}" {% if not users.has_prev %}disabled{% endif %}>Previous</a>
-        <a class="join-item btn btn-sm btn-neutral btn-outline" href="{{ url_for('core.user_settings', page=users.next_num) }}" {% if not users.has_next %}disabled{% endif %}>Next</a>
+    <div class="flex items-center justify-between gap-4 mt-8">
+        <div class="text-sm text-base-content/50">
+            Page {{ users.page }} of {{ users.pages }}
+        </div>
+
+        <div class="join">
+            {% if users.has_prev %}
+                <a class="join-item btn btn-sm btn-neutral btn-outline" href="{{ url_for('core.all_users', page=users.prev_num) }}">Previous</a>
+            {% else %}
+                <button class="join-item btn btn-sm btn-neutral btn-outline" disabled>Previous</button>
+            {% endif %}
+
+            {% if users.has_next %}
+                <a class="join-item btn btn-sm btn-neutral btn-outline" href="{{ url_for('core.all_users', page=users.next_num) }}">Next</a>
+            {% else %}
+                <button class="join-item btn btn-sm btn-neutral btn-outline" disabled>Next</button>
+            {% endif %}
+        </div>
     </div>
 
 

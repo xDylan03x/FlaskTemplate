@@ -29,14 +29,13 @@
                 </div>
             </div>
 
-            <div class="mt-4">
+            <div class="mt-4 px-4 pb-3 pt-2 bg-base-200 rounded">
                 {{ form.profile_picture_url.label(class="label") }}
                 {{ form.profile_picture_url(**{'x-model': 'profile_picture_url'}) }}
 
                 <div class="flex flex-col sm:flex-row items-center gap-4 mt-2 w-full">
-
                     <div class="avatar shrink-0">
-                        <div class="w-20 h-20 rounded-full ring ring-base-300 ring-offset-base-100 ring-offset-2 overflow-hidden">
+                        <div class="w-18 h-18 rounded-full ring ring-base-300 ring-offset-base-100 ring-offset-2 overflow-hidden">
                             <template x-if="profile_picture_url">
                                 <img alt="profile picture" :src="profile_picture_url" class="object-cover w-full h-full" />
                             </template>

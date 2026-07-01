@@ -5,6 +5,7 @@ from ..core.helper import get_s3_client
 from app import db
 from app.api import apiv1
 from app.models import File
+from ..model_managers import NotificationManager
 
 
 @apiv1.route('/uploads/presign', methods=['POST'])
@@ -63,3 +64,44 @@ def presign_upload():
         "expires_in": 300,
     })
 
+
+@apiv1.route('/notifications', methods=['GET'])
+@apiv1.route('/notifications/<string:uuid36>', methods=['PATCH'])
+@login_required
+def notifications(uuid36: str = None):
+    if request.method == 'GET':
+        include_read_str = request.args.get("include_read", default="false", type=str)
+        include_read = include_read_str.lower() in ['true', '1', 't', 'y', 'yes']
+        recent_only_str = request.args.get("recent_only", default="true", type=str)
+        recent_only = recent_only_str.lower() in ['true', '1', 't', 'y', 'yes']
+        page = request.args.get('page', 1, type=int)
+
+        # Fetch from manager
+        notification_page = NotificationManager.get_web_notifications(
+            current_user,
+            page=page,
+            recent_only=recent_only,
+            include_read=include_read
+        )
+
+        # Serialize the notification objects into a list of dictionaries
+        notifications_data = []
+        for n in notification_page.items:
+            notifications_data.append({
+                "id": n.uuid36,
+                "title": n.title,
+                "body": n.body,
+                "sender": n.sender,
+                "link": n.link,
+                "timestamp": n.created_at
+            })
+
+        return jsonify(notifications_data), 200
+
+    elif request.method == 'PATCH':
+        if not uuid36:
+            return jsonify({"error": "Notification ID is required"}), 400
+        NotificationManager.mark_notification_as_read(uuid36)
+        return jsonify({"status": "success", "message": "Notification marked as read"}), 200
+
+    return jsonify({"error": "Method not allowed"}), 405

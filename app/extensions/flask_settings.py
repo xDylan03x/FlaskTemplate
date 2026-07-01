@@ -7,7 +7,7 @@ class SettingSpec:
     key: str  # The individual setting key
     group: str  # The group the action belongs to
     description: str = ""  # A description of the setting
-    default: str|bool = ""  # The default setting value for new users
+    default: str | bool = ""  # The default setting value for new users
     order: int = -1
     # When printed out, the setting will be shown as Key (Group) (i.e. Theme (Preferences))
 

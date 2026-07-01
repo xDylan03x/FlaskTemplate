@@ -3,7 +3,8 @@ import requests
 from app.auth.helper import get_ip_from_request, twilio_verify_send, twilio_verify_check, hibp_password_check, \
     is_internal_url
 from app.models import NotificationCategory, RiskAction
-from app.model_managers import UserManager, LoginTokenManager, LoginRecordManager, UserDeviceManager
+from app.model_managers import UserManager, LoginTokenManager, LoginRecordManager, UserDeviceManager, \
+    NotificationManager
 from flask_login import login_user, logout_user
 from flask import flash, request, redirect, render_template, url_for, current_app, session
 from app.auth import auth
@@ -112,6 +113,8 @@ def forgot_password(raw_token: str = None):
 
     form = ResetPasswordForm()
     if form.validate_on_submit():
+        message = 'You password has been reset. If you did not make this change, please take action to secure your account'
+        NotificationManager.send_notification(user, 'Password Reset', message, NotificationCategory.PASSWORD_RESET)
         LoginTokenManager.invalidate_login_token(login_token)
         user.refresh_uuid36()
         db.session.commit()
@@ -472,7 +475,7 @@ def login_with_token(raw_token: str):
         user_device = UserDeviceManager.create_user_device(user_id=user.id, user_agent=user_agent)
         login_token.update_risk_score(RiskAction.NEW_DEVICE)
         manage_url = url_for('core.manage_device', uuid36=user_device.uuid36, _external=True)
-        UserManager.send_notification("New Device Login", "A new device has logged in to your account. Please use the link below to manage it.", user=user, category=NotificationCategory.NEW_DEVICE_LOGIN, link=manage_url)
+        NotificationManager.send_notification(user, "New Device Login", "A new device has logged in to your account. Please use the link below to manage it.", NotificationCategory.NEW_DEVICE_LOGIN, link=manage_url)
     db.session.commit()
 
     # If the token was found and valid
@@ -488,7 +491,7 @@ def login_with_token(raw_token: str):
         db.session.commit()
         flash('Your phone number has been successfully verified.', 'success')
         body = f'The phone number ({user.phone_number}) associated with your {current_app.config["APP_NAME"]} account has just been verified.\n\nIf you did not perform this action, please secure your account immediately.'
-        UserManager.send_notification('Phone Number Verified', body, user, NotificationCategory.PHONE_NUMBER_CHANGE)
+        NotificationManager.send_notification(user, 'Phone Number Verified', body, NotificationCategory.PHONE_NUMBER_CHANGE)
     # Otherwise, log the user in
     else:
         LoginRecordManager.create_login_record(user.id, get_ip_from_request(request), user_agent, login_token)

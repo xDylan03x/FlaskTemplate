@@ -339,6 +339,7 @@ class UserNotification(db.Model):
         read: Whether the notification has been read
         channel: Channel through which the notification was intended (email, text, etc.)
         external_id: Identifier used to track the notification (like Twilio SIDs)
+        status: For tracking the status of the notification (sent, failed, etc.)
         sent_timestamp: Timestamp of the notification
 
         user_id: Foreign key to the User model
@@ -356,6 +357,7 @@ class UserNotification(db.Model):
     read: so.Mapped[bool] = so.mapped_column(sa.Boolean, default=False, nullable=False)
     channel: so.Mapped[str] = so.mapped_column(sa.String(32), nullable=False)
     external_id: so.Mapped[Optional[str]] = so.mapped_column(sa.String(512))
+    status: so.Mapped[Optional[str]] = so.mapped_column(sa.String(32))
     sent_timestamp: so.Mapped[Optional[datetime]] = so.mapped_column(sa.DateTime(timezone=True))
 
     user_id: so.Mapped[int] = so.mapped_column(sa.Integer, sa.ForeignKey('user.id'))

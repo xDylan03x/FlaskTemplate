@@ -77,50 +77,6 @@ class UserManager:
         db.session.commit()
 
     @staticmethod
-    def send_notification(title: str,
-                          body: str,
-                          user: User,
-                          category: NotificationCategory,
-                          link: str = None,
-                          sender: str = "System") -> list[UserNotification]:
-        notifications = []
-        channels_to_send = []
-        if user.get_setting(f"{category.value}_via_email"):
-            channels_to_send.append('email')
-        if user.get_setting(f"{category.value}_via_text"):
-            channels_to_send.append('text')
-
-        for channel in channels_to_send:
-            notification = UserNotification(
-                title=title,
-                body=body,
-                channel=channel,
-                link=link,
-                sender=sender,
-                category=category.value if category else None,
-                user_id=user.id
-            )
-            db.session.add(notification)
-            db.session.commit()
-
-            message_body = f'From: {notification.sender}\n\n{notification.title}\n{notification.body}'
-            if link:
-                message_body += f'\n\nView on Website: {link}'
-            if notification.channel == 'email' and user.email:
-                notification.external_id = send_email(notification.title, message_body, user.email)
-            elif notification.channel == 'text' and user.phone_number:
-                notification.external_id = send_sms(message_body, user.phone_number)
-
-            if notification.external_id:
-                notification.sent_timestamp = datetime.now(tz=timezone.utc)
-                notification.read = True
-
-            db.session.commit()
-            notifications.append(notification)
-
-        return notifications
-
-    @staticmethod
     def get_logins(user_id: int, page: int = 1) -> Pagination:
         base_statement = sa.select(LoginRecord).where(LoginRecord.user_id == user_id).options(so.selectinload(LoginRecord.user_device), so.selectinload(LoginRecord.login_token)).order_by(LoginRecord.occurred_at.desc())
         logins = db.paginate(base_statement, page=page, per_page=15, error_out=False)
@@ -266,6 +222,66 @@ class UserDeviceManager:
     def get_device_by_uuid36(uuid36: str) -> UserDevice | None:
         device = db.session.scalar(sa.select(UserDevice).where(UserDevice.uuid36 == uuid36))
         return device
+
+
+class NotificationManager:
+    @staticmethod
+    def send_notification(user: User, title: str, body: str, category: NotificationCategory, link: str|None = None, sender: str|User = "System") -> None:
+        # Determine sender information
+        sender_title = sender
+        if isinstance(sender, User):
+            sender_title = sender.email
+        # Determine notification channels from user settings
+        channels_to_send = ['web']
+        if user.get_setting(f"{category.value}_via_email"):
+            channels_to_send.append('email')
+        if user.get_setting(f"{category.value}_via_email"):
+            channels_to_send.append('text')
+        # Add notification records to database
+        notifications_to_send = []
+        for channel in channels_to_send:
+            notification_record = UserNotification(title=title, body=body, link=link, sender=sender_title, category=category.value, channel=channel, status="pending", user_id=user.id)
+            notifications_to_send.append(notification_record)
+            db.session.add(notification_record)
+        db.session.commit()
+        # Send each notification over their channel
+        for notification in notifications_to_send:
+            message_body = f'From: {notification.sender}\n\n{notification.title}\n{notification.body}'
+            if notification.link:
+                message_body += f'\n\nView on Website: {notification.link}'
+            if notification.channel == 'email' and user.email:
+                notification.status = "sending"
+                db.session.commit()
+                notification.external_id = send_email(notification.title, message_body, user.email)
+                if notification.external_id:
+                    notification.sent_timestamp = datetime.now(tz=timezone.utc)
+                    notification.status = "sent"
+            elif notification.channel == 'text' and user.phone_number:
+                notification.status = "sending"
+                db.session.commit()
+                notification.external_id = send_sms(message_body, user.phone_number)
+                if notification.external_id:
+                    notification.sent_timestamp = datetime.now(tz=timezone.utc)
+                    notification.status = "sent"
+            db.session.commit()
+
+    @staticmethod
+    def get_web_notifications(user: User, page: int = 1, limit: int = 15, recent_only: bool = True, include_read: bool = False) -> Pagination:
+        base_statement = sa.select(UserNotification).where(UserNotification.user_id == user.id, UserNotification.channel == "web")
+        if recent_only:
+            base_statement = base_statement.where(UserNotification.created_at > (datetime.now(tz=timezone.utc) - timedelta(days=5)))
+        if not include_read:
+            base_statement = base_statement.where(UserNotification.read != True)
+        base_statement = base_statement.order_by(UserNotification.created_at.desc())
+        notifications = db.paginate(base_statement, page=page, per_page=limit, error_out=False)
+        return notifications
+
+    @staticmethod
+    def mark_notification_as_read(uuid36: str) -> None:
+        notification = db.session.scalar(sa.select(UserNotification).where(UserNotification.uuid36 == uuid36))
+        if notification:
+            notification.read = True
+            db.session.commit()
 
 
 class FileManager:

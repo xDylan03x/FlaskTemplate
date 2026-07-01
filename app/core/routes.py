@@ -6,11 +6,12 @@ from .forms import ChangePasswordForm, ProfileSettingsForm, NotificationSettings
     SetupAccountForm, NewUserForm, TOTPVerifyForm, CreateAccountForm, DeviceManagerForm, \
     build_edit_user_form, ApplicationSettingsForm
 import phonenumbers
-from app.model_managers import UserManager, UserDeviceManager, FileManager
+from app.model_managers import UserManager, UserDeviceManager, FileManager, NotificationManager
 from .helper import send_sms, parse_device
 from ..model_managers import LoginTokenManager
 from ..extensions.flask_permissions import require_permission
 from app import pm
+from ..models import NotificationCategory, UserNotification
 
 
 @core.route('/')
@@ -191,6 +192,14 @@ def notification_settings():
     return render_template('account-settings/notifications.html', title="Notification Settings", tab='notifications', form=form)
 
 
+@core.route('/account-settings/notifications/all')
+@login_required
+def all_notifications():
+    page = request.args.get('page', 1, type=int)
+    np = NotificationManager.get_web_notifications(current_user, page=page, recent_only=False, include_read=True)
+    return render_template('account-settings/all-notifications.html', title="Notifications", tab='notifications', notifications=np)
+
+
 @core.route('/account-settings/security', methods=['GET', 'POST'])
 @login_required
 def security_settings():
@@ -219,6 +228,8 @@ def change_password():
         current_user.set_password(form.new_password.data)
         current_user.refresh_uuid36()
         db.session.commit()
+        message = 'You password has been changed. If you did not make this change, please take action to secure your account'
+        NotificationManager.send_notification(current_user, 'Password Changed', message, NotificationCategory.PASSWORD_CHANGE)
         login_user(current_user)
         flash('Your password has been updated.', 'success')
         return redirect(url_for('core.security_settings'))
@@ -371,3 +382,13 @@ def delete_user(uuid36):
 def external_redirect():
     next_url = request.args.get("next", None)
     return render_template("external-redirect.html", url=next_url)
+
+
+@core.route('/test')
+def test():
+    for x in range(5):
+        body = f"This is a test notification {x}. This content is really long and may even wrap multiple lines. No one may ever know..."
+        n = UserNotification(title=f"Test Notification {x}", body=body, sender="System", category="Test", channel="web", user_id=current_user.id, link='/account-settings/profile')
+        db.session.add(n)
+    db.session.commit()
+    return "ok"
