@@ -6,7 +6,7 @@ from .forms import ChangePasswordForm, ProfileSettingsForm, NotificationSettings
     SetupAccountForm, NewUserForm, TOTPVerifyForm, CreateAccountForm, DeviceManagerForm, \
     build_edit_user_form, ApplicationSettingsForm
 import phonenumbers
-from app.model_managers import UserManager, UserDeviceManager
+from app.model_managers import UserManager, UserDeviceManager, FileManager
 from .helper import send_sms, parse_device
 from ..model_managers import LoginTokenManager
 from ..extensions.flask_permissions import require_permission
@@ -84,7 +84,12 @@ def profile_settings():
         with audit.track(current_user, actor=current_user, message="User updating profile settings"):
             current_user.name = form.name.data.strip()
             if form.profile_picture_url.data:
-                current_user.profile_picture_url = form.profile_picture_url.data.strip()
+                if not form.profile_picture_url.data.startswith('http'):
+                    file = FileManager.get_file_by_uuid36(form.profile_picture_url.data)
+                    if file is not None:
+                        current_user.profile_picture_url = file.url
+                    else:
+                        flash("Error uploading profile picture", "error")
             else:
                 current_user.profile_picture_url = f'https://api.dicebear.com/9.x/initials/svg?seed={current_user.name}&radius=50&backgroundColor=00897b,039be5,3949ab,5e35b1,8e24aa,43a047,d81b60,f4511e,fb8c00,fdd835&backgroundType=gradientLinear&fontFamily=Arial&fontSize=41'
             # Get the user entered phone number and country code

@@ -1,61 +1,113 @@
 {% extends 'account-settings/base.html' %}
 {% block settings_content %}
 
-    <form action="" method="post">
-        {{ form.csrf_token }}
+    <style>
+        dialog.modal:not([open]) * {
+            display: none !important;
+            visibility: hidden !important;
+            opacity: 0 !important;
+            pointer-events: none !important;
+        }
+    </style>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-8">
-            <div>
-                {{ form.name.label(class="label") }}
-                {{ form.name(class="input mt-1 w-full", id="name", type="text") }}
+    <div x-data="{ profile_picture_url: '{{ current_user.profile_picture_url or '' }}' }">
+
+        <form id="profile_form" action="" method="post">
+            {{ form.csrf_token }}
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-8">
+                <div>
+                    {{ form.name.label(class="label") }}
+                    {{ form.name(class="input mt-1 w-full", id="name", type="text") }}
+                    {% for error in form.name.errors %}
+                        <p class="form-error">{{ error }}</p>
+                    {% endfor %}
+                </div>
+                <div>
+                    <label for="email" class="label">Email</label>
+                    <input class="input mt-1 w-full" id="email" type="email" disabled value="{{ current_user.email }}">
+                </div>
+            </div>
+
+            <div class="mt-4">
+                {{ form.profile_picture_url.label(class="label") }}
+                {{ form.profile_picture_url(**{'x-model': 'profile_picture_url'}) }}
+
+                <div class="flex flex-col sm:flex-row items-center gap-4 mt-2 w-full">
+
+                    <div class="avatar shrink-0">
+                        <div class="w-20 h-20 rounded-full ring ring-base-300 ring-offset-base-100 ring-offset-2 overflow-hidden">
+                            <template x-if="profile_picture_url">
+                                <img alt="profile picture" :src="profile_picture_url" class="object-cover w-full h-full" />
+                            </template>
+                            <template x-if="!profile_picture_url">
+                                <div class="skeleton w-full h-full rounded-full"></div>
+                            </template>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-row gap-2 w-full sm:w-auto sm:flex-1">
+                        <button type="button" class="btn btn-outline btn-neutral w-1/2 sm:flex-1" onclick="upload_modal.showModal()">
+                            Upload Image
+                        </button>
+                        <button type="button" class="btn btn-outline btn-error w-1/2 sm:flex-1" @click="profile_picture_url = ''" :disabled="!profile_picture_url">
+                            Remove Image
+                        </button>
+                    </div>
+
+                </div>
+            </div>
+
+            <div class="form-control w-full mt-4">
+                {{ form.phone_number.label(class="label") }}
+                {% if current_user.phone_number_verified %}
+                    <div class="badge badge-sm badge-success">Verified</div>
+                {% else %}
+                    <div class="badge badge-sm badge-warning">Not Verified</div>
+                {% endif %}
+
+                <div class="join w-full mt-1">
+                    {{ form.country_code(class="select select-bordered join-item w-24", id="country_code") }}
+                    {{ form.phone_number(class="input input-bordered join-item flex-1", id="phone_number", type="tel") }}
+                    <button type="button" class="btn btn-neutral join-item"
+                            x-data="{ sending: false }"
+                            @click="sending = true"
+                            :disabled="sending || {{ 'true' if current_user.phone_number_verified or not current_user.phone_number else 'false' }}"
+                            hx-post="{{ url_for('core.send_phone_number_verification') }}"
+                            hx-swap="outerHTML">
+                        <span x-show="!sending">Verify</span>
+                        <span x-show="sending">Sending...</span>
+                    </button>
+                </div>
+
                 {% for error in form.name.errors %}
                     <p class="form-error">{{ error }}</p>
                 {% endfor %}
             </div>
-            <div>
-                <label for="email" class="label">Email</label>
-                <input class="input mt-1 w-full" id="email" type="email" disabled value="{{ current_user.email }}">
+
+            <p class="form-help">Changing your phone number will require you to verify it before it can be used for 2FA.</p>
+
+            {{ form.submit(class='btn btn-neutral text-neutral-content mt-8 w-full') }}
+        </form>
+
+    </div>
+
+    <dialog id="upload_modal" class="modal modal-bottom sm:modal-middle">
+        <div class="modal-box">
+            <h3 class="text-lg font-bold mb-8">Upload Image</h3>
+            <div data-uppy-uploader
+                 data-context="profile_picture"
+                 data-input-name="profile_picture_url"
+                 data-multiple="false"
+                 data-max-file-size="26214400"
+                 data-form="profile_form"
+            ></div>
+            <div class="modal-action">
+                <form method="dialog">
+                    <button type="submit" class="btn">Done</button>
+                </form>
             </div>
         </div>
-
-        {{ form.profile_picture_url.label(class="label mt-4") }}
-        {{ form.profile_picture_url(class="input mt-1 w-full", id="profile_picture_url", type="url") }}
-        {% for error in form.profile_picture_url.errors %}
-            <p class="form-error">{{ error }}</p>
-        {% endfor %}
-
-        <div class="form-control w-full mt-4">
-            {{ form.phone_number.label(class="label") }}
-            {% if current_user.phone_number_verified %}
-            <div class="badge badge-sm badge-success">Verified</div>
-            {% else %}
-                <div class="badge badge-sm badge-warning">Not Verified</div>
-            {% endif %}
-
-            <div class="join w-full mt-1">
-                {{ form.country_code(class="select select-bordered join-item w-24", id="country_code") }}
-                {{ form.phone_number(class="input input-bordered join-item flex-1", id="phone_number", type="tel") }}
-                <button type="button" class="btn btn-neutral join-item"
-                        x-data="{ sending: false }"
-                        @click="sending = true"
-                        :disabled="sending || {{ 'true' if current_user.phone_number_verified or not current_user.phone_number else 'false' }}"
-                        hx-post="{{ url_for('core.send_phone_number_verification') }}"
-                        hx-swap="outerHTML">
-                    <span x-show="!sending">Verify</span>
-                    <span x-show="sending">Sending...</span>
-                </button>
-
-            </div>
-
-            {% for error in form.name.errors %}
-                <p class="form-error">{{ error }}</p>
-            {% endfor %}
-        </div>
-        <p class="form-help">Changing your phone number will require you to verify it before it can be used for 2FA.
-            Make sure this number is correct to prevent unauthorized access to your account.</p>
-
-
-        {{ form.submit(class='btn btn-neutral text-neutral-content mt-8 w-full') }}
-    </form>
+    </dialog>
 
 {% endblock %}

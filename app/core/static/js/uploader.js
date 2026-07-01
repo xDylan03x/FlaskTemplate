@@ -1,0 +1,299 @@
+import Uppy from '@uppy/core'
+import Dashboard from '@uppy/dashboard'
+import Webcam from '@uppy/webcam'
+import AwsS3 from '@uppy/aws-s3'
+
+import '@uppy/core/css/style.css'
+import '@uppy/webcam/css/style.css'
+import '@uppy/dashboard/css/style.css'
+
+
+function getCsrfToken() {
+    const el = document.querySelector('meta[name="csrf-token"]')
+    return el ? el.getAttribute('content') : ''
+}
+
+
+function parseBoolean(value, fallback = false) {
+    if (value === undefined || value === null || value === '') {
+        return fallback
+    }
+
+    return value !== 'false'
+}
+
+
+function parseNumber(value, fallback) {
+    const parsed = Number(value)
+    return Number.isFinite(parsed) ? parsed : fallback
+}
+
+
+function getExistingFileIds(input) {
+    if (!input || !input.value) {
+        return []
+    }
+
+    try {
+        const parsed = JSON.parse(input.value)
+
+        if (Array.isArray(parsed)) {
+            return parsed
+        }
+
+        if (typeof parsed === 'string' && parsed.trim() !== '') {
+            return [parsed]
+        }
+
+        return []
+    } catch {
+        return input.value ? [input.value] : []
+    }
+}
+
+
+function getHiddenInput(form, inputName) {
+    const escapedName = CSS.escape(inputName)
+
+    let input = form.querySelector(
+        `input[data-uploaded-file-input="true"][name="${escapedName}"]`
+    )
+
+    if (input) {
+        return input
+    }
+
+    input = form.querySelector(
+        `input[type="hidden"][name="${escapedName}"]`
+    )
+
+    if (input) {
+        input.dataset.uploadedFileInput = 'true'
+        return input
+    }
+
+    return null
+}
+
+
+function createHiddenInput(form, inputName, initialValue = '') {
+    const input = document.createElement('input')
+
+    input.type = 'hidden'
+    input.name = inputName
+    input.value = initialValue
+    input.dataset.uploadedFileInput = 'true'
+
+    form.appendChild(input)
+
+    return input
+}
+
+
+function setSingleHiddenFileInput(form, fileId, inputName) {
+    let input = getHiddenInput(form, inputName)
+
+    if (!input) {
+        input = createHiddenInput(form, inputName)
+    }
+
+    input.value = fileId
+}
+
+
+function addMultiHiddenFileInput(form, fileId, inputName) {
+    let input = getHiddenInput(form, inputName)
+
+    if (!input) {
+        input = createHiddenInput(form, inputName, '[]')
+    }
+
+    const existingIds = getExistingFileIds(input)
+
+    if (!existingIds.includes(fileId)) {
+        existingIds.push(fileId)
+    }
+
+    input.value = JSON.stringify(existingIds)
+}
+
+
+function addHiddenFileInput(form, fileId, inputName, multiple) {
+    if (multiple) {
+        addMultiHiddenFileInput(form, fileId, inputName)
+        return
+    }
+
+    setSingleHiddenFileInput(form, fileId, inputName)
+}
+
+
+function removeHiddenFileInput(form, fileId, inputName, multiple) {
+    const input = getHiddenInput(form, inputName)
+
+    if (!input) {
+        return
+    }
+
+    if (!multiple) {
+        if (input.value === fileId) {
+            input.remove()
+        }
+
+        return
+    }
+
+    const existingIds = getExistingFileIds(input)
+    const updatedIds = existingIds.filter((id) => id !== fileId)
+
+    if (updatedIds.length === 0) {
+        input.remove()
+        return
+    }
+
+    input.value = JSON.stringify(updatedIds)
+}
+
+
+function getUploaderConfig(element) {
+    return {
+        context: element.dataset.context || 'general',
+        inputName: element.dataset.inputName || 'uploaded_file_ids',
+        multiple: parseBoolean(element.dataset.multiple, true),
+        maxFileSize: parseNumber(element.dataset.maxFileSize, 25 * 1024 * 1024),
+        autoProceed: parseBoolean(element.dataset.autoProceed, false),
+        debug: parseBoolean(element.dataset.debug, true),
+    }
+}
+
+
+function getTargetForm(element) {
+    const formId = element.dataset.form
+
+    if (formId) {
+        const form = document.getElementById(formId)
+
+        if (!form) {
+            console.warn(`Uploader form target not found: #${formId}`)
+            return null
+        }
+
+        return form
+    }
+
+    return element.closest('form')
+}
+
+
+function createUploader(element) {
+    const form = getTargetForm(element)
+
+    if (!form) {
+        console.warn('Uploader must be placed inside a form or provide data-form="form_id".')
+        return null
+    }
+
+    const config = getUploaderConfig(element)
+
+    const uppy = new Uppy({
+        debug: config.debug,
+        autoProceed: config.autoProceed,
+        restrictions: {
+            maxFileSize: config.maxFileSize,
+            maxNumberOfFiles: config.multiple ? null : 1,
+        },
+    })
+
+    uppy.use(Webcam)
+
+    uppy.use(Dashboard, {
+        inline: true,
+        target: element,
+        plugins: ['Webcam'],
+    })
+
+    uppy.use(AwsS3, {
+        shouldUseMultipart: false,
+
+        async getUploadParameters(file) {
+            const response = await fetch('/api/v1/uploads/presign', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCsrfToken(),
+                },
+                body: JSON.stringify({
+                    filename: file.name,
+                    content_type: file.type || 'application/octet-stream',
+                    size_bytes: file.size,
+                    context: config.context,
+                }),
+            })
+
+            if (!response.ok) {
+                const error = await response.json().catch(() => ({}))
+                throw new Error(error.message || error.error || 'Could not prepare upload.')
+            }
+
+            const data = await response.json()
+
+            uppy.setFileMeta(file.id, {
+                uploaded_file_id: data.file_id,
+                object_key: data.object_key,
+            })
+
+            return {
+                method: 'PUT',
+                url: data.upload_url,
+                fields: {},
+                headers: {
+                    'Content-Type': file.type || 'application/octet-stream',
+                },
+            }
+        },
+    })
+
+    uppy.on('upload-success', (file) => {
+        const fileId = file.meta.uploaded_file_id
+
+        if (!fileId) {
+            console.warn('Upload succeeded, but no uploaded_file_id was returned.')
+            return
+        }
+
+        addHiddenFileInput(
+            form,
+            fileId,
+            config.inputName,
+            config.multiple
+        )
+    })
+
+    uppy.on('file-removed', (file) => {
+        const fileId = file.meta.uploaded_file_id
+
+        if (!fileId) {
+            return
+        }
+
+        removeHiddenFileInput(
+            form,
+            fileId,
+            config.inputName,
+            config.multiple
+        )
+    })
+
+    uppy.on('upload-error', (file, error) => {
+        console.error('Upload failed:', file?.name, error)
+    })
+
+    element.uppy = uppy
+
+    return uppy
+}
+
+
+document.querySelectorAll('[data-uppy-uploader]').forEach((element) => {
+    createUploader(element)
+})

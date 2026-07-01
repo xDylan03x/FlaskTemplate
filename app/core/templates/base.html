@@ -10,7 +10,10 @@
     {% endif %}
     <link rel="stylesheet" href="{{ url_for('static', filename='css/output.css') }}">
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.15.2/dist/cdn.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.8/dist/htmx.min.js" integrity="sha384-/TgkGk7p307TH7EXJDuUlgG3Ce1UVolAOFopFekQkkXihi5u/6OCvVKyz1W+idaz" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.8/dist/htmx.min.js" integrity="sha384-/TgkGk7p307TH7EXJDuUlgG3Ce1UVolAOFopFekQkkXihi5u/6OCvVKyz1W+idaz" crossorigin="anonymous"></script>
+    <script defer src="{{ url_for('static', filename='dist/uploader.js') }}" type="module"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='dist/uploader.css') }}">
+    {% block head %}{% endblock %}
 </head>
 
 <body class="min-h-screen flex flex-col">
@@ -47,8 +50,8 @@
                 {% endif %}
 
                 <div class="dropdown dropdown-end">
-                    <div tabindex="0" role="button" class="btn btn-ghost btn-circle avatar">
-                        <img alt="{{ current_user.name }} Icon" src="{{ current_user.profile_picture_url }}" />
+                    <div tabindex="0" role="button" class="btn btn-ghost btn-circle avatar bg-white">
+                        <img alt="{{ current_user.name }} Icon" src="{{ current_user.profile_picture_url }}" class="rounded-full" />
                     </div>
                     <div tabindex="-1" class="card card-sm dropdown-content bg-base-300 text-base-content rounded-box z-1 mt-3 min-w-48 shadow">
                         <div class="card-body bg-base-200 p-4">

@@ -2,6 +2,7 @@ from app import sendgrid_client, twilio_client
 from sendgrid.helpers.mail import Mail, From
 from flask import current_app
 from device_detector import DeviceDetector
+import boto3
 
 
 def send_email(subject: str, body: str, recipient: str, preheader="", sender=None, sender_name=None, template_id=None) -> str:
@@ -58,3 +59,11 @@ def parse_device(user_agent: str):
     device_type = device.device_type().value
     browser = device.client_name()
     return {"user_agent": user_agent, "is_bot": is_bot, "device_os": device_os, "device_brand": device_brand, "device_model": device_model, "device_type": device_type, "browser": browser}
+
+
+def get_s3_client():
+    return boto3.client(
+        service_name="s3",
+        endpoint_url=current_app.config["S3_UPLOAD_ENDPOINT_URL"],
+        region_name="auto",
+    )

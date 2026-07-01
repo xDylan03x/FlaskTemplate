@@ -19,6 +19,21 @@ class Config:
         self.ALLOW_ACCOUNT_CREATION = True  # Allow users to create their own account without an account manager
         self.STRICT_LOGIN = True  # Will not allow suspicious user agent's to log in
 
+        # File uploads
+        self.S3_UPLOAD_ENDPOINT_URL = os.environ.get("S3_UPLOAD_ENDPOINT_URL") or None
+        self.S3_PUBLIC_ENDPOINT_URL = os.environ.get("S3_PUBLIC_ENDPOINT_URL") or None
+        self.S3_BUCKET_NAME = os.environ.get("S3_BUCKET_NAME") or None
+        self.MAX_UPLOAD_SIZE = 25 * 1024 * 1024  # 25 MB
+        self.ALLOWED_CONTENT_TYPES = {
+            "image/jpeg",
+            "image/png",
+            "image/webp",
+            "application/pdf",
+            "text/csv",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        }
+
+
         # Admin credentials
         self.ADMIN_NAME = os.environ.get('ADMIN_NAME', None)
         self.ADMIN_EMAIL = os.environ.get('ADMIN_EMAIL', None)

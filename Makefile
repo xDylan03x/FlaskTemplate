@@ -8,7 +8,7 @@ YELLOW = \033[0;33m
 NC = \033[0m
 
 default: help
-.PHONY: help tailwind db requirements build setup_project
+.PHONY: help tailwind vite db requirements build setup_project
 
 help: # Show this help message
 	@grep -E '^[a-zA-Z0-9 -]+:.*#'  Makefile | sort | while read -r l; do printf "\033[1;32m$$(echo $$l | cut -f 1 -d':')\033[00m:$$(echo $$l | cut -f 2- -d'#')\n"; done
@@ -26,6 +26,9 @@ setup_project: # Set up the project by installing dependencies and configuring e
 tailwind: # Compile Tailwind CSS for production
 	npx @tailwindcss/cli -i $(CSS_INPUT) -o $(CSS_OUTPUT) --minify
 
+vite: # Build the Vite project
+	npm run build
+
 db: # Create the database status
 	flask db check
 
@@ -34,15 +37,19 @@ requirements: # Update the requirements.txt file with the current environment's 
 
 build: # Build the project for production - combines other individual steps
 	@echo "$(MAGENTA)> Building Project$(NC)"
-	@echo "$(MAGENTA)> [1/3] Running Tailwind CSS Build$(NC)"
+	@echo "$(MAGENTA)> [1/4] Running Tailwind CSS Build$(NC)"
 	@echo ""
 	$(MAKE) tailwind
 	@echo ""
-	@echo "$(MAGENTA)> [2/3] Checking Database Migrations$(NC)"
+	@echo "$(MAGENTA)> [2/4] Running Vite Build$(NC)"
+	@echo ""
+	$(MAKE) vite
+	@echo ""
+	@echo "$(MAGENTA)> [3/4] Checking Database Migrations$(NC)"
 	@echo ""
 	$(MAKE) db
 	@echo ""
-	@echo "$(MAGENTA)> [3/3] Freezing Python Dependencies$(NC)"
+	@echo "$(MAGENTA)> [4/4] Freezing Python Dependencies$(NC)"
 	@echo ""
 	$(MAKE) requirements
 	@echo ""

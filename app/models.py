@@ -1,6 +1,8 @@
 import enum
 import hashlib
 from typing import Optional
+
+from flask import current_app
 from flask_login import UserMixin
 import sqlalchemy as sa
 import sqlalchemy.orm as so
@@ -404,6 +406,44 @@ class AuditEvent(db.Model):
 
     def __repr__(self):
         return '<AuditEvent {}>'.format(self.uuid36)
+
+
+class File(db.Model):
+    """
+    Model representing a file uploaded to the application
+    Attributes:
+        id
+        uuid36
+        created_at
+        updated_at
+
+        original_filename: Original filename of the uploaded file
+        object_key: Unique key for the file in storage (e.g., S3)
+        content_type: MIME type of the file
+        size: Size of the file in bytes
+        context: Use of the file (form attachment, profile picture, etc.)
+
+        uploader_id: Foreign key to the User model
+    """
+    id: so.Mapped[int] = so.mapped_column(primary_key=True)
+    uuid36: so.Mapped[str] = so.mapped_column(sa.String(36), unique=True, index=True, nullable=False, default=lambda: str(uuid.uuid4()))
+    created_at: so.Mapped[datetime] = so.mapped_column(sa.DateTime(timezone=True), nullable=False, default=lambda: datetime.now(tz=timezone.utc))
+    updated_at: so.Mapped[datetime] = so.mapped_column(sa.DateTime(timezone=True), nullable=False, default=lambda: datetime.now(tz=timezone.utc), onupdate=lambda: datetime.now(tz=timezone.utc))
+
+    original_filename: so.Mapped[str] = so.mapped_column(sa.String(512), nullable=False)
+    object_key: so.Mapped[str] = so.mapped_column(sa.String(2048), unique=True, nullable=False)
+    content_type: so.Mapped[str] = so.mapped_column(sa.String(256), nullable=False)
+    size: so.Mapped[int] = so.mapped_column(sa.Integer, nullable=False)
+    context: so.Mapped[str] = so.mapped_column(sa.String(256), nullable=False)
+
+    uploader_id: so.Mapped[int] = so.mapped_column(sa.Integer, sa.ForeignKey('user.id'))
+
+    def __repr__(self):
+        return '<File {}>'.format(self.uuid36)
+
+    @property
+    def url(self) -> str:
+        return f"{current_app.config['S3_PUBLIC_ENDPOINT_URL']}/{self.object_key}"
 
 
 @login.user_loader

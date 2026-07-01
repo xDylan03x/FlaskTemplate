@@ -1,6 +1,6 @@
 from flask_wtf import FlaskForm
 from wtforms import SubmitField, PasswordField, StringField, SelectField, BooleanField, EmailField
-from wtforms.fields.simple import TelField
+from wtforms.fields.simple import TelField, HiddenField
 from wtforms.validators import DataRequired, EqualTo
 
 COUNTRY_CODE_CHOICES = [
@@ -96,7 +96,7 @@ class ChangePasswordForm(FlaskForm):
 
 class ProfileSettingsForm(FlaskForm):
     name = StringField('Name', validators=[DataRequired()])
-    profile_picture_url = StringField('Profile Picture URL')
+    profile_picture_url = HiddenField('Profile Picture')
     country_code = SelectField("Country Code", choices=COUNTRY_CODE_CHOICES, default="US", validators=[DataRequired()])
     phone_number = TelField('Phone Number')
     submit = SubmitField('Save')

@@ -4,7 +4,7 @@ from sqlalchemy import orm as so
 from flask import current_app, url_for
 from flask_sqlalchemy.pagination import Pagination
 from app.core.helper import send_email, send_sms
-from app.models import User, LoginToken, LoginRecord, UserNotification, NotificationCategory, UserDevice
+from app.models import User, LoginToken, LoginRecord, UserNotification, NotificationCategory, UserDevice, File
 from app import db, pm, sm
 from datetime import datetime, timedelta, timezone
 
@@ -266,3 +266,10 @@ class UserDeviceManager:
     def get_device_by_uuid36(uuid36: str) -> UserDevice | None:
         device = db.session.scalar(sa.select(UserDevice).where(UserDevice.uuid36 == uuid36))
         return device
+
+
+class FileManager:
+    @staticmethod
+    def get_file_by_uuid36(uuid36: str) -> File | None:
+        file = db.session.scalar(sa.select(File).where(File.uuid36 == uuid36))
+        return file

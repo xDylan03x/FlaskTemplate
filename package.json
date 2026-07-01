@@ -1,9 +1,19 @@
 {
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite --host 127.0.0.1"
+  },
   "dependencies": {
     "@tailwindcss/cli": "^4.1.18",
+    "@uppy/aws-s3": "^5.1.0",
+    "@uppy/core": "^5.2.0",
+    "@uppy/dashboard": "^5.1.1",
+    "@uppy/webcam": "^5.1.0",
+    "@uppy/xhr-upload": "^5.2.0",
     "tailwindcss": "^4.1.18"
   },
   "devDependencies": {
-    "daisyui": "^5.5.14"
+    "daisyui": "^5.5.14",
+    "vite": "^8.1.2"
   }
 }
