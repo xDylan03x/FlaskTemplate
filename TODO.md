@@ -4,29 +4,19 @@ A list of planned features to be implemented. See more information for each feat
 - [x] Permissions and Authorizations
 - [x] Audit Logging
   - [ ] Need to enhance logging and make sure it works reliably.
-- [ ] File System
+- [x] File System
 - [ ] Notifications
 
 ---
+# Notifications
+Notifications currently are implemented as such:
+1. Program calls the UserManager.send_notification() method with information about the notification.
+2. The program checks the user's setting to determine which method(s) they want to be notified with (email/sms)
+3. The program calls the appropriate helper function to deliver the notification
+The system does not track notification sent to the user at all.
 
-### Permissions and Authorizations
-CRUD operations make up most of the operations in this kind of app. As such, it's important to have an easy way of defining
-and managing permissions for developers and users. Currently, the appliaction supports basic `role.user_manager` style permissions.
-To make the system more modular, this will be replaced to support more granular `users.create` style permissions. 
-This will allow for more flexibility in defining permissions and roles, as well as making it easier to manage permissions for different users and groups.
-On top of this, adding a permission matrix interface will allow users to easily manage permissions for others.
-To make it easier for developers to define permissions, an interface will be created so that for each module in the system,
-developers can define each permission they need and what the default values are for new users.
-
-**Summary Features:**
-- Make it easier to get permissions with more granularity.
-- Add support for jinja `{% if current_user.can(users.create) %}` style syntax.
-- Add support for route permission decorators.
-- Add a developer interface for easily defining permissions.
-
-### Audit Logging
-- Add support for detailed audit logging of user actions and system events.
-- Add support for developer functions to audit events automatically.
-
-### Notifications
-- Add support for sending notifications to users in the app
+To address these issues and make the system more robust, the following changes are planned:
+- Provide functions that take in a single or multiple users through the NotificationManager class.
+- Provide a cleaner way to expose notification categories (similar to the Permission/Settings extensions)
+- Keep up with notifications sent to users, the methods used to send them, and the status of delivery.
+- Provide a real-time notification system through the interface using SSE.
