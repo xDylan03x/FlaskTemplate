@@ -6,7 +6,7 @@ The project assumes the app will be used in a single-tenant environment.
 ## Features
 
 - Authentication handled with Flask-Login and extras (2FA and password-less login) with email/text (with Twilio)
-- User management with and email-based accounts
+- User management with email-based accounts
 - Permission-based access control with easy extendability
 - Support for email, text, and in-app notifications
 - Database integration using SQLAlchemy (PostgreSQL by default)
