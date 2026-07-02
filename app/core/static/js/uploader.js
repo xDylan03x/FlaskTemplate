@@ -2,10 +2,12 @@ import Uppy from '@uppy/core'
 import Dashboard from '@uppy/dashboard'
 import Webcam from '@uppy/webcam'
 import AwsS3 from '@uppy/aws-s3'
+import ImageEditor from '@uppy/image-editor';
 
 import '@uppy/core/css/style.css'
 import '@uppy/webcam/css/style.css'
 import '@uppy/dashboard/css/style.css'
+import '@uppy/image-editor/css/style.min.css';
 
 
 function getCsrfToken() {
@@ -205,6 +207,8 @@ function createUploader(element) {
     })
 
     uppy.use(Webcam)
+
+    uppy.use(ImageEditor)
 
     uppy.use(Dashboard, {
         inline: true,

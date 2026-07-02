@@ -196,8 +196,10 @@ def notification_settings():
 @login_required
 def all_notifications():
     page = request.args.get('page', 1, type=int)
-    np = NotificationManager.get_web_notifications(current_user, page=page, recent_only=False, include_read=True)
-    return render_template('account-settings/all-notifications.html', title="Notifications", tab='notifications', notifications=np)
+    query = request.args.get("query", "").strip()
+    htmx = request.headers.get('HX-Request', False)
+    np = NotificationManager.get_web_notifications(current_user, page=page, recent_only=False, include_read=True, query=query)
+    return render_template('account-settings/all-notifications.html', title="Notifications", tab='notifications', htmx=htmx, notifications=np)
 
 
 @core.route('/account-settings/security', methods=['GET', 'POST'])

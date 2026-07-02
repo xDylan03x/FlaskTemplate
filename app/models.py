@@ -1,13 +1,13 @@
 import enum
 import hashlib
 from typing import Optional
-
 from flask import current_app
 from flask_login import UserMixin
 import sqlalchemy as sa
 import sqlalchemy.orm as so
 from datetime import datetime, timezone, timedelta
 import uuid
+from .extensions.searchable import SearchableMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 from app import login, db, pm, sm
 import secrets
@@ -321,7 +321,7 @@ class NotificationCategory(enum.Enum):
     NEW_DEVICE_LOGIN = "notifications.security_alerts"
 
 
-class UserNotification(db.Model):
+class UserNotification(SearchableMixin, db.Model):
     """
     Model representing a notification sent to the user
     A notification record can only be sent through the channel as specified. To send a notification through
@@ -344,6 +344,12 @@ class UserNotification(db.Model):
 
         user_id: Foreign key to the User model
     """
+    __searchable__ = {
+        "title": "A",
+        "body": "B",
+        "sender": "C",
+    }
+
     id: so.Mapped[int] = so.mapped_column(primary_key=True)
     uuid36: so.Mapped[str] = so.mapped_column(sa.String(36), unique=True, index=True, nullable=False, default=lambda: str(uuid.uuid4()))
     created_at: so.Mapped[datetime] = so.mapped_column(sa.DateTime(timezone=True), nullable=False, default=lambda: datetime.now(tz=timezone.utc))

@@ -33,9 +33,9 @@
                 {{ form.profile_picture_url.label(class="label") }}
                 {{ form.profile_picture_url(**{'x-model': 'profile_picture_url'}) }}
 
-                <div class="flex flex-col sm:flex-row items-center gap-4 mt-1 p-2 w-full bg-base-200 rounded">
+                <div class="flex flex-col sm:flex-row items-center gap-4 mt-1 p-2 bg-base-200 rounded sm:rounded-l-full sm:rounded-r-md">
                     <div class="avatar shrink-0">
-                        <div class="w-18 h-18 rounded-full ring ring-base-300 ring-offset-base-100 ring-offset-2 overflow-hidden">
+                        <div class="w-12 h-12 rounded-full ring ring-base-300 ring-offset-base-100 ring-offset-2 overflow-hidden">
                             <template x-if="profile_picture_url">
                                 <img alt="profile picture" :src="profile_picture_url" class="object-cover w-full h-full" />
                             </template>
@@ -45,7 +45,7 @@
                         </div>
                     </div>
 
-                    <div class="flex flex-row gap-2 w-full sm:w-auto sm:flex-1">
+                    <div class="flex flex-row gap-2 sm:flex-1">
                         <button type="button" class="btn btn-outline btn-neutral w-1/2 sm:flex-1" onclick="upload_modal.showModal()">
                             Upload Image
                         </button>

@@ -266,14 +266,23 @@ class NotificationManager:
             db.session.commit()
 
     @staticmethod
-    def get_web_notifications(user: User, page: int = 1, limit: int = 15, recent_only: bool = True, include_read: bool = False) -> Pagination:
+    def get_web_notifications(user: User, page: int = 1, limit: int = 15, recent_only: bool = True, include_read: bool = False, query=None) -> Pagination:
         base_statement = sa.select(UserNotification).where(UserNotification.user_id == user.id, UserNotification.channel == "web")
         if recent_only:
             base_statement = base_statement.where(UserNotification.created_at > (datetime.now(tz=timezone.utc) - timedelta(days=5)))
         if not include_read:
             base_statement = base_statement.where(UserNotification.read != True)
         base_statement = base_statement.order_by(UserNotification.created_at.desc())
-        notifications = db.paginate(base_statement, page=page, per_page=limit, error_out=False)
+        if query:
+            statement = UserNotification.search(query, base_query=base_statement)
+            notifications = db.paginate(
+                statement,
+                page=page,
+                per_page=limit,
+                error_out=False
+            )
+        else:
+            notifications = db.paginate(base_statement, page=page, per_page=limit, error_out=False)
         return notifications
 
     @staticmethod

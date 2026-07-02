@@ -6,10 +6,10 @@
             <div class="divide-y divide-base-300">
                 {% for record in records.items %}
                     <div class="group relative p-4 sm:p-5 transition-colors bg-base-100 hover:bg-base-200/40">
-                        <div class="flex gap-4">
+                        <div class="flex items-start gap-4">
 
                             <div class="relative shrink-0">
-                                <div class="tooltip tooltip-right"
+                                <div class="tooltip tooltip-right block leading-none"
                                      hx-get="{{ url_for('core.device_information', uuid36=record.user_device.uuid36) }}"
                                      hx-trigger="mouseenter once"
                                      hx-target="#device-{{ record.uuid36 }}"
