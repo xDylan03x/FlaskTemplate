@@ -286,11 +286,12 @@ class NotificationManager:
         return notifications
 
     @staticmethod
-    def mark_notification_as_read(uuid36: str) -> None:
+    def mark_notification_as_read(uuid36: str) -> UserNotification | None:
         notification = db.session.scalar(sa.select(UserNotification).where(UserNotification.uuid36 == uuid36))
         if notification:
             notification.read = True
             db.session.commit()
+        return notification
 
 
 class FileManager:

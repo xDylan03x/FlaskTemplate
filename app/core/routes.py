@@ -1,4 +1,5 @@
-from flask import render_template, request, flash, redirect, url_for, current_app, abort, session
+from flask import render_template, request, flash, redirect, url_for, current_app, abort, session, \
+    render_template_string
 from flask_login import login_required, current_user, login_user
 from app.core import core
 from app import db, twilio_client, audit, sm
@@ -55,25 +56,6 @@ def create_account():
         flash('Your account has been created. Please check your email to finish setting up your account.', 'success')
         return redirect(url_for('auth.login'))
     return render_template('create-account.html', title="Create Account", form=form)
-
-
-@core.route('/manage-device/<string:uuid36>', methods=['GET', 'POST'])
-def manage_device(uuid36):
-    device = UserDeviceManager.get_device_by_uuid36(uuid36)
-    if not device or device.device_trusted:
-        abort(403)
-    user = UserManager.get_user_by_id(device.user_id)
-
-    form = DeviceManagerForm()
-    if form.validate_on_submit():
-        with audit.track(device, actor=user, message="User managing new device"):
-            device.device_trusted = form.device_trusted.data
-        db.session.commit()
-        flash('Device trust status has been updated.', 'success')
-        return redirect(url_for('auth.login'))
-    form.device_trusted.data = device.device_trusted
-    parsed_device = parse_device(device.user_agent)
-    return render_template('manage-device.html', title="Manage Device", device=device, parsed_device=parsed_device, user_ip=request.remote_addr, form=form)
 
 
 @core.route('/account-settings/profile', methods=['GET', 'POST'])
@@ -202,6 +184,17 @@ def all_notifications():
     return render_template('account-settings/all-notifications.html', title="Notifications", tab='notifications', htmx=htmx, notifications=np)
 
 
+@core.route("/account-settings/notifications/<uuid36>/read", methods=["POST"])
+@login_required
+def mark_notification_read(uuid36):
+    notification = NotificationManager.mark_notification_as_read(uuid36)
+    template_string = """
+    {% from 'account-settings/macros.html' import notification_row %}
+    {{ notification_row(notification) }}
+    """
+    return render_template_string(template_string, notification=notification)
+
+
 @core.route('/account-settings/security', methods=['GET', 'POST'])
 @login_required
 def security_settings():
@@ -294,14 +287,22 @@ def login_history():
     return render_template('account-settings/login-history.html', title="Login History", tab="security", records=records)
 
 
-@core.route('/account-settings/security/device-information/<string:uuid36>')
+@core.route('/account-settings/security/manage-device/<string:uuid36>', methods=['GET', 'POST'])
 @login_required
-def device_information(uuid36):
+def manage_device(uuid36):
     device = UserDeviceManager.get_device_by_uuid36(uuid36)
-    if not device:
-        abort(404)
+    user = UserManager.get_user_by_id(device.user_id)
+
+    form = DeviceManagerForm()
+    if form.validate_on_submit():
+        with audit.track(device, actor=user, message="User managing new device"):
+            device.device_trusted = form.device_trusted.data
+        db.session.commit()
+        flash('Device trust status has been updated.', 'success')
+        return redirect(url_for('core.login_history'))
+    form.device_trusted.data = device.device_trusted
     parsed_device = parse_device(device.user_agent)
-    return f'<p class="body">{" &middot; ".join(filter(None, [parsed_device.get("device_type", ""), parsed_device.get("device_model", ""), parsed_device.get("device_os", ""), parsed_device.get("browser", "")]))}</p>'
+    return render_template('account-settings/manage-device.html', title="Manage Device", tab="security", device=device, parsed_device=parsed_device, user_ip=request.remote_addr, form=form)
 
 
 @core.route('/system-settings/users')

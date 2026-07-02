@@ -3,60 +3,7 @@
         <div class="card bg-base-100 border border-base-300 shadow-sm">
             <div class="divide-y divide-base-300">
                 {% for notification in notifications.items %}
-                    <div class="group relative p-4 sm:p-5 transition-colors {% if notification.read %}bg-base-200/40 text-base-content/70{% else %}bg-base-100 hover:bg-base-200/40{% endif %}">
-                        <div class="flex gap-4">
-                            <div class="relative shrink-0">
-                                <div class="flex size-10 items-center justify-center rounded-full border {% if notification.read %}bg-base-200 border-base-300 text-base-content/50{% else %}bg-primary/10 border-primary/20 text-primary{% endif %}">
-                                    {% if notification.sender == "System" %}
-                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
-                                             stroke-width="1.5" stroke="currentColor" class="size-5">
-                                            <path stroke-linecap="round" stroke-linejoin="round"
-                                                  d="M6 20.25h12m-7.5-3v3m3-3v3m-10.125-3h17.25c.621 0 1.125-.504 1.125-1.125V4.875c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125Z"/>
-                                        </svg>
-                                    {% else %}
-                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
-                                             stroke-width="1.5" stroke="currentColor" class="size-5">
-                                            <path stroke-linecap="round" stroke-linejoin="round"
-                                                  d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z"/>
-                                        </svg>
-                                    {% endif %}
-                                </div>
-                            </div>
-
-                            <div class="min-w-0 flex-1">
-
-                                <div class="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
-                                    <div class="min-w-0">
-                                        <h3 class="text-base font-semibold leading-6 {% if notification.read %}text-base-content/70{% endif %}">{{ notification.title }}</h3>
-
-                                        <div class="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-base-content/70">
-                                            {{ notification.sender }} <span aria-hidden="true">•</span> <time x-data="{ date: new Date($el.innerText) }" x-text="date.toLocaleString()">{{ notification.created_at }}</time>
-                                        </div>
-                                    </div>
-
-                                    {% if not notification.read %}
-                                        <div class="mt-1 sm:mt-0">
-                                            <span class="badge badge-primary badge-sm">Unread</span>
-                                        </div>
-                                    {% endif %}
-                                </div>
-
-                                <p class="mt-3 text-sm text-base-content/80">
-                                    {{ notification.body }}
-                                </p>
-
-                                {% if notification.link %}
-                                    <div class="mt-4">
-                                        <a href="{{ notification.link }}" class="btn btn-sm btn-outline {% if not notification.read %}btn-primary{% endif %}">
-                                            View
-                                        </a>
-                                    </div>
-                                {% endif %}
-
-                            </div>
-                        </div>
-                    </div>
-
+                    {{ notification_row(notification) }}
                 {% endfor %}
             </div>
         </div>
@@ -69,16 +16,24 @@
             <div class="join">
                 {% if notifications.has_prev %}
                     <a class="join-item btn btn-sm btn-neutral btn-outline"
-                       href="{{ url_for('core.all_notifications', page=notifications.prev_num) }}">Previous</a>
+                       href="{{ url_for('core.all_notifications', page=notifications.prev_num, query=request.args.get('query', '')) }}">
+                        Previous
+                    </a>
                 {% else %}
-                    <button class="join-item btn btn-sm btn-neutral btn-outline" disabled>Previous</button>
+                    <button class="join-item btn btn-sm btn-neutral btn-outline" disabled>
+                        Previous
+                    </button>
                 {% endif %}
 
                 {% if notifications.has_next %}
                     <a class="join-item btn btn-sm btn-neutral btn-outline"
-                       href="{{ url_for('core.all_notifications', page=notifications.next_num) }}">Next</a>
+                       href="{{ url_for('core.all_notifications', page=notifications.next_num, query=request.args.get('query', '')) }}">
+                        Next
+                    </a>
                 {% else %}
-                    <button class="join-item btn btn-sm btn-neutral btn-outline" disabled>Next</button>
+                    <button class="join-item btn btn-sm btn-neutral btn-outline" disabled>
+                        Next
+                    </button>
                 {% endif %}
             </div>
         </div>
@@ -89,10 +44,96 @@
             <div class="card-body items-center text-center py-14">
                 <div>
                     <h3 class="h3">No notifications</h3>
-                    <p class="support">New notifications will appear here.</p>
+
+                    {% if request.args.get('query') %}
+                        <p class="support">
+                            No notifications matched your search.
+                        </p>
+                    {% else %}
+                        <p class="support">
+                            New notifications will appear here.
+                        </p>
+                    {% endif %}
                 </div>
             </div>
         </div>
 
     {% endif %}
+{% endmacro %}
+
+{% macro notification_row(notification) %}
+    <div id="notification-{{ notification.uuid36 }}"
+         class="group relative p-4 sm:p-5 transition-colors {% if notification.read %}bg-base-200/40 text-base-content/70{% else %}bg-base-100 hover:bg-base-200/40{% endif %}">
+
+        <div class="flex gap-4">
+            <div class="relative shrink-0">
+                <div class="flex size-10 items-center justify-center rounded-full border {% if notification.read %}bg-base-200 border-base-300 text-base-content/50{% else %}bg-primary/10 border-primary/20 text-primary{% endif %}">
+                    {% if notification.sender == "System" %}
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
+                             stroke="currentColor" class="size-5">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                  d="M6 20.25h12m-7.5-3v3m3-3v3m-10.125-3h17.25c.621 0 1.125-.504 1.125-1.125V4.875c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125Z"/>
+                        </svg>
+                    {% else %}
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
+                             stroke="currentColor" class="size-5">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                  d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z"/>
+                        </svg>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="min-w-0 flex-1">
+                <div class="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
+                    <div class="min-w-0">
+                        <h3 class="text-base font-semibold leading-6 {% if notification.read %}text-base-content/70{% endif %}">
+                            {{ notification.title }}
+                        </h3>
+
+                        <div class="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-base-content/70">
+                            {{ notification.sender }}
+                            <span aria-hidden="true">•</span>
+                            <time x-data="{ date: new Date($el.innerText) }"
+                                  x-text="date.toLocaleString()">{{ notification.created_at }}</time>
+                        </div>
+                    </div>
+
+                    <div class="mt-1 flex items-center gap-2 sm:mt-0">
+                        {% if not notification.read %}
+                            <button type="button"
+                                    hx-post="{{ url_for('core.mark_notification_read', uuid36=notification.uuid36) }}"
+                                    hx-target="#notification-{{ notification.uuid36 }}"
+                                    hx-swap="outerHTML"
+                                    class="btn btn-sm btn-ghost hidden sm:block" title="Mark as read">
+                                Mark Read
+                            </button>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <p class="mt-3 text-sm text-base-content/80">
+                    {{ notification.body }}
+                </p>
+
+                {% if notification.link %}
+                    <div class="mt-4 flex items-center gap-2">
+                        <a href="{{ notification.link }}"
+                           class="btn btn-sm btn-soft {% if not notification.read %}btn-primary{% endif %}">
+                            View
+                        </a>
+                        {% if not notification.read %}
+                            <button type="button"
+                                    hx-post="{{ url_for('core.mark_notification_read', uuid36=notification.uuid36) }}"
+                                    hx-target="#notification-{{ notification.uuid36 }}"
+                                    hx-swap="outerHTML"
+                                    class="btn btn-sm btn-ghost block sm:hidden" title="Mark as read">
+                                Mark Read
+                            </button>
+                        {% endif %}
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
 {% endmacro %}

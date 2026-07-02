@@ -1,0 +1,53 @@
+{% extends 'account-settings/base.html' %}
+{% block settings_content %}
+
+    {% set device_parts = [parsed_device.get('device_type', ''), parsed_device.get('device_model', ''), parsed_device.get('device_os', ''), parsed_device.get('browser', '')] %}
+    <p class="body text-base-content">
+        Device Details:
+        {% for part in device_parts if part %}
+            {{ part }}{% if not loop.last %} &middot; {% endif %}
+        {% else %}
+            Unknown device
+        {% endfor %}
+    </p>
+    <p class="body text-base-content">Your IP: {{ user_ip }}</p>
+    <p class="support text-base-content/80 mt-4">If you don't recognize this device or its login activity, please take action to secure your account.</p>
+    <details class="collapse collapse-arrow bg-base-100 border border-base-300 mt-2" name="my-accordion-det-1">
+        <summary class="collapse-title font-semibold">Device Logins</summary>
+        <div class="collapse-content">
+            <div class="mt-1 divide-y divide-base-300">
+                {% for login in device.logins %}
+                    <div class="flex flex-col gap-1 py-2 sm:flex-row sm:items-center sm:justify-between">
+                        <time class="body text-base-content"
+                              datetime="{{ login.occurred_at.isoformat() }}"
+                              x-data
+                              x-text="new Date($el.dateTime).toLocaleString()">
+                            {{ login.occurred_at }}
+                        </time>
+
+                        <a class="link link-neutral text-sm"
+                           href="https://ipinfo.io/{{ login.ip_address }}"
+                           target="_blank"
+                           rel="noopener noreferrer">
+                            {{ login.ip_address }}
+                        </a>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    </details>
+
+    <form action="" method="post">
+        {{ form.csrf_token }}
+
+        <div class="mt-8">
+            {{ form.device_trusted(class="checkbox", id="device_trusted", type="checkbox") }}
+            {{ form.device_trusted.label(class="label") }}
+            <p class="form-help">Reduce the need for two-factor authentication when logging in on this device.</p>
+        </div>
+
+        {{ form.submit(class='btn btn-neutral text-neutral-content mt-8 w-full') }}
+
+    </form>
+
+{% endblock %}

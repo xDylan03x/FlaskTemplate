@@ -1,7 +1,7 @@
 {% extends 'account-settings/base.html' %}
 {% block settings_content %}
 
-    <form action="" method="post">
+    <form action="" method="post" class="mt-8">
         {{ form.csrf_token }}
 
         <div class="overflow-x-auto">
@@ -29,6 +29,8 @@
                 </tbody>
             </table>
         </div>
+
+        <p class="support text-base-content/80 mt-4">Looking for past notifications? <a class="link" href="{{ url_for('core.all_notifications') }}">View All Notifications</a></p>
 
         {{ form.submit(class='btn btn-neutral text-neutral-content mt-8 w-full') }}
 

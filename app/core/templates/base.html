@@ -80,7 +80,7 @@
                                     <div class="flex justify-between w-full items-center gap-3">
                                         <div class="font-semibold text-sm text-base-content leading-snug" x-text="notif.title"></div>
 
-                                        <button type="button" @mousedown.prevent.stop @click.prevent.stop="markAsRead(notif.id)" class="btn btn-sm btn-ghost btn-circle text-base-content/30 hover:text-success hover:bg-success/10 shrink-0 z-10" title="Mark as read">
+                                        <button type="button" @mousedown.prevent.stop @click.prevent.stop="markAsRead(notif.id)" class="btn btn-sm btn-ghost btn-circle text-base-content/60 shrink-0 z-10" title="Mark as read">
                                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="size-5">
                                                 <path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z" clip-rule="evenodd" />
                                             </svg>
@@ -89,7 +89,9 @@
 
                                     <div class="support text-base-content min-w-0">
                                         <p class="line-clamp-3" x-text="notif.body"></p>
-                                        <a x-if="notif.link" :href="notif.link" class="support text-base-content link">View</a>
+                                        <template x-if="notif.link">
+                                            <a :href="notif.link" class="support text-base-content link">View</a>
+                                        </template>
                                     </div>
 
                                     <div class="flex justify-between w-full text-xs text-base-content/80 mt-1">

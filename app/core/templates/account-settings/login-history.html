@@ -5,29 +5,20 @@
         <div class="card bg-base-100 border border-base-300 shadow-sm">
             <div class="divide-y divide-base-300">
                 {% for record in records.items %}
-                    <div class="group relative p-4 sm:p-5 transition-colors bg-base-100 hover:bg-base-200/40">
+                    <div class="group relative p-4 sm:p-5 bg-base-100 hover:bg-base-200/40">
                         <div class="flex items-start gap-4">
 
                             <div class="relative shrink-0">
-                                <div class="tooltip tooltip-right block leading-none"
-                                     hx-get="{{ url_for('core.device_information', uuid36=record.user_device.uuid36) }}"
-                                     hx-trigger="mouseenter once"
-                                     hx-target="#device-{{ record.uuid36 }}"
-                                     hx-swap="innerHTML">
-                                    <div id="device-{{ record.uuid36 }}" class="tooltip-content">
-                                        Loading device information...
-                                    </div>
-                                    <div class="flex size-10 items-center justify-center rounded-full border {% if record.user_device.device_trusted %}bg-success/10 border-success/20 text-success{% else %}bg-warning/10 border-warning/20 text-warning{% endif %}">
-                                        {% if record.user_device.device_trusted  %}
-                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
-                                                <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
-                                            </svg>
-                                        {% else %}
-                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
-                                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
-                                            </svg>
-                                        {% endif %}
-                                    </div>
+                                <div class="flex size-10 items-center justify-center rounded-full border {% if record.user_device.device_trusted %}bg-success/10 border-success/20 text-success{% else %}bg-warning/10 border-warning/20 text-warning{% endif %}">
+                                    {% if record.user_device.device_trusted  %}
+                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                                        </svg>
+                                    {% else %}
+                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+                                        </svg>
+                                    {% endif %}
                                 </div>
                             </div>
 
@@ -35,35 +26,38 @@
 
                                 <div class="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
                                     <div class="min-w-0">
-                                        <h3 class="text-base font-semibold leading-6">
-                                            Login from {{ record.ip_address }}
-                                        </h3>
-
-                                        <div class="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-base-content/70">
-                                            <time x-data="{ date: new Date($el.innerText) }" x-text="date.toLocaleString()">{{ record.occurred_at }}</time>
-                                        </div>
+                                        <h6 class="h6">
+                                            Login at <time x-data="{ date: new Date($el.innerText) }" x-text="date.toLocaleString()">{{ record.occurred_at }}</time>
+                                        </h6>
                                     </div>
                                 </div>
 
                                 <div class="mt-3 flex flex-wrap gap-2 text-sm text-base-content/80">
-                                    <div class="rounded-box border border-base-300 bg-base-200/40 px-3 py-2">
+                                    <a class="btn btn-sm" href="https://ipinfo.io/{{ record.ip_address }}" target="_blank" rel="noopener noreferrer">
                                         <span class="text-base-content/60">IP Address:</span>
                                         <span class="font-medium">{{ record.ip_address }}</span>
-                                    </div>
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" class="size-4">
+                                            <path fill-rule="evenodd" d="M4.22 11.78a.75.75 0 0 1 0-1.06L9.44 5.5H5.75a.75.75 0 0 1 0-1.5h5.5a.75.75 0 0 1 .75.75v5.5a.75.75 0 0 1-1.5 0V6.56l-5.22 5.22a.75.75 0 0 1-1.06 0Z" clip-rule="evenodd" />
+                                        </svg>
+                                    </a>
 
-                                    <div class="rounded-box border border-base-300 bg-base-200/40 px-3 py-2">
+                                    <div class="btn btn-sm pointer-events-none cursor-default hover:bg-base-200">
                                         <span class="text-base-content/60">Auth Source:</span>
                                         <span class="font-medium">{{ record.login_token.auth_source }}</span>
                                     </div>
 
-                                    <div class="rounded-box border border-base-300 bg-base-200/40 px-3 py-2">
+                                    <a class="btn btn-sm" href="{{ url_for('core.manage_device', uuid36=record.user_device.uuid36) }}">
                                         <span class="text-base-content/60">Device:</span>
                                         {% if record.user_device.device_trusted %}
                                             <span class="font-medium">Trusted</span>
                                         {% else %}
                                             <span class="font-medium">Untrusted</span>
                                         {% endif %}
-                                    </div>
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" class="size-4">
+                                            <path d="M13.488 2.513a1.75 1.75 0 0 0-2.475 0L6.75 6.774a2.75 2.75 0 0 0-.596.892l-.848 2.047a.75.75 0 0 0 .98.98l2.047-.848a2.75 2.75 0 0 0 .892-.596l4.261-4.262a1.75 1.75 0 0 0 0-2.474Z" />
+                                            <path d="M4.75 3.5c-.69 0-1.25.56-1.25 1.25v6.5c0 .69.56 1.25 1.25 1.25h6.5c.69 0 1.25-.56 1.25-1.25V9A.75.75 0 0 1 14 9v2.25A2.75 2.75 0 0 1 11.25 14h-6.5A2.75 2.75 0 0 1 2 11.25v-6.5A2.75 2.75 0 0 1 4.75 2H7a.75.75 0 0 1 0 1.5H4.75Z" />
+                                        </svg>
+                                    </a>
                                 </div>
 
                             </div>
