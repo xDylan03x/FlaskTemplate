@@ -8,20 +8,10 @@ YELLOW = \033[0;33m
 NC = \033[0m
 
 default: help
-.PHONY: help tailwind vite db requirements build setup_project git update
+.PHONY: help tailwind vite db requirements git setup_project update build
 
 help: # Show this help message
 	@grep -E '^[a-zA-Z0-9 -]+:.*#'  Makefile | sort | while read -r l; do printf "\033[1;32m$$(echo $$l | cut -f 1 -d':')\033[00m:$$(echo $$l | cut -f 2- -d'#')\n"; done
-
-setup_project: # Set up the project by installing dependencies and configuring environment variables
-	@echo "$(YELLOW)> Setting Up Project$(NC)"
-	@echo "$(YELLOW)> Installing Python Dependencies$(NC)"
-	pip install -r requirements.txt
-	@echo "$(YELLOW)> Installing NPM Dependencies$(NC)"
-	npm install
-	@echo "$(YELLOW)> Creating .env File$(NC)"
-	cp .env.example .env
-	@echo "$(YELLOW)> Project Setup Complete - Modify .env file before continuing$(NC)"
 
 tailwind: # Compile Tailwind CSS for production
 	npx @tailwindcss/cli -i $(CSS_INPUT) -o $(CSS_OUTPUT) --minify
@@ -35,31 +25,19 @@ db: # Create the database status
 requirements: # Update the requirements.txt file with the current environment's dependencies
 	pip freeze > requirements.txt
 
-build: # Build the project for production - combines other individual steps
-	@echo "$(MAGENTA)> Building Project$(NC)"
-	@echo "$(MAGENTA)> [1/4] Running Tailwind CSS Build$(NC)"
-	@echo ""
-	$(MAKE) tailwind
-	@echo ""
-	@echo "$(MAGENTA)> [2/4] Running Vite Build$(NC)"
-	@echo ""
-	$(MAKE) vite
-	@echo ""
-	@echo "$(MAGENTA)> [3/4] Checking Database Migrations$(NC)"
-	@echo ""
-	$(MAKE) db
-	@echo ""
-	@echo "$(MAGENTA)> [4/4] Freezing Python Dependencies$(NC)"
-	@echo ""
-	$(MAKE) requirements
-	@echo ""
-	@echo "$(MAGENTA)> Build Complete$(NC)"
-
-
 git: # Update the project with the current template files from the Git repository
 	git fetch template
 	git merge template/master
 
+setup_project: # Set up the project by installing dependencies and configuring environment variables
+	@echo "$(YELLOW)> Setting Up Project$(NC)"
+	@echo "$(YELLOW)> Installing Python Dependencies$(NC)"
+	pip install -r requirements.txt
+	@echo "$(YELLOW)> Installing NPM Dependencies$(NC)"
+	npm install
+	@echo "$(YELLOW)> Creating .env File$(NC)"
+	cp .env.example .env
+	@echo "$(YELLOW)> Project Setup Complete - Modify .env file before continuing$(NC)"
 
 update: # Update the project with the current template files
 	@echo "$(MAGENTA)> Updating from Project Template$(NC)"
@@ -85,3 +63,23 @@ update: # Update the project with the current template files
 	flask db upgrade
 	@echo ""
 	@echo "$(MAGENTA)> Project Template Update Complete$(NC)"
+
+build: # Build the project for production - combines other individual steps
+	@echo "$(MAGENTA)> Building Project$(NC)"
+	@echo "$(MAGENTA)> [1/4] Running Tailwind CSS Build$(NC)"
+	@echo ""
+	$(MAKE) tailwind
+	@echo ""
+	@echo "$(MAGENTA)> [2/4] Running Vite Build$(NC)"
+	@echo ""
+	$(MAKE) vite
+	@echo ""
+	@echo "$(MAGENTA)> [3/4] Checking Database Migrations$(NC)"
+	@echo ""
+	$(MAKE) db
+	@echo ""
+	@echo "$(MAGENTA)> [4/4] Freezing Python Dependencies$(NC)"
+	@echo ""
+	$(MAKE) requirements
+	@echo ""
+	@echo "$(MAGENTA)> Build Complete$(NC)"
