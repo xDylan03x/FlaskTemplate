@@ -63,6 +63,7 @@ update: # Update the project with the current template files
 	flask db upgrade
 	@echo ""
 	@echo "$(MAGENTA)> Project Template Update Complete$(NC)"
+	@echo "$(YELLOW)> Note: You may need to run 'git push'$(NC)"
 
 build: # Build the project for production - combines other individual steps
 	@echo "$(MAGENTA)> Building Project$(NC)"
