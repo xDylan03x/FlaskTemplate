@@ -8,7 +8,7 @@ YELLOW = \033[0;33m
 NC = \033[0m
 
 default: help
-.PHONY: help tailwind vite db requirements build setup_project
+.PHONY: help tailwind vite db requirements build setup_project git update
 
 help: # Show this help message
 	@grep -E '^[a-zA-Z0-9 -]+:.*#'  Makefile | sort | while read -r l; do printf "\033[1;32m$$(echo $$l | cut -f 1 -d':')\033[00m:$$(echo $$l | cut -f 2- -d'#')\n"; done
@@ -54,3 +54,34 @@ build: # Build the project for production - combines other individual steps
 	$(MAKE) requirements
 	@echo ""
 	@echo "$(MAGENTA)> Build Complete$(NC)"
+
+
+git: # Update the project with the current template files from the Git repository
+	git fetch template
+	git merge template/master
+
+
+update: # Update the project with the current template files
+	@echo "$(MAGENTA)> Updating from Project Template$(NC)"
+	@echo "$(MAGENTA)> [1/5] Updating from GIT repository$(NC)"
+	@echo ""
+	$(MAKE) git
+	@echo ""
+	@echo "$(MAGENTA)> [2/5] Running Tailwind CSS Build$(NC)"
+	@echo ""
+	$(MAKE) tailwind
+	@echo ""
+	@echo "$(MAGENTA)> [3/5] Running Vite Build$(NC)"
+	@echo ""
+	$(MAKE) vite
+	@echo ""
+	@echo "$(MAGENTA)> [4/5] Updating Python Dependencies$(NC)"
+	@echo ""
+	pip install -r requirements.txt
+	@echo ""
+	@echo "$(MAGENTA)> [5/5] Upgrading Database$(NC)"
+	@echo ""
+	flask db migrate -m "Upgrade from template"
+	flask db upgrade
+	@echo ""
+	@echo "$(MAGENTA)> Project Template Update Complete$(NC)"
