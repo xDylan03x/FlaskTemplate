@@ -35,7 +35,8 @@ Once you clone the directory and set up your environment (see below), follow the
 6. Use `flask run --port 8080 --debug` to start the development server.
 7. Use `make vite` and `make tailwind` to build frontend resources.
 
-_Note: You can use `make build` when you're ready to deploy your application. Use `make help` for a further list of commands._
+_Note: You can use `make build` when you're ready to deploy your application. Use `make help` for a further list of commands._  
+_When ready to update the project from the template, run `make update`._
 
 ### Cloning The Repository
 To make things easier in the future, you can set up your application repository
