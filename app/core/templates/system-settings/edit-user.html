@@ -39,10 +39,10 @@
             <button type="button" class="btn btn-outline btn-error mt-4" onclick="delete_modal.showModal()" {% if not current_user.can('users.delete') %}disabled{% endif %}>Delete User</button>
 
 
-            <h4 class="h5 text-base-content mt-8">Permissions</h4>
+            <h5 class="h5 text-base-content mt-8">Permissions</h5>
             {% for group, permissions in permission_groups.items() %}
                 <div class="mt-4">
-                    <h5 class="h5 text-base-content">{{ group }}</h5>
+                    <h6 class="h6 text-base-content">{{ group }}</h6>
 
                     {% for permission in permissions %}
                         {% set field_name = permission.permission_field_name %}

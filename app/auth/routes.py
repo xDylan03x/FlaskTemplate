@@ -4,7 +4,7 @@ from app.auth.helper import get_ip_from_request, twilio_verify_send, twilio_veri
     is_internal_url
 from app.models import NotificationCategory, RiskAction
 from app.model_managers import UserManager, LoginTokenManager, LoginRecordManager, UserDeviceManager, \
-    NotificationManager
+    NotificationManager, SystemManager
 from flask_login import login_user, logout_user
 from flask import flash, request, redirect, render_template, url_for, current_app, session
 from app.auth import auth
@@ -24,7 +24,7 @@ WRONG_EMAIL_PASSWORD_MESSAGE = 'Incorrect email or password.'
 def login():
     next_url = request.args.get('next', None)
     form = LoginForm()
-    create_accounts = current_app.config['ALLOW_ACCOUNT_CREATION']
+    create_accounts = SystemManager.get_setting('allow_account_creation')
     if form.validate_on_submit():
         user = UserManager.get_user_by_email(form.email.data.lower().strip())
 
@@ -428,7 +428,7 @@ def login_with_token(raw_token: str):
     user_agent = request.headers.get('User-Agent', '')
 
     # If suspicious user agents are not allowed to log in
-    if current_app.config.get("STRICT_LOGIN", False) and parse_device(user_agent)["is_bot"]:
+    if SystemManager.get_setting('strict_login') and parse_device(user_agent)["is_bot"]:
         flash(CONTACT_ADMINISTRATOR_MESSAGE, 'error')
         return redirect(url_for('auth.login'))
 

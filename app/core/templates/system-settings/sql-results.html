@@ -1,0 +1,53 @@
+{% if error %}
+    <div role="alert" class="alert alert-error mb-4">
+        <span>{{ error }}</span>
+    </div>
+{% endif %}
+
+{% if query %}
+    <div class="mb-4 rounded-box border border-base-300 bg-base-200 p-4">
+        <div class="text-xs uppercase tracking-wide text-base-content/60 mb-2">
+            Query
+        </div>
+        <pre class="whitespace-pre-wrap text-sm font-mono">{{ query }}</pre>
+    </div>
+{% endif %}
+
+{% if rows %}
+    <div class="mb-3 text-sm text-base-content/60">
+        {{ row_count }} row{{ '' if row_count == 1 else 's' }} returned.
+    </div>
+
+    <div class="overflow-x-auto rounded-box border border-base-300">
+        <table class="table table-sm">
+            <thead>
+            <tr>
+                {% for column in columns %}
+                    <th>{{ column }}</th>
+                {% endfor %}
+            </tr>
+            </thead>
+
+            <tbody>
+            {% for row in rows %}
+                <tr>
+                    {% for column in columns %}
+                        <td>
+                            {% set value = row[column] %}
+                            {% if value is none %}
+                                <span class="text-base-content/40 italic">NULL</span>
+                            {% else %}
+                                <code class="text-xs">{{ value }}</code>
+                            {% endif %}
+                        </td>
+                    {% endfor %}
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+{% elif not error %}
+    <div class="rounded-box border border-base-300 p-4 text-sm text-base-content/60">
+        Query executed successfully, but no rows were returned.
+    </div>
+{% endif %}

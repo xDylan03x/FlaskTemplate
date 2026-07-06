@@ -33,3 +33,21 @@ def create_admin():
     user.set_setting('notifications.security_alerts_via_email', True)
     db.session.commit()
     click.echo('Admin user created.')
+
+
+@click.command(name='update_users')
+@with_appcontext
+def update_users():
+    from . import db
+    from .model_managers import UserManager
+    from .models import User
+
+    user_count = 0
+    users_updated = []
+    for user in db.session.query(User).all():
+        user_count += 1
+        UserManager.update_permissions(user)
+        UserManager.update_settings(user)
+        users_updated.append(user.email)
+
+    click.echo(f'All users updated.\nFound {user_count} users.\nUpdated: {', '.join(users_updated)}')

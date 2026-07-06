@@ -1,0 +1,30 @@
+{% extends 'system-settings/base.html' %}
+{% block settings_content %}
+    <form action="" method="post">
+        {{ form.csrf_token }}
+
+        <p class="support text-base-content/80">
+            Changes to these settings may impact application usability.
+            {% if current_user.can('system.admin') %}
+                <br>
+                <a href="{{ url_for('core.admin') }}" class="link">Click here for the admin panel.</a>
+            {% endif %}
+        </p>
+
+        <div class="mt-8">
+            {{ form.allow_account_creation(class="checkbox", id="allow_account_creation", type="checkbox") }}
+            {{ form.allow_account_creation.label(class="label") }}
+            <p class="form-help">Allow users to create an account (does not affect account creation in the user management tab).</p>
+        </div>
+
+        <div class="mt-4">
+            {{ form.strict_login(class="checkbox", id="strict_login", type="checkbox") }}
+            {{ form.strict_login.label(class="label") }}
+            <p class="form-help">Block users from signing in with suspicious user agents.</p>
+        </div>
+
+
+        {{ form.submit(class='btn btn-neutral text-neutral-content mt-8 w-full') }}
+    </form>
+
+{% endblock %}

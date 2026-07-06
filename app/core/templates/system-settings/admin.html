@@ -1,0 +1,184 @@
+{% extends 'system-settings/base.html' %}
+{% block settings_content %}
+
+    <div role="alert" class="alert alert-warning">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="stroke-current size-6">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+        </svg>
+        <span>Page contains sensitive data.</span>
+    </div>
+
+    <div class="mt-8">
+        <div class="stats w-full shadow border border-base-300">
+            <div class="stat">
+                <div class="stat-title">Database Status</div>
+                <div class="stat-value">
+                    {% if db_status.get('error') is none %}
+                        <span class="text-success">OK</span>
+                    {% else %}
+                        <span class="text-warning">Error</span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="stat">
+                <div class="stat-title">Total Users</div>
+                <div class="stat-value">{{ num_users }}</div>
+            </div>
+
+            <div class="stat">
+                <div class="stat-title">Application Version</div>
+                <div class="stat-value">v{{ config.get('APP_VERSION') }}</div>
+            </div>
+        </div>
+    </div>
+
+    <details class="collapse collapse-arrow bg-base-100 border border-base-300 mt-8" name="platform-accordion">
+        <summary class="collapse-title font-semibold">Platform Info</summary>
+        <div class="collapse-content">
+            <div class="mt-1 divide-y divide-base-300">
+                {% for key, value in platform.items() %}
+                    <div class="flex flex-col gap-1 py-2 sm:flex-row sm:items-center sm:justify-between">
+                        <div>{{ key }}</div>
+                        <div>{{ value }}</div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    </details>
+
+    <details class="collapse collapse-arrow bg-base-100 border border-base-300 mt-4" name="config-accordion">
+        <summary class="collapse-title font-semibold">Configuration Items</summary>
+        <div class="collapse-content">
+            <div class="mt-1 divide-y divide-base-300">
+                {% for key, value in config.items() %}
+                    <div class="flex flex-col gap-1 py-2 sm:flex-row sm:items-center sm:justify-between">
+                        <div>{{ key }}</div>
+                        <div>{{ value }}</div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    </details>
+
+    <details class="collapse collapse-arrow bg-base-100 border border-base-300 mt-4" name="routes-accordion">
+        <summary class="collapse-title font-semibold">Application Routes</summary>
+        <div class="collapse-content">
+            <div class="divide-y divide-base-300">
+                {% for route in routes %}
+                    <div class="group relative p-4 sm:p-5">
+                        <div class="flex items-start gap-4">
+                            <div class="min-w-0 flex-1">
+
+                                <h6 class="h6">
+                                    {{ route.get('endpoint', 'Not Defined') }}
+                                </h6>
+
+                                <div class="mt-3 flex flex-wrap gap-2 text-sm text-base-content/80">
+                                    <div class="btn btn-sm pointer-events-none cursor-default hover:bg-base-200">
+                                        <span class="text-base-content/60">Arguments:</span>
+                                        <span class="font-medium">{{ route.get('arguments', 'none') }}</span>
+                                    </div>
+
+                                    <div class="btn btn-sm pointer-events-none cursor-default hover:bg-base-200">
+                                        <span class="text-base-content/60">Rule:</span>
+                                        <span class="font-medium">{{ route.get('rule', 'none') }}</span>
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    </details>
+
+    <details class="collapse collapse-arrow bg-base-100 border border-base-300 mt-4" name="blueprints-accordion">
+        <summary class="collapse-title font-semibold">Application Blueprints</summary>
+        <div class="collapse-content">
+            <div class="divide-y divide-base-300">
+                {% for bp in blueprints %}
+                    <div class="group relative p-4 sm:p-5">
+                        <div class="flex items-start gap-4">
+                            <div class="min-w-0 flex-1">
+
+                                <h6 class="h6">
+                                    {{ bp.get('name', 'Not Defined') }}
+                                </h6>
+
+                                <div class="mt-3 flex flex-wrap gap-2 text-sm text-base-content/80">
+                                    <div class="btn btn-sm pointer-events-none cursor-default hover:bg-base-200">
+                                        <span class="text-base-content/60">URL Prefix:</span>
+                                        <span class="font-medium">{{ bp.get('url_prefix', 'none') }}</span>
+                                    </div>
+
+                                    <div class="btn btn-sm pointer-events-none cursor-default hover:bg-base-200">
+                                        <span class="text-base-content/60">Import Name:</span>
+                                        <span class="font-medium">{{ bp.get('import_name', 'none') }}</span>
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    </details>
+
+    <details class="collapse collapse-arrow bg-base-100 border border-base-300 mt-4" name="extensions-accordion">
+        <summary class="collapse-title font-semibold">Application Extensions</summary>
+        <div class="collapse-content">
+            <div class="divide-y divide-base-300">
+                {% for extension in extensions %}
+                    <div class="group relative p-4 sm:p-5">
+                        <div class="flex items-start gap-4">
+                            <div class="min-w-0 flex-1">
+
+                                <h6 class="h6">
+                                    {{ extension.get('name', 'Not Defined') }}
+                                </h6>
+
+                                <div class="mt-3 flex flex-wrap gap-2 text-sm text-base-content/80">
+                                    <div class="btn btn-sm pointer-events-none cursor-default hover:bg-base-200">
+                                        <span class="text-base-content/60">Instance:</span>
+                                        <span class="font-medium">{{ extension.get('instance', 'none') }}</span>
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    </details>
+
+    <details class="collapse collapse-arrow bg-base-100 border border-base-300 mt-4" name="db-accordion">
+        <summary class="collapse-title font-semibold">Database Query</summary>
+
+        <div class="collapse-content">
+            <form id="db-query-form" class="mb-6 space-y-4" hx-post="{{ url_for('core.admin_sql_console') }}" hx-target="#query-results" hx-swap="innerHTML">
+            <textarea id="query" name="query" class="textarea textarea-bordered w-full font-mono min-h-32" placeholder="SELECT * FROM user;"></textarea>
+
+                <div class="flex items-center justify-between gap-4">
+                    <p class="text-sm text-base-content/60">
+                        Read-only queries only. Multiple statements are blocked.
+                    </p>
+
+                    <button type="submit" class="btn btn-neutral">
+                        Run Query
+                    </button>
+                </div>
+            </form>
+
+            <div id="query-results">
+                <div class="rounded-box border border-base-300 p-4 text-sm text-base-content/60">
+                    Run a query to see results.
+                </div>
+            </div>
+        </div>
+    </details>
+
+{% endblock %}

@@ -138,6 +138,12 @@ class TOTPVerifyForm(FlaskForm):
     submit = SubmitField('Submit')
 
 
+class SystemSettingsForm(FlaskForm):
+    allow_account_creation = BooleanField('Allow Account Creation')
+    strict_login = BooleanField('Strict Login')
+    submit = SubmitField('Save')
+
+
 def build_edit_user_form(permission_manager):
     fields = {}
     permission_field_map = {}

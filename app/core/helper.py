@@ -1,8 +1,36 @@
-from app import sendgrid_client, twilio_client
+import re
+
+from sqlalchemy import text
+import os
+import platform
+import sys
+from app import sendgrid_client, twilio_client, db
 from sendgrid.helpers.mail import Mail, From
 from flask import current_app
 from device_detector import DeviceDetector
 import boto3
+
+
+READ_ONLY_PREFIXES = ("select", "show", "describe", "explain", "pragma")
+BLOCKED_SQL_WORDS = (
+    "insert",
+    "update",
+    "delete",
+    "drop",
+    "alter",
+    "create",
+    "truncate",
+    "replace",
+    "merge",
+    "grant",
+    "revoke",
+    "commit",
+    "rollback",
+    "vacuum",
+    "attach",
+    "detach",
+    "copy",
+)
 
 
 def send_email(subject: str, body: str, recipient: str, preheader="", sender=None, sender_name=None, template_id=None) -> str:
@@ -67,3 +95,90 @@ def get_s3_client():
         endpoint_url=current_app.config["S3_UPLOAD_ENDPOINT_URL"],
         region_name="auto",
     )
+
+
+def get_routes():
+    routes = []
+    for rule in current_app.url_map.iter_rules():
+        routes.append({
+            "endpoint": rule.endpoint,
+            "methods": sorted(rule.methods - {"HEAD", "OPTIONS"}),
+            "rule": str(rule),
+            "arguments": sorted(rule.arguments),
+        })
+    return sorted(routes, key=lambda r: r["endpoint"])
+
+
+def get_blueprints():
+    blueprints = []
+    for name, blueprint in current_app.blueprints.items():
+        blueprints.append({
+            "name": name,
+            "url_prefix": blueprint.url_prefix,
+            "import_name": blueprint.import_name,
+        })
+    return sorted(blueprints, key=lambda b: b["name"])
+
+
+def get_extensions():
+    extensions = []
+    for name, extension in current_app.extensions.items():
+        extensions.append({
+            "name": name,
+            "instance": extension,
+        })
+    return sorted(extensions, key=lambda e: e["name"])
+
+
+def get_database_status():
+    try:
+        db.session.execute(text("SELECT 1"))
+        return {
+            "connected": True,
+            "error": None,
+        }
+    except Exception as e:
+        return {
+            "connected": False,
+            "error": str(e),
+        }
+
+
+def get_platform_info():
+    info = {
+        "python_version": sys.version,
+        "platform": platform.platform(),
+        "machine": platform.machine(),
+        "processor": platform.processor(),
+        "pid": os.getpid(),
+        "cwd": os.getcwd(),
+    }
+    return info
+
+
+def is_safe_read_query(query: str) -> tuple[bool, str | None]:
+    cleaned = query.strip().lower()
+
+    if not cleaned:
+        print("Query is empty.")
+        return False, "Query is empty."
+
+    if ";" in cleaned:
+        print("Multiple statements are not allowed.")
+        return False, "Multiple statements are not allowed."
+
+    if not cleaned.startswith(READ_ONLY_PREFIXES):
+        print("Only read-only SELECT-style queries are allowed.")
+        return False, "Only read-only SELECT-style queries are allowed."
+
+    for word in BLOCKED_SQL_WORDS:
+        if word in cleaned.split():
+            print(f"Blocked SQL keyword: {word}")
+            return False, f"Blocked SQL keyword: {word}"
+
+    return True, None
+
+
+def modify_query(query: str) -> str:
+    strict_pattern = r"\buser\b"
+    return re.sub(strict_pattern, '"user"', query)

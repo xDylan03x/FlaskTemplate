@@ -4,9 +4,39 @@ from sqlalchemy import orm as so
 from flask import current_app, url_for
 from flask_sqlalchemy.pagination import Pagination
 from app.core.helper import send_email, send_sms
-from app.models import User, LoginToken, LoginRecord, UserNotification, NotificationCategory, UserDevice, File
+from app.models import User, LoginToken, LoginRecord, UserNotification, NotificationCategory, UserDevice, File, \
+    SystemSetting, UserPermission, UserSetting
 from app import db, pm, sm
 from datetime import datetime, timedelta, timezone
+
+
+class SystemManager:
+    @staticmethod
+    def get_all_settings() -> list[SystemSetting]:
+        return db.session.scalars(sa.select(SystemSetting).order_by(SystemSetting.key)).all()
+
+    @staticmethod
+    def get_setting_by_uuid36(uuid36: str) -> SystemSetting | None:
+        return db.session.scalar(sa.select(SystemSetting).where(SystemSetting.uuid36 == uuid36))
+
+    @staticmethod
+    def get_setting(key: str) -> str | bool | None:
+        setting_record = db.session.scalar(sa.select(SystemSetting).where(SystemSetting.key == key))
+        if setting_record:
+            if setting_record.value in ["true", "True"]:
+                return True
+            elif setting_record.value in ["false", "False"]:
+                return False
+            return setting_record.value
+        else:
+            return None
+
+    @staticmethod
+    def set_setting(key: str, value: str | bool) -> None:
+        setting_record = db.session.scalar(sa.select(SystemSetting).where(SystemSetting.key == key))
+        if setting_record:
+            setting_record.value = str(value)
+            db.session.commit()
 
 
 class UserManager:
@@ -81,6 +111,32 @@ class UserManager:
         base_statement = sa.select(LoginRecord).where(LoginRecord.user_id == user_id).options(so.selectinload(LoginRecord.user_device), so.selectinload(LoginRecord.login_token)).order_by(LoginRecord.occurred_at.desc())
         logins = db.paginate(base_statement, page=page, per_page=15, error_out=False)
         return logins
+
+    @staticmethod
+    def update_permissions(user: User) -> None:
+        """
+        Generates missing user permissions from the default.
+        :param user:
+        """
+        for permission in pm.all():
+            user_permission_record = db.session.scalar(sa.select(UserPermission).where(UserPermission.user_id == user.id, UserPermission.key == permission.permission))
+            if user_permission_record is None:
+                user_permission_record = UserPermission(key=permission.permission, value=permission.default, user_id=user.id)
+                db.session.add(user_permission_record)
+            db.session.commit()
+
+    @staticmethod
+    def update_settings(user: User) -> None:
+        """
+        Generates missing user settings from the default.
+        :param user:
+        """
+        for setting in sm.all():
+            user_setting_record = db.session.scalar(sa.select(UserSetting).where(UserSetting.user_id == user.id, UserSetting.key == setting.setting))
+            if user_setting_record is None:
+                user_setting_record = UserSetting(key=setting.setting, value=setting.default, user_id=user.id)
+                db.session.add(user_setting_record)
+            db.session.commit()
 
 
 class LoginTokenManager:

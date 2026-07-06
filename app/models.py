@@ -13,6 +13,29 @@ from app import login, db, pm, sm
 import secrets
 
 
+class SystemSetting(db.Model):
+    """
+    Model representing a site setting as a key-value pair.
+    Attributes:
+        id
+        uuid36
+        created_at
+        updated_at
+        key: Setting key
+        value: Setting value
+    """
+    id: so.Mapped[int] = so.mapped_column(primary_key=True)
+    uuid36: so.Mapped[str] = so.mapped_column(sa.String(36), unique=True, index=True, nullable=False, default=lambda: str(uuid.uuid4()))
+    created_at: so.Mapped[datetime] = so.mapped_column(sa.DateTime(timezone=True), nullable=False, default=lambda: datetime.now(tz=timezone.utc))
+    updated_at: so.Mapped[datetime] = so.mapped_column(sa.DateTime(timezone=True), nullable=False, default=lambda: datetime.now(tz=timezone.utc), onupdate=lambda: datetime.now(tz=timezone.utc))
+
+    key: so.Mapped[str] = so.mapped_column(sa.String(128), nullable=False)
+    value: so.Mapped[str] = so.mapped_column(sa.String(2048), nullable=False)
+
+    def __repr__(self):
+        return '<SystemSetting {}: {}>'.format(self.key, self.value)
+
+
 class User(db.Model, UserMixin):
     """
     User model representing a user in the system.

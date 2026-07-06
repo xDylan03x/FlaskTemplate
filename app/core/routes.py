@@ -1,18 +1,22 @@
 from flask import render_template, request, flash, redirect, url_for, current_app, abort, session, \
     render_template_string
 from flask_login import login_required, current_user, login_user
+from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
+
 from app.core import core
-from app import db, twilio_client, audit, sm
+from app import db, twilio_client, audit
 from .forms import ChangePasswordForm, ProfileSettingsForm, NotificationSettingsForm, SecuritySettingsForm, \
     SetupAccountForm, NewUserForm, TOTPVerifyForm, CreateAccountForm, DeviceManagerForm, \
-    build_edit_user_form, ApplicationSettingsForm
+    build_edit_user_form, ApplicationSettingsForm, SystemSettingsForm
 import phonenumbers
-from app.model_managers import UserManager, UserDeviceManager, FileManager, NotificationManager
-from .helper import send_sms, parse_device
+from app.model_managers import UserManager, UserDeviceManager, FileManager, NotificationManager, SystemManager
+from .helper import send_sms, parse_device, get_routes, get_blueprints, get_extensions, get_database_status, \
+    get_platform_info, is_safe_read_query, modify_query
 from ..model_managers import LoginTokenManager
 from ..extensions.flask_permissions import require_permission
 from app import pm
-from ..models import NotificationCategory, UserNotification
+from ..models import NotificationCategory, UserNotification, User
 
 
 @core.route('/')
@@ -44,7 +48,7 @@ def setup_account():
 
 @core.route('/create-account', methods=['GET', 'POST'])
 def create_account():
-    if not current_app.config['ALLOW_ACCOUNT_CREATION']:
+    if not SystemManager.get_setting('allow_account_creation'):
         flash('Account creation is not enabled. Please contact an administrator for an account.', 'error')
         abort(403)
     form = CreateAccountForm()
@@ -334,7 +338,6 @@ def new_user():
 @require_permission('users.update')
 def edit_user(uuid36):
     user = UserManager.get_user_by_uuid36(uuid36)
-
     if not user:
         abort(404)
 
@@ -379,6 +382,68 @@ def delete_user(uuid36):
     UserManager.delete_user(user)
     flash('User has been deleted.', 'success')
     return redirect(url_for('core.user_settings'))
+
+
+@core.route('/system-settings/system', methods=['GET', 'POST'])
+@login_required
+@require_permission('system')
+def system_settings():
+    form = SystemSettingsForm()
+    if form.validate_on_submit():
+        audit.log("User updated system settings", actor=current_user)
+        SystemManager.set_setting('allow_account_creation', form.allow_account_creation.data)
+        SystemManager.set_setting('strict_login', form.strict_login.data)
+        flash('Your changes have been saved.', 'success')
+    form.allow_account_creation.data = SystemManager.get_setting('allow_account_creation')
+    form.strict_login.data = SystemManager.get_setting('strict_login')
+    return render_template('system-settings/system.html', title="System Settings", tab='system', form=form)
+
+
+@core.route('/system-settings/admin')
+@login_required
+@require_permission('system.admin')
+def admin():
+    if not current_app.config.get('ADMIN_PANEL', False):
+        flash('Admin panel is disabled.', 'error')
+        abort(403)
+    audit.log("User accessed admin page", actor=current_user)
+    num_users = db.session.query(User).count()
+    platform = get_platform_info()
+    config = current_app.config
+    routes = get_routes()
+    blueprints = get_blueprints()
+    extensions = get_extensions()
+    db_status = get_database_status()
+    return render_template('system-settings/admin.html', title="Admin", tab='system', num_users=num_users, platform=platform, config=config, routes=routes, blueprints=blueprints, extensions=extensions, db_status=db_status)
+
+
+@core.route('/system-settings/admin/sql-console', methods=["POST"])
+@login_required
+@require_permission('system.admin')
+def admin_sql_console():
+    if not current_app.config.get('ADMIN_PANEL', False):
+        flash('Admin panel is disabled.', 'error')
+        abort(403)
+    query = request.form.get("query", "").strip()
+    is_safe, error = is_safe_read_query(query)
+    if not is_safe:
+        audit.log("Blocked admin SQL console query", actor=current_user)
+        return render_template("system-settings/sql-results.html", error=error, query=query, columns=[], rows=[], row_count=0)
+    query = modify_query(query)
+    try:
+        result = db.session.execute(text(query))
+
+        columns = list(result.keys())
+        rows = [dict(row._mapping) for row in result.fetchall()]
+
+        audit.log("User executed admin SQL console query", actor=current_user)
+        return render_template("system-settings/sql-results.html", error=None, query=query, columns=columns, rows=rows, row_count=len(rows))
+
+    except SQLAlchemyError as e:
+        db.session.rollback()
+
+        audit.log("Admin SQL console query failed", actor=current_user)
+        return render_template("system-settings/sql-results.html", error=str(e), query=query, columns=[], rows=[], row_count=0)
 
 
 @core.route("/external-redirect")

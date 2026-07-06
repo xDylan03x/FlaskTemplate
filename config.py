@@ -14,10 +14,9 @@ class Config:
         self.APP_NAME = os.environ.get("APP_NAME") or "Unnamed App"
         self.APP_ABBR = os.environ.get("APP_ABBR") or "UA"
         self.SITE_THEME = os.environ.get("SITE_THEME") or "light"
+        self.APP_VERSION = os.environ.get("APP_VERSION") or "N/A"
 
-        # Static Site Settings - Change these as needed
-        self.ALLOW_ACCOUNT_CREATION = True  # Allow users to create their own account without an account manager
-        self.STRICT_LOGIN = True  # Will not allow suspicious user agent's to log in
+        self.ADMIN_PANEL = True  # Allow users to access the admin panel (given the proper permissions)
 
         # File uploads
         self.S3_UPLOAD_ENDPOINT_URL = os.environ.get("S3_UPLOAD_ENDPOINT_URL") or None
@@ -30,9 +29,7 @@ class Config:
             "image/webp",
             "application/pdf",
             "text/csv",
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         }
-
 
         # Admin credentials
         self.ADMIN_NAME = os.environ.get('ADMIN_NAME', None)
