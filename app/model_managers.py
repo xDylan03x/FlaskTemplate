@@ -36,7 +36,10 @@ class SystemManager:
         setting_record = db.session.scalar(sa.select(SystemSetting).where(SystemSetting.key == key))
         if setting_record:
             setting_record.value = str(value)
-            db.session.commit()
+        else:
+            setting_record = SystemSetting(key=key, value=str(value))
+            db.session.add(setting_record)
+        db.session.commit()
 
 
 class UserManager:
