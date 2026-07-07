@@ -342,6 +342,7 @@ class NotificationCategory(enum.Enum):
     PASSWORD_CHANGE = "notifications.security_alerts"
     PHONE_NUMBER_CHANGE = "notifications.security_alerts"
     NEW_DEVICE_LOGIN = "notifications.security_alerts"
+    ACCOUNT_LOCKDOWN = "notifications.security_alerts"
 
 
 class UserNotification(SearchableMixin, db.Model):

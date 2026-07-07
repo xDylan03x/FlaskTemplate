@@ -1,6 +1,6 @@
 from flask import render_template, request, flash, redirect, url_for, current_app, abort, session, \
     render_template_string
-from flask_login import login_required, current_user, login_user
+from flask_login import login_required, current_user, login_user, logout_user
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -307,6 +307,26 @@ def manage_device(uuid36):
     form.device_trusted.data = device.device_trusted
     parsed_device = parse_device(device.user_agent)
     return render_template('account-settings/manage-device.html', title="Manage Device", tab="security", device=device, parsed_device=parsed_device, user_ip=request.remote_addr, form=form)
+
+
+@core.route('/account-settings/security/lockdown/<string:uuid36>')
+@core.route('/account-settings/security/lockdown')
+@login_required
+def lockdown(uuid36: str = None):
+    if uuid36 is None:
+        user = current_user
+    else:
+        user = UserManager.get_user_by_uuid36(uuid36)
+        if user is None:
+            abort(404)
+    UserManager.lockdown_user(user)
+    if uuid36 is None:
+        flash('Your account has been locked down.', 'success')
+        logout_user()
+        session.clear()
+        return redirect(url_for('auth.login'))
+    flash('User has been locked down.', 'success')
+    return redirect(url_for('core.user_settings'))
 
 
 @core.route('/system-settings/users')

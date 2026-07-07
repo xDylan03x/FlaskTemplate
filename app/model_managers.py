@@ -141,6 +141,21 @@ class UserManager:
                 db.session.add(user_setting_record)
             db.session.commit()
 
+    @staticmethod
+    def lockdown_user(user: User) -> None:
+        """
+        Secures a user's account
+        :param user:
+        :return:
+        """
+        user.refresh_uuid36()
+        user.status = 'disabled'
+        user.phone_number_verified = False
+        for perm in pm.all():
+            user.set_permission(perm.permission, False)
+        db.session.commit()
+        NotificationManager.send_notification(user, "Account Locked", "Your account has been locked down for security purposes. Please contact an admin to regain access.", NotificationCategory.ACCOUNT_LOCKDOWN)
+
 
 class LoginTokenManager:
     @staticmethod
