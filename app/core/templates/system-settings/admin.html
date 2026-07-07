@@ -48,6 +48,34 @@
     </details>
 
     <details class="collapse collapse-arrow bg-base-100 border border-base-300 mt-4" name="config-accordion">
+        <summary class="collapse-title font-semibold">Repository Info</summary>
+        <div class="collapse-content">
+            <div class="mt-1 divide-y divide-base-300">
+                <div class="flex flex-col gap-1 py-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div>Main Repository URL</div>
+                    <div>
+                        {% if config.get('MAIN_REPO_URL') %}
+                            <a class="link" target="_blank" href="{{ config.get('MAIN_REPO_URL') }}">{{ config.get('MAIN_REPO_URL') }}</a>
+                        {% else %}
+                            <span class="text-base-content/80">N/A</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="flex flex-col gap-1 py-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div>Template Repository URL</div>
+                    <div>
+                        {% if config.get('TEMPLATE_REPO_URL') %}
+                            <a class="link" target="_blank" href="{{ config.get('TEMPLATE_REPO_URL') }}">{{ config.get('TEMPLATE_REPO_URL') }}</a>
+                        {% else %}
+                            <span class="text-base-content/80">N/A</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </details>
+
+    <details class="collapse collapse-arrow bg-base-100 border border-base-300 mt-4" name="config-accordion">
         <summary class="collapse-title font-semibold">Configuration Info</summary>
         <div class="collapse-content">
             <div class="mt-1 divide-y divide-base-300">

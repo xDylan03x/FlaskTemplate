@@ -1,12 +1,14 @@
 import os
 import logging
 from dotenv import load_dotenv
+from git import Repo
 
 
 class Config:
     def __init__(self):
         cwd = os.getcwd()
         basedir = os.path.abspath(os.path.dirname(__file__))
+        repo = Repo(search_parent_directories=True)
         # After creating a .env file (you can use .env.example as a template), this will load it
         load_dotenv(os.path.join(basedir, '.env'))
 
@@ -17,6 +19,13 @@ class Config:
         self.APP_VERSION = os.environ.get("APP_VERSION") or "N/A"
 
         self.ADMIN_PANEL = True  # Allow users to access the admin panel (given the proper permissions)
+        self.MAIN_REPO_URL = None
+        self.TEMPLATE_REPO_URL = None
+        try:
+            self.MAIN_REPO_URL = repo.remotes['origin'].url or None
+            self.TEMPLATE_REPO_URL = repo.remotes['template'].url or None
+        except:
+            pass
 
         # File uploads
         self.S3_UPLOAD_ENDPOINT_URL = os.environ.get("S3_UPLOAD_ENDPOINT_URL") or None
