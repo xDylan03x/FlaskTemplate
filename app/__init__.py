@@ -10,7 +10,7 @@ from flask_login import LoginManager
 from flask_sqlalchemy import SQLAlchemy
 from flask_compress import Compress
 import sentry_sdk
-from .commands import create_admin, update_users
+from .commands import create_admin, update_users, update_app
 from .extensions.flask_permissions import PermissionManager
 from .extensions.flask_settings import SettingsManager
 from .extensions.flask_audit import AuditManager
@@ -74,6 +74,7 @@ def create_app(cfg: Config = Config) -> Flask:
     # Register CLI commands
     app.cli.add_command(create_admin)
     app.cli.add_command(update_users)
+    app.cli.add_command(update_app)
 
     from . import models
 

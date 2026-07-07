@@ -51,3 +51,16 @@ def update_users():
         users_updated.append(user.email)
 
     click.echo(f'All users updated.\nFound {user_count} users.\nUpdated: {', '.join(users_updated)}')
+
+
+@click.command(name='update_app')
+@with_appcontext
+def update_app():
+    from .model_managers import SystemManager
+
+    if SystemManager.get_setting('strict_login') is None:
+        SystemManager.set_setting('strict_login', True)
+    if SystemManager.get_setting('allow_account_creation') is None:
+        SystemManager.set_setting('allow_account_creation', True)
+
+    click.echo('Application settings updated.')
