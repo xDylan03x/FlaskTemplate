@@ -17,17 +17,17 @@
         </div>
 
         <div class="join mt-4">
-            <a class="btn btn-sm btn-outline btn-primary join-item" href="{{ url_for('core.change_password') }}">Change Password</a>
-            <a class="btn btn-sm btn-outline btn-neutral join-item" href="{{ url_for('core.login_history') }}">Login History</a>
+            <a class="btn btn-sm btn-soft btn-primary join-item" href="{{ url_for('core.change_password') }}">Change Password</a>
+            <a class="btn btn-sm btn-soft join-item" href="{{ url_for('core.login_history') }}">Login History</a>
             {% if current_user.totp_verified %}
                 <button type="button" class="btn btn-sm btn-outline btn-error join-item" onclick="totp_modal.showModal()">Disable TOTP</button>
             {% else %}
-                <a class="btn btn-sm btn-outline btn-neutral join-item" href="{{ url_for('core.enable_totp') }}">Enable TOTP</a>
+                <a class="btn btn-sm btn-soft join-item" href="{{ url_for('core.enable_totp') }}">Enable TOTP</a>
             {% endif %}
-            <button type="button" class="btn btn-sm btn-outline btn-error join-item" onclick="lockdown_modal.showModal()">Lockdown Account</button>
+            <button type="button" class="btn btn-sm btn-soft btn-error join-item" onclick="lockdown_modal.showModal()">Lockdown Account</button>
         </div>
 
-        {{ form.submit(class='btn btn-neutral text-neutral-content mt-8 w-full') }}
+        {{ form.submit(class='btn btn-primary text-neutral-content mt-8 w-full') }}
     </form>
 
     <dialog id="totp_modal" class="modal modal-bottom sm:modal-middle">

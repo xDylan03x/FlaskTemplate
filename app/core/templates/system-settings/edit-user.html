@@ -37,8 +37,8 @@
             {% endfor %}
 
             <div class="flex flex-row gap-2">
-                <button type="button" class="btn btn-outline btn-error mt-4" onclick="delete_modal.showModal()" {% if not current_user.can('users.delete') %}disabled{% endif %}>Delete User</button>
-                <button type="button" class="btn btn-outline btn-error mt-4" onclick="lockdown_modal.showModal()">Lockdown User</button>
+                <button type="button" class="btn btn-soft btn-error mt-4" onclick="delete_modal.showModal()" {% if not current_user.can('users.delete') %}disabled{% endif %}>Delete User</button>
+                <button type="button" class="btn btn-soft btn-error mt-4" onclick="lockdown_modal.showModal()">Lockdown User</button>
             </div>
 
             <h5 class="h5 text-base-content mt-8">Permissions</h5>
@@ -65,7 +65,7 @@
                 </div>
             {% endfor %}
 
-            {{ form.submit(class='btn btn-neutral text-neutral-content mt-8 w-full') }}
+            {{ form.submit(class='btn btn-primary text-neutral-content mt-8 w-full') }}
         </form>
 
     <dialog id="delete_modal" class="modal modal-bottom sm:modal-middle">

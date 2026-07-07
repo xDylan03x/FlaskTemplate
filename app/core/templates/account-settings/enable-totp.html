@@ -10,7 +10,7 @@
 
                 <img src="{{ qrcode(binding_url, border=2)  }}" class="mt-8 w-80 h-auto mx-auto" alt="TOTP QR Code">
 
-                <a class="btn btn-neutral text-neutral-content mt-8 w-full" href="{{ url_for('core.enable_totp', verify=True) }}">Next</a>
+                <a class="btn btn-primary text-neutral-content mt-8 w-full" href="{{ url_for('core.enable_totp', verify=True) }}">Next</a>
 
             </div>
         </div>

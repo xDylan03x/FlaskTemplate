@@ -15,7 +15,7 @@
         <form id="profile_form" action="" method="post">
             {{ form.csrf_token }}
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-8">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                     {{ form.name.label(class="label") }}
                     {{ form.name(class="input mt-1 w-full", id="name", type="text") }}
@@ -46,10 +46,10 @@
                     </div>
 
                     <div class="flex flex-row gap-2 sm:flex-1">
-                        <button type="button" class="btn btn-outline btn-neutral w-1/2 sm:flex-1" onclick="upload_modal.showModal()">
+                        <button type="button" class="btn btn-soft w-1/2 sm:flex-1" onclick="upload_modal.showModal()">
                             Upload Image
                         </button>
-                        <button type="button" class="btn btn-outline btn-error w-1/2 sm:flex-1" @click="profile_picture_url = ''" :disabled="!profile_picture_url">
+                        <button type="button" class="btn btn-soft btn-error w-1/2 sm:flex-1" @click="profile_picture_url = ''" :disabled="!profile_picture_url">
                             Remove Image
                         </button>
                     </div>
@@ -86,7 +86,7 @@
 
             <p class="form-help">Changing your phone number will require you to verify it before it can be used for 2FA.</p>
 
-            {{ form.submit(class='btn btn-neutral text-neutral-content mt-8 w-full') }}
+            {{ form.submit(class='btn btn-primary text-neutral-content mt-8 w-full') }}
         </form>
 
     </div>
