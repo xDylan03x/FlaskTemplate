@@ -1,0 +1,105 @@
+{% macro article_list(articles, query) %}
+    {% if articles %}
+        {% if query %}
+            <div class="space-y-8">
+                <section>
+                    <div class="card bg-base-100 border border-base-300 shadow-sm overflow-hidden">
+                        <div class="divide-y divide-base-300">
+                            {% for article in articles %}
+                                {{ article_row(article) }}
+                            {% endfor %}
+                        </div>
+                    </div>
+                </section>
+            </div>
+        {% else %}
+            <div class="space-y-8">
+                {% for group in articles %}
+                    <section>
+                        <div class="mb-3 flex items-end justify-between gap-4">
+                            <div>
+                                <a class="h5 link link-hover"
+                                   href="{{ url_for('docs.articles', slug=group.slug) }}">
+                                    {{ group.title }}
+                                </a>
+
+                                {% if group.articles %}
+                                    <p class="support mt-1">
+                                        {{ group.articles | length }} article{% if group.articles | length != 1 %}s{% endif %}
+                                    </p>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="card bg-base-100 border border-base-300 shadow-sm overflow-hidden">
+                            <div class="divide-y divide-base-300">
+                                {% for article in group.articles %}
+                                    {{ article_row(article) }}
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </section>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% else %}
+        <div class="card bg-base-100 border border-base-300 shadow-sm">
+            <div class="card-body items-center text-center py-14">
+                <div>
+                    <h3 class="h3">No articles</h3>
+
+                    {% if request.args.get('query') %}
+                        <p class="support">
+                            No articles matched your search.
+                        </p>
+                    {% else %}
+                        <p class="support">
+                            No articles to show.
+                        </p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    {% endif %}
+{% endmacro %}
+
+
+{% macro article_row(article) %}
+    <a href="{{ url_for('docs.articles', slug=article.slug) }}"
+       class="group block relative p-4 sm:p-5 transition-colors bg-base-100 hover:bg-base-200/40">
+
+        <div class="min-w-0">
+            <div class="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
+                <div class="min-w-0">
+                    <h3 class="text-base font-semibold leading-6 group-hover:underline">
+                        {{ article.title }}
+                    </h3>
+
+                    {% if article.topics %}
+                        <div class="mt-1 flex flex-wrap items-center gap-2 text-xs text-base-content/60">
+                            {% for topic in article.topics %}
+                                <span class="badge badge-ghost badge-sm">
+                                    {{ topic }}
+                                </span>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+
+                {% if article.visibility %}
+                    <div class="mt-1 sm:mt-0">
+                        <span class="badge badge-sm badge-neutral badge-outline">
+                            {{ article.visibility | title }}
+                        </span>
+                    </div>
+                {% endif %}
+            </div>
+
+            {% if article.description %}
+                <p class="mt-2 text-sm text-base-content/80">
+                    {{ article.description }}
+                </p>
+            {% endif %}
+        </div>
+    </a>
+{% endmacro %}

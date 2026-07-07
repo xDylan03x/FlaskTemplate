@@ -62,5 +62,7 @@ def update_app():
         SystemManager.set_setting('strict_login', True)
     if SystemManager.get_setting('allow_account_creation') is None:
         SystemManager.set_setting('allow_account_creation', True)
+    if SystemManager.get_setting('restrict_docs') is None:
+        SystemManager.set_setting('restrict_docs', False)
 
     click.echo('Application settings updated.')

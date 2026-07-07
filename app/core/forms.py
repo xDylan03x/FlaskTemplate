@@ -141,6 +141,7 @@ class TOTPVerifyForm(FlaskForm):
 class SystemSettingsForm(FlaskForm):
     allow_account_creation = BooleanField('Allow Account Creation')
     strict_login = BooleanField('Strict Login')
+    restrict_docs = BooleanField('Restrict Docs')
     submit = SubmitField('Save')
 
 

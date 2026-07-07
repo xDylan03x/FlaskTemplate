@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "tailwindcss/preflight.css" layer(base);
 @import "./custom-themes.css";
+@plugin "@tailwindcss/typography";
 @plugin "daisyui" {
     themes: all;
 }

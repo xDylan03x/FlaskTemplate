@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+{% block outside %}
+
+    <div class="drawer lg:drawer-open">
+        <input id="my-drawer-3" type="checkbox" class="drawer-toggle"/>
+        <div class="drawer-content px-4 py-8 md:px-12 md:py-12">
+            <div class="w-full max-w-4xl">
+                <div class="flex flex-row gap-4 items-center mb-4">
+                    <label for="my-drawer-3" class="btn btn-square btn-ghost drawer-button lg:hidden">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"/>
+                        </svg>
+                    </label>
+                    {% if article %}
+                        <h4 class="h4 text-base-content">View Article</h4>
+                    {% else %}
+                        <h4 class="h4 text-base-content">{{ title }}</h4>
+                    {% endif %}
+                </div>
+                {% block catalog_content %}{% endblock %}
+            </div>
+        </div>
+        <div class="drawer-side">
+            <label for="my-drawer-3" aria-label="close sidebar" class="drawer-overlay"></label>
+            <div class="bg-base-200 min-h-full w-80 p-8">
+                <h3 class="h3 text-base-content">Documentation</h3>
+                <ul class="menu w-full">
+                    <li><a class="{% if tab == 'all' %}menu-active{% endif %}" href="{{ url_for('docs.articles') }}">All Articles</a></li>
+
+                    {% for group in menu_items %}
+                        <li>
+                            <details {% if article and article.group == group.title %}open{% elif tab == group.slug %}open{% endif %}>
+                                <summary class="{% if tab == group.slug %}menu-active{% endif %}">
+                                    <a href="{{ url_for('docs.articles', slug=group.slug) }}"
+                                       class="flex-1">{{ group.title }}</a>
+                                </summary>
+                                {% if group.articles %}
+                                    <ul>
+                                        {% for article in group.articles %}
+                                            <li><a class="{% if article.slug == request.view_args.get('slug') %}menu-active{% endif %}" href="{{ url_for('docs.articles', slug=article.slug) }}">{{ article.title }}</a></li>
+                                        {% endfor %}
+                                    </ul>
+                                {% endif %}
+                            </details>
+                        </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+
+{% endblock %}

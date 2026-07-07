@@ -87,6 +87,9 @@ def create_app(cfg: Config = Config) -> Flask:
     from .api import apiv1 as api_blueprint
     app.register_blueprint(api_blueprint, url_prefix='/api/v1')
 
+    from .docs import docs as docs_blueprint
+    app.register_blueprint(docs_blueprint, url_prefix='/docs')
+
     from .errors import errors
     app.register_blueprint(errors)
 

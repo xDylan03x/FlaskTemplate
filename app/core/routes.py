@@ -413,9 +413,11 @@ def system_settings():
         audit.log("User updated system settings", actor=current_user)
         SystemManager.set_setting('allow_account_creation', form.allow_account_creation.data)
         SystemManager.set_setting('strict_login', form.strict_login.data)
+        SystemManager.set_setting('restrict_docs', form.restrict_docs.data)
         flash('Your changes have been saved.', 'success')
     form.allow_account_creation.data = SystemManager.get_setting('allow_account_creation')
     form.strict_login.data = SystemManager.get_setting('strict_login')
+    form.restrict_docs.data = SystemManager.get_setting('restrict_docs')
     return render_template('system-settings/system.html', title="System Settings", tab='system', form=form)
 
 

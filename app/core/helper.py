@@ -160,20 +160,16 @@ def is_safe_read_query(query: str) -> tuple[bool, str | None]:
     cleaned = query.strip().lower()
 
     if not cleaned:
-        print("Query is empty.")
         return False, "Query is empty."
 
     if ";" in cleaned:
-        print("Multiple statements are not allowed.")
         return False, "Multiple statements are not allowed."
 
     if not cleaned.startswith(READ_ONLY_PREFIXES):
-        print("Only read-only SELECT-style queries are allowed.")
         return False, "Only read-only SELECT-style queries are allowed."
 
     for word in BLOCKED_SQL_WORDS:
         if word in cleaned.split():
-            print(f"Blocked SQL keyword: {word}")
             return False, f"Blocked SQL keyword: {word}"
 
     return True, None

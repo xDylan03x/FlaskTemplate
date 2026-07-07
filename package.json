@@ -5,6 +5,7 @@
   },
   "dependencies": {
     "@tailwindcss/cli": "^4.1.18",
+    "@tailwindcss/typography": "^0.5.20",
     "@uppy/aws-s3": "^5.1.0",
     "@uppy/core": "^5.2.0",
     "@uppy/dashboard": "^5.1.1",

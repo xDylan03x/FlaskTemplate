@@ -23,6 +23,12 @@
             <p class="form-help">Block users from signing in with suspicious user agents.</p>
         </div>
 
+        <div class="mt-4">
+            {{ form.restrict_docs(class="checkbox", id="restrict_docs", type="checkbox") }}
+            {{ form.restrict_docs.label(class="label") }}
+            <p class="form-help">Block users viewing documentation without signing in.</p>
+        </div>
+
 
         {{ form.submit(class='btn btn-primary text-neutral-content mt-8 w-full') }}
     </form>

@@ -189,3 +189,4 @@ migrations/
 node_modules
 TODO.md
 /app/core/static/css/output.css
+app/docs/index/*
