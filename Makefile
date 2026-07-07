@@ -27,7 +27,7 @@ requirements: # Update the requirements.txt file with the current environment's 
 
 git: # Update the project with the current template files from the Git repository
 	git fetch template
-	git merge template/master
+	git merge template/master -m "Merge template/master into current branch"
 
 setup_project: # Set up the project by installing dependencies and configuring environment variables
 	@echo "$(YELLOW)> Setting Up Project$(NC)"
