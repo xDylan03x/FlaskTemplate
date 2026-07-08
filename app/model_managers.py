@@ -68,7 +68,7 @@ class UserManager:
             user.set_permission(perm.permission, perm.default)
         db.session.commit()
         if send_welcome_email:
-            _, raw_token = LoginTokenManager.create_login_token(expiration_minutes=86400, user_id=user.id, next_url=url_for('docs.articles', slug='core/getting-started'), immediate_login=True, create_account=True, auth_source='welcome email')
+            _, raw_token = LoginTokenManager.create_login_token(expiration_minutes=86400, user_id=user.id, next_url=url_for('core.setup_account'), immediate_login=True, create_account=True, auth_source='welcome email')
             welcome_url = url_for('auth.login_with_token', raw_token=raw_token, _external=True)
             send_email(
                 f'Your {current_app.config["APP_NAME"]} Account Has Been Created',

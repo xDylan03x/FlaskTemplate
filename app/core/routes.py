@@ -40,7 +40,7 @@ def setup_account():
         flash('Your account has been set up. You can now login using email and password or social logins.', 'success')
         flash('You can change account settings such as your profile information, notification preferences, and security options here.', 'info')
         LoginTokenManager.invalidate_create_account_token(current_user.id)
-        return redirect(url_for('core.profile_settings'))
+        return redirect(url_for('docs.articles', slug='core/getting-started'))
     form.name.data = current_user.name
     form.two_factor_auth.data = current_user.get_setting('security.two_factor_auth')
     return render_template('setup-account.html', title="Setup Account", form=form)
