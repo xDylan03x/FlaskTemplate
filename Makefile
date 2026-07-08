@@ -41,32 +41,36 @@ setup_project: # Set up the project by installing dependencies and configuring e
 
 update: # Update the project with the current template files
 	@echo "$(MAGENTA)> Updating from Project Template$(NC)"
-	@echo "$(MAGENTA)> [1/7] Updating from GIT repository$(NC)"
+	@echo "$(MAGENTA)> [1/8] Updating from GIT repository$(NC)"
 	@echo ""
 	$(MAKE) git
 	@echo ""
-	@echo "$(MAGENTA)> [2/7] Running Tailwind CSS Build$(NC)"
+	@echo "$(MAGENTA)> [2/8] Updating NPM Dependencies(NC)"
+	@echo ""
+	npm install
+	@echo ""
+	@echo "$(MAGENTA)> [3/8] Running Tailwind CSS Build$(NC)"
 	@echo ""
 	$(MAKE) tailwind
 	@echo ""
-	@echo "$(MAGENTA)> [3/7] Running Vite Build$(NC)"
+	@echo "$(MAGENTA)> [4/8] Running Vite Build$(NC)"
 	@echo ""
 	$(MAKE) vite
 	@echo ""
-	@echo "$(MAGENTA)> [4/7] Updating Python Dependencies$(NC)"
+	@echo "$(MAGENTA)> [5/8] Updating Python Dependencies$(NC)"
 	@echo ""
 	pip install -r requirements.txt
 	@echo ""
-	@echo "$(MAGENTA)> [5/7] Upgrading Database$(NC)"
+	@echo "$(MAGENTA)> [6/8] Upgrading Database$(NC)"
 	@echo ""
 	flask db migrate -m "Upgrade from template"
 	flask db upgrade
 	@echo ""
-	@echo "$(MAGENTA)> [6/7] Updating Users$(NC)"
+	@echo "$(MAGENTA)> [7/8] Updating Users$(NC)"
 	@echo ""
 	flask update_users
 	@echo ""
-	@echo "$(MAGENTA)> [7/7] Updating App$(NC)"
+	@echo "$(MAGENTA)> [8/8] Updating App$(NC)"
 	@echo ""
 	flask update_app
 	@echo ""
