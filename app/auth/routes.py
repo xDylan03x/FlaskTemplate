@@ -502,7 +502,9 @@ def login_with_token(raw_token: str):
         LoginRecordManager.create_login_record(user.id, get_ip_from_request(request), user_agent, login_token)
         login_user(user, remember=login_token.remember_login)
         session['theme'] = user.get_setting('preferences.theme') or 'light'
-    LoginTokenManager.invalidate_login_token(login_token)
+    # Invalidate the token if it's not to be used for account creation
+    if not login_token.create_account:
+        LoginTokenManager.invalidate_login_token(login_token)
 
     next_url = login_token.next_url
     if user.status == 'pending':
