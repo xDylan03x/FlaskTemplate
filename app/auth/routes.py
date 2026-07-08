@@ -473,7 +473,11 @@ def login_with_token(raw_token: str):
         pass
     else:
         user_device = UserDeviceManager.create_user_device(user_id=user.id, user_agent=user_agent)
-        if not login_token.create_account:
+        # If this is an account creation token
+        if login_token.create_account:
+            user_device.device_trusted = True
+            login_token.update_risk_score(RiskAction.EXISTING_DEVICE)
+        else:
             login_token.update_risk_score(RiskAction.NEW_DEVICE)
         manage_url = url_for('core.manage_device', uuid36=user_device.uuid36, _external=True)
         NotificationManager.send_notification(user, "New Device Login", "A new device has logged in to your account. Please use the link below to manage it.", NotificationCategory.NEW_DEVICE_LOGIN, link=manage_url)
