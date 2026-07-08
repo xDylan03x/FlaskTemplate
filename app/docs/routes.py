@@ -9,7 +9,7 @@ from .helper import ArticleRegistry
 @docs.route('/')
 @docs.route('/<path:slug>')
 def articles(slug=None):
-    if SystemManager.get_setting('restrict_docs'):
+    if SystemManager.get_setting('restrict_docs') and current_user.is_anonymous:
         abort(403)
     query = request.args.get("query", "").strip()
     include_private = current_user.is_authenticated
