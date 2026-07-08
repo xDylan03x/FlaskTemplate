@@ -86,13 +86,11 @@
                     {% endif %}
                 </div>
 
-                {% if article.visibility %}
-                    <div class="mt-1 sm:mt-0">
-                        <span class="badge badge-sm badge-neutral badge-outline">
-                            {{ article.visibility | title }}
-                        </span>
-                    </div>
-                {% endif %}
+                <div class="mt-1 sm:mt-0">
+                    <span class="badge badge-sm badge-neutral {% if article.visibility == "public" %}badge-outline{% else %}badge-ghost{% endif %}">
+                        {{ article.visibility | title }}
+                    </span>
+                </div>
             </div>
 
             {% if article.description %}
