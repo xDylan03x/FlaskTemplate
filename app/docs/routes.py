@@ -6,7 +6,7 @@ from app.model_managers import SystemManager
 from .helper import ArticleRegistry
 
 
-@docs.route('/')
+@docs.route('')
 @docs.route('/<path:slug>')
 def articles(slug=None):
     if SystemManager.get_setting('restrict_docs') and current_user.is_anonymous:

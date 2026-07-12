@@ -1,0 +1,37 @@
+{% extends 'base.html' %}
+{% block content %}
+
+    <div class="centered-container">
+        <div class="card bg-base-300 w-xl max-w-xl">
+            <div class="card-body">
+                <h3 class="h3 text-base-content text-center">Bug Report</h3>
+                <p class="support text-base-content/80 text-center">
+                    If you've found an issue or would like to request a new feature, please include as much information as possible below.
+                    You can also find information about issues or features on the <a class="link" href="{{ url_for('docs.articles') }}">documentation portal</a>.
+                </p>
+
+
+                <form action="" method="post">
+                    {{ form.csrf_token }}
+
+                    {{ form.subject.label(class="label mt-8") }}
+                    {{ form.subject(class="input mt-1 w-full", id="subject", type="text") }}
+                    {% for error in form.subject.errors %}
+                        <p class="form-error">{{ error }}</p>
+                    {% endfor %}
+
+                    {{ form.message.label(class="label mt-4") }}
+                    {{ form.message(class="textarea mt-1 w-full", id="message", rows=4) }}
+                    {% for error in form.message.errors %}
+                        <p class="form-error">{{ error }}</p>
+                    {% endfor %}
+
+                    {{ form.submit(class='btn btn-primary text-neutral-content mt-8 w-full') }}
+
+                </form>
+
+            </div>
+        </div>
+    </div>
+
+{% endblock %}

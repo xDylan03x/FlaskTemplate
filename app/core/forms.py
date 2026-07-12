@@ -1,6 +1,6 @@
 from flask_wtf import FlaskForm
 from wtforms import SubmitField, PasswordField, StringField, SelectField, BooleanField, EmailField
-from wtforms.fields.simple import TelField, HiddenField
+from wtforms.fields.simple import TelField, HiddenField, TextAreaField
 from wtforms.validators import DataRequired, EqualTo
 
 COUNTRY_CODE_CHOICES = [
@@ -143,6 +143,12 @@ class SystemSettingsForm(FlaskForm):
     strict_login = BooleanField('Strict Login')
     restrict_docs = BooleanField('Restrict Docs')
     submit = SubmitField('Save')
+
+
+class BugReportForm(FlaskForm):
+    subject = StringField('Subject', validators=[DataRequired()])
+    message = TextAreaField('Message', validators=[DataRequired()])
+    submit = SubmitField('Submit Report')
 
 
 def build_edit_user_form(permission_manager):

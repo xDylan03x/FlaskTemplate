@@ -8,11 +8,11 @@ from app.core import core
 from app import db, twilio_client, audit
 from .forms import ChangePasswordForm, ProfileSettingsForm, NotificationSettingsForm, SecuritySettingsForm, \
     SetupAccountForm, NewUserForm, TOTPVerifyForm, CreateAccountForm, DeviceManagerForm, \
-    build_edit_user_form, ApplicationSettingsForm, SystemSettingsForm
+    build_edit_user_form, ApplicationSettingsForm, SystemSettingsForm, BugReportForm
 import phonenumbers
 from app.model_managers import UserManager, UserDeviceManager, FileManager, NotificationManager, SystemManager
 from .helper import send_sms, parse_device, get_routes, get_blueprints, get_extensions, get_database_status, \
-    get_platform_info, is_safe_read_query, modify_query
+    get_platform_info, is_safe_read_query, modify_query, send_email
 from ..model_managers import LoginTokenManager
 from ..extensions.flask_permissions import require_permission
 from app import pm
@@ -465,6 +465,22 @@ def admin_sql_console():
 
         audit.log("Admin SQL console query failed", actor=current_user)
         return render_template("system-settings/sql-results.html", error=str(e), query=query, columns=[], rows=[], row_count=0)
+
+
+@core.route('/bug-report', methods=["GET", "POST"])
+@login_required
+def bug_report():
+    form = BugReportForm()
+    if form.validate_on_submit():
+        subject = f"New Bug Report Submission for {current_app.config['APP_NAME']}"
+        body = (f"App Version: {current_app.config['APP_VERSION']}\n"
+                f"User: {current_user.name} ({current_user.email})\n\n"
+                f"Report Subject: {form.subject.data.strip()}\n"
+                f"Report Message:\n{form.message.data.strip()}\n")
+        send_email(subject, body, current_app.config["ADMIN_EMAIL"])
+        flash('Your report has been sent. You should hear from an administrator soon.', 'success')
+        return redirect(url_for('core.bug_report'))
+    return render_template('bug-report.html', title="Bug Report", form=form)
 
 
 @core.route("/external-redirect")
