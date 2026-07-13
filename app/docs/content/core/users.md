@@ -9,11 +9,12 @@ topics: [users, administration]
 
 ---
 # Related Permissions
-| Permission   | Description                                                               |
-|--------------|---------------------------------------------------------------------------|
-| Create Users | Able to create uses via the dashboard                                     |
-| Update Users | Able to modify user information, their permissions, and lockdown the user |
-| Delete Users | Able to delete users                                                      |
+| Permission        | Description                                                               |
+|-------------------|---------------------------------------------------------------------------|
+| Create Users      | Able to create uses via the dashboard                                     |
+| Update Users      | Able to modify user information, their permissions, and lockdown the user |
+| Delete Users      | Able to delete users                                                      |
+| Impersonate Users | Able to impersonate other users for troubleshooting                       |
 
 # Instructions
 To view and modify users, click on the "User Management" tab in the system settings menu (you must have one of the above permissions to see this option).
@@ -45,3 +46,14 @@ This will set the status of the user to disabled and disable all the user's perm
 
 This will delete the user, preventing them from interacting with the system.
 This action can only be undone through the database via the `deleted` column.
+
+## Impersonating Users
+1. From the user management page, click the "Edit User" button beside the user you'd like to impersonate.
+2. From this page, click on the "Impersonate User" button and continue through the dialog.
+
+_Note: You must have the "Impersonate Users" and "Update Users" permission to impersonate a user._
+
+Impersonating a user will sign you in as that user for the duration of the session. In this state, you will be able to
+interact with the application as if you were that user, without having to request their credentials.  
+Upon starting the session, the user will receive a notification that you are impersonating them, and you will have a banner at the top of the screen indicating that you are impersonating them.  
+To end the session, click the "End Session" button in the banner at the top of the screen. This will sign you out of their account, and back into yours.
