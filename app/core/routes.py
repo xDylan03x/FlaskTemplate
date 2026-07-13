@@ -77,7 +77,7 @@ def profile_settings():
                     else:
                         flash("Error uploading profile picture", "error")
             else:
-                current_user.profile_picture_url = f'https://api.dicebear.com/9.x/initials/svg?seed={current_user.name}&radius=50&backgroundColor=00897b,039be5,3949ab,5e35b1,8e24aa,43a047,d81b60,f4511e,fb8c00,fdd835&backgroundType=gradientLinear&fontFamily=Arial&fontSize=41'
+                current_user.profile_picture_url = f'https://api.dicebear.com/10.x/initials/svg?size=50&initialsVariant=alt:1&lettersVariant=double:1&seed={current_user.name}'
             # Get the user entered phone number and country code
             raw_phone = form.phone_number.data.strip()
             region = form.country_code.data or "US"

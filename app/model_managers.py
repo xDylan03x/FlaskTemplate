@@ -56,7 +56,7 @@ class UserManager:
                     email_verified=email_verified, phone_number_verified=phone_number_verified,
                     status=status)
         if not profile_picture_url:
-            profile_picture_url = f'https://api.dicebear.com/9.x/initials/svg?seed={user.name}&radius=50&backgroundColor=00897b,039be5,3949ab,5e35b1,8e24aa,43a047,d81b60,f4511e,fb8c00,fdd835&backgroundType=gradientLinear&fontFamily=Arial&fontSize=41'
+            profile_picture_url = f'https://api.dicebear.com/10.x/initials/svg?size=50&initialsVariant=alt:1&lettersVariant=double:1&seed={user.name}'
         user.profile_picture_url = profile_picture_url
         db.session.add(user)
         db.session.commit()
