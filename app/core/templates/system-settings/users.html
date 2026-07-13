@@ -29,7 +29,11 @@
                         </div>
                     </div>
                     <div>
-                        <p class="standard font-medium text-base-content">{{ user.name }} {% if user.get_setting('security.two_factor_auth') %}<span class="badge badge-xs badge-success">2FA</span>{% endif %}</p>
+                        <p class="standard font-medium text-base-content flex flex-row gap-2 items-center">
+                            {{ user.name }}
+                            {% if user.id == current_user.id%}<span class="badge badge-xs badge-neutral">You</span>{% endif %}
+                            {% if user.get_setting('security.two_factor_auth') %}<span class="badge badge-xs badge-success">2FA</span>{% endif %}
+                        </p>
                         <p class="support mt-0">{{ user.email }}</p>
                     </div>
                 </td>
