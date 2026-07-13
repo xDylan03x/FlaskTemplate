@@ -1,7 +1,7 @@
 from flask_wtf import FlaskForm
-from wtforms import SubmitField, PasswordField, StringField, SelectField, BooleanField, EmailField
+from wtforms import SubmitField, PasswordField, StringField, SelectField, BooleanField, EmailField, SelectMultipleField
 from wtforms.fields.simple import TelField, HiddenField, TextAreaField
-from wtforms.validators import DataRequired, EqualTo
+from wtforms.validators import DataRequired, EqualTo, Optional, Length
 
 COUNTRY_CODE_CHOICES = [
     ("US", "US +1"),
@@ -142,6 +142,19 @@ class SystemSettingsForm(FlaskForm):
     allow_account_creation = BooleanField('Allow Account Creation')
     strict_login = BooleanField('Strict Login')
     restrict_docs = BooleanField('Restrict Docs')
+    submit = SubmitField('Save')
+
+
+class NewGroupForm(FlaskForm):
+    title = StringField('Title', validators=[DataRequired()])
+    description = StringField('Description', validators=[Length(max=256)])
+    submit = SubmitField('Create Group')
+
+
+class EditGroupForm(FlaskForm):
+    title = StringField('Title', validators=[DataRequired()])
+    description = StringField('Description', validators=[Length(max=256)])
+    users = SelectMultipleField('Users', coerce=lambda v: int(v) if v else None, validators=[Optional()])
     submit = SubmitField('Save')
 
 

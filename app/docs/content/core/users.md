@@ -57,3 +57,6 @@ Impersonating a user will sign you in as that user for the duration of the sessi
 interact with the application as if you were that user, without having to request their credentials.  
 Upon starting the session, the user will receive a notification that you are impersonating them, and you will have a banner at the top of the screen indicating that you are impersonating them.  
 To end the session, click the "End Session" button in the banner at the top of the screen. This will sign you out of their account, and back into yours.
+
+## User Groups
+To learn about managing user groups and assign users to them, [click here]({{ doc_link_article("core/group-management") }}).

@@ -5,7 +5,7 @@ from flask import current_app, url_for
 from flask_sqlalchemy.pagination import Pagination
 from app.core.helper import send_email, send_sms
 from app.models import User, LoginToken, LoginRecord, UserNotification, NotificationCategory, UserDevice, File, \
-    SystemSetting, UserPermission, UserSetting
+    SystemSetting, UserPermission, UserSetting, UserGroup
 from app import db, pm, sm
 from datetime import datetime, timedelta, timezone
 
@@ -94,8 +94,14 @@ class UserManager:
         return user
 
     @staticmethod
-    def get_all_users(include_deleted: bool = False, page: int = 1) -> Pagination:
-        base_statement = sa.select(User)
+    def get_all_users(include_deleted: bool = False, page: int = 1, paginate: bool = True) -> Pagination:
+        base_statement = sa.select(User).order_by(User.name)
+
+        if not paginate:
+            if not include_deleted:
+                base_statement = base_statement.where(User.deleted == False)
+            return db.session.scalars(base_statement).all()
+
         if not include_deleted:
             base_statement = base_statement.where(User.deleted == False)
         users = db.paginate(base_statement, page=page, per_page=10, error_out=False)
@@ -155,6 +161,37 @@ class UserManager:
             user.set_permission(perm.permission, False)
         db.session.commit()
         NotificationManager.send_notification(user, "Account Locked", "Your account has been locked down for security purposes. Please contact an admin to regain access.", NotificationCategory.ACCOUNT_LOCKDOWN)
+
+    @staticmethod
+    def get_user_group_by_uuid36(uuid36: str) -> UserGroup | None:
+        group = db.session.scalar(sa.select(UserGroup).where(UserGroup.uuid36 == uuid36))
+        return group
+
+    @staticmethod
+    def get_all_user_groups(page: int = 1, paginate: bool = True) -> Pagination:
+        base_statement = sa.select(UserGroup).order_by(UserGroup.title)
+
+        if not paginate:
+            return db.session.scalars(base_statement).all()
+
+        groups = db.paginate(base_statement, page=page, per_page=10, error_out=False)
+        return groups
+
+    @staticmethod
+    def delete_user_group(group: UserGroup) -> None:
+        for user in group.users:
+            user.groups.remove(group)
+        for task in group.tasks:
+            task.assigned_group_id = None
+        db.session.delete(group)
+        db.session.commit()
+
+    @staticmethod
+    def create_user_group(title: str, description: str = None) -> UserGroup:
+        group = UserGroup(title=title, description=description)
+        db.session.add(group)
+        db.session.commit()
+        return group
 
 
 class LoginTokenManager:

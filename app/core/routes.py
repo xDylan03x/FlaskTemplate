@@ -8,7 +8,7 @@ from app.core import core
 from app import db, twilio_client, audit
 from .forms import ChangePasswordForm, ProfileSettingsForm, NotificationSettingsForm, SecuritySettingsForm, \
     SetupAccountForm, NewUserForm, TOTPVerifyForm, CreateAccountForm, DeviceManagerForm, \
-    build_edit_user_form, ApplicationSettingsForm, SystemSettingsForm, BugReportForm
+    build_edit_user_form, ApplicationSettingsForm, SystemSettingsForm, BugReportForm, NewGroupForm, EditGroupForm
 import phonenumbers
 from app.model_managers import UserManager, UserDeviceManager, FileManager, NotificationManager, SystemManager
 from .helper import send_sms, parse_device, get_routes, get_blueprints, get_extensions, get_database_status, \
@@ -436,6 +436,69 @@ def impersonate_user(uuid36: str = None):
     _, raw_token = LoginTokenManager.create_login_token(immediate_login=True, user_id=user.id, auth_source='starting impersonation session')
     next_url = url_for('auth.login_with_token', raw_token=raw_token)
     return redirect(url_for('auth.logout', next=next_url, preserve_user=True))
+
+
+@core.route('/system-settings/groups')
+@login_required
+@require_permission('groups')
+def group_settings():
+    page = request.args.get('page', 1, type=int)
+    groups = UserManager.get_all_user_groups(page=page)
+    return render_template('system-settings/groups.html', title="Group Management", tab='groups', groups=groups)
+
+
+@core.route('/system-settings/groups/new', methods=['GET', 'POST'])
+@login_required
+@require_permission('groups.create')
+def new_group():
+    form = NewGroupForm()
+    if form.validate_on_submit():
+        UserManager.create_user_group(form.title.data.strip(), form.description.data.strip())
+        flash('New group has been created.', 'success')
+        return redirect(url_for('core.group_settings'))
+    return render_template('system-settings/new-group.html', title="New Group", tab='groups', form=form)
+
+
+@core.route('/system-settings/groups/<string:uuid36>', methods=['GET', 'POST'])
+@login_required
+@require_permission('groups.update')
+def edit_group(uuid36):
+    group = UserManager.get_user_group_by_uuid36(uuid36)
+    if not group:
+        abort(404)
+
+    form = EditGroupForm()
+
+    users = UserManager.get_all_users(paginate=False)
+    form.users.choices = [(user.id, user.name) for user in users]
+
+    if form.validate_on_submit():
+        with audit.track(group, actor=current_user, message="User updating group's settings"):
+            group.title = form.title.data.strip()
+            group.description = form.description.data.strip()
+            selected_user_ids = set(form.users.data)
+            group.users = [user for user in users if user.id in selected_user_ids]
+
+        db.session.commit()
+        flash('Your changes have been saved.', 'success')
+        return redirect(url_for('core.group_settings'))
+
+    form.title.data = group.title
+    form.description.data = group.description
+    form.users.data = [user.id for user in group.users]
+    return render_template('system-settings/edit-group.html', title="Edit Group", tab="groups", form=form, group=group)
+
+
+@core.route('/system-settings/groups/delete/<string:uuid36>')
+@login_required
+@require_permission('groups.delete')
+def delete_group(uuid36):
+    group = UserManager.get_user_group_by_uuid36(uuid36)
+    if not group:
+        abort(404)
+    UserManager.delete_user_group(group)
+    flash('Group has been deleted.', 'success')
+    return redirect(url_for('core.group_settings'))
 
 
 @core.route('/system-settings/system', methods=['GET', 'POST'])

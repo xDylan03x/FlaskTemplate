@@ -1,0 +1,68 @@
+{% extends 'system-settings/base.html' %}
+{% block settings_content %}
+
+    {% if current_user.can('groups.create') %}
+        <a class="btn btn-soft" href="{{ url_for('core.new_group') }}">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="size-5">
+                <path d="M10 5a3 3 0 1 1-6 0 3 3 0 0 1 6 0ZM1.615 16.428a1.224 1.224 0 0 1-.569-1.175 6.002 6.002 0 0 1 11.908 0c.058.467-.172.92-.57 1.174A9.953 9.953 0 0 1 7 18a9.953 9.953 0 0 1-5.385-1.572ZM16.25 5.75a.75.75 0 0 0-1.5 0v2h-2a.75.75 0 0 0 0 1.5h2v2a.75.75 0 0 0 1.5 0v-2h2a.75.75 0 0 0 0-1.5h-2v-2Z" />
+            </svg>
+            New Group
+        </a>
+    {% endif %}
+
+    <div class="overflow-x-auto mt-8">
+        <table class="table table-auto w-full">
+            <thead>
+            <tr>
+                <th>Group</th>
+                <th>Number of Users</th>
+                <th>Actions</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for group in groups.items %}
+                <tr class="hover:bg-base-300">
+                    <td>
+                        <p class="standard font-medium text-base-content">{{ group.title }}</p>
+                        <p class="support mt-0">{{ group.description or '' }}</p>
+                    </td>
+                    <td>
+                        {{ group.users|length }}
+                    </td>
+                    <td>
+                        <a class="btn btn-sm btn-soft" href="{{ url_for('core.edit_group', uuid36=group.uuid36) }}" {% if not current_user.can('groups.update') %}disabled{% endif %}>
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="size-4">
+                                <path d="m5.433 13.917 1.262-3.155A4 4 0 0 1 7.58 9.42l6.92-6.918a2.121 2.121 0 0 1 3 3l-6.92 6.918c-.383.383-.84.685-1.343.886l-3.154 1.262a.5.5 0 0 1-.65-.65Z" />
+                                <path d="M3.5 5.75c0-.69.56-1.25 1.25-1.25H10A.75.75 0 0 0 10 3H4.75A2.75 2.75 0 0 0 2 5.75v9.5A2.75 2.75 0 0 0 4.75 18h9.5A2.75 2.75 0 0 0 17 15.25V10a.75.75 0 0 0-1.5 0v5.25c0 .69-.56 1.25-1.25 1.25h-9.5c-.69 0-1.25-.56-1.25-1.25v-9.5Z" />
+                            </svg>
+                            Edit group
+                        </a>
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="flex items-center justify-between gap-4 mt-8">
+        <div class="text-sm text-base-content/50">
+            Page {{ groups.page }} of {{ groups.pages }}
+        </div>
+
+        <div class="join">
+            {% if groups.has_prev %}
+                <a class="join-item btn btn-sm btn-neutral btn-outline" href="{{ url_for('core.all_groups', page=groups.prev_num) }}">Previous</a>
+            {% else %}
+                <button class="join-item btn btn-sm btn-neutral btn-outline" disabled>Previous</button>
+            {% endif %}
+
+            {% if groups.has_next %}
+                <a class="join-item btn btn-sm btn-neutral btn-outline" href="{{ url_for('core.all_groups', page=groups.next_num) }}">Next</a>
+            {% else %}
+                <button class="join-item btn btn-sm btn-neutral btn-outline" disabled>Next</button>
+            {% endif %}
+        </div>
+    </div>
+
+
+{% endblock %}

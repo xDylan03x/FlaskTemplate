@@ -13,6 +13,14 @@ from app import login, db, pm, sm
 import secrets
 
 
+user_group_members = sa.Table(
+    'user_group_members',
+    db.metadata,
+    sa.Column('user_id', sa.Integer, sa.ForeignKey('user.id'), primary_key=True),
+    sa.Column('group_id', sa.Integer, sa.ForeignKey('user_group.id'), primary_key=True),
+)
+
+
 class SystemSetting(db.Model):
     """
     Model representing a site setting as a key-value pair.
@@ -55,6 +63,7 @@ class User(db.Model, UserMixin):
         deleted: Soft delete flag
         deleted_at
 
+        groups: Many-to-many relationship with UserGroup model
         settings: One-to-many relationship with UserSetting model
         permissions: One-to-many relationship with UserPermission model
         notifications: One-to-many relationship with Notification model
@@ -82,6 +91,7 @@ class User(db.Model, UserMixin):
     deleted: so.Mapped[bool] = so.mapped_column(sa.Boolean, default=False, nullable=False)
     deleted_at: so.Mapped[Optional[datetime]] = so.mapped_column(sa.DateTime)
 
+    groups: so.Mapped[list["UserGroup"]] = db.relationship("UserGroup", secondary=user_group_members, back_populates="users")
     settings: so.Mapped[list["UserSetting"]] = so.relationship('UserSetting', backref='user', lazy='dynamic')
     permissions: so.Mapped[list["UserPermission"]] = so.relationship('UserPermission', backref='user', lazy='dynamic')
     notifications: so.Mapped[list["UserNotification"]] = so.relationship('UserNotification', backref='user', lazy='dynamic')
@@ -158,6 +168,34 @@ class User(db.Model, UserMixin):
             if perm_record.value:
                 return True
         return False
+
+
+class UserGroup(db.Model):
+    """
+    Model representing a group of users.
+    Attributes:
+        id
+        uuid36
+        created_at
+        updated_at
+
+        title
+        description: Optional description of the group
+
+        users: Many-to-many relationship with User model
+    """
+    id: so.Mapped[int] = so.mapped_column(primary_key=True)
+    uuid36: so.Mapped[str] = so.mapped_column(sa.String(36), unique=True, index=True, nullable=False, default=lambda: str(uuid.uuid4()))
+    created_at: so.Mapped[datetime] = so.mapped_column(sa.DateTime(timezone=True), nullable=False, default=lambda: datetime.now(tz=timezone.utc))
+    updated_at: so.Mapped[datetime] = so.mapped_column(sa.DateTime(timezone=True), nullable=False, default=lambda: datetime.now(tz=timezone.utc), onupdate=lambda: datetime.now(tz=timezone.utc))
+
+    title: so.Mapped[str] = so.mapped_column(sa.String(256), nullable=False)
+    description: so.Mapped[Optional[str]] = so.mapped_column(sa.String(256))
+
+    users: so.Mapped[list["User"]] = db.relationship("User", secondary=user_group_members, back_populates="groups")
+
+    def __repr__(self):
+        return '<UserGroup {}>'.format(self.title)
 
 
 class RiskAction(enum.Enum):

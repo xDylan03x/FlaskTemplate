@@ -1,73 +1,107 @@
 {% extends 'system-settings/base.html' %}
 {% block settings_content %}
-        <form action="" method="post">
-            {{ form.csrf_token }}
+    <form action="" method="post">
+        {{ form.csrf_token }}
 
-            <p class="support text-base-content/80">
-                You're currently editing {{ user.name }} {% if user.uuid36 == current_user.uuid36 %}<span class="badge badge-sm badge-warning">You</span>{% endif %}
-            </p>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-8">
-                <div>
-                    {{ form.name.label(class="label") }}
-                    {{ form.name(class="input mt-1 w-full", id="name", type="text") }}
-                    {% for error in form.name.errors %}
-                        <p class="form-error">{{ error }}</p>
-                    {% endfor %}
-                </div>
-                <div>
-                    <label class="label">Email</label>
-                    <input class="input mt-1 w-full" id="email" type="email" value="{{ user.email }}" disabled>
-                </div>
+        {% if user.id == current_user.id %}
+            <div role="alert" class="alert alert-warning">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="stroke-current size-6">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+                </svg>
+                <span>You are editing yourself. Changes made will take effect immediately.</span>
             </div>
+        {% endif %}
 
-            {{ form.status.label(class="label mt-4") }}
-            {{ form.status(class="select mt-1 w-full", id="status") }}
-            {% for error in form.status.errors %}
-                <p class="form-error">{{ error }}</p>
-            {% endfor %}
-            <p class="form-help">Disabling the user will not log them out, but will prevent them from logging in.</p>
-
-            {{ form.password.label(class="label mt-4") }}
-            {{ form.password(class="input mt-1 w-full", id="password", type="password") }}
-            <p class="form-help">Leave this field blank unless you want to make changes. Editing will log the
-            user out.</p>
-            {% for error in form.password.errors %}
-                <p class="form-error">{{ error }}</p>
-            {% endfor %}
-
-            <div class="flex flex-row gap-2">
-                <button type="button" class="btn btn-soft mt-4" onclick="impersonate_modal.showModal()" {% if not current_user.can('users.impersonate') or user.id == current_user.id or session.get('actual_user', None) %}disabled{% endif %}>Impersonate User</button>
-                <button type="button" class="btn btn-soft btn-error mt-4" onclick="delete_modal.showModal()" {% if not current_user.can('users.delete') %}disabled{% endif %}>Delete User</button>
-                <button type="button" class="btn btn-soft btn-error mt-4" onclick="lockdown_modal.showModal()">Lockdown User</button>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-8">
+            <div>
+                {{ form.name.label(class="label") }}
+                {{ form.name(class="input mt-1 w-full", id="name", type="text") }}
+                {% for error in form.name.errors %}
+                    <p class="form-error">{{ error }}</p>
+                {% endfor %}
             </div>
+            <div>
+                <label class="label">Email</label>
+                <input class="input mt-1 w-full" id="email" type="email" value="{{ user.email }}" disabled>
+            </div>
+        </div>
 
-            <h5 class="h5 text-base-content mt-8">Permissions</h5>
-            {% for group, permissions in permission_groups.items() %}
-                <div class="mt-4">
-                    <h6 class="h6 text-base-content">{{ group }}</h6>
-                    {% for permission in permissions %}
-                        {% set field_name = permission.permission_field_name %}
-                        {% set field = form[field_name] %}
+        {{ form.status.label(class="label mt-4") }}
+        {{ form.status(class="select mt-1 w-full", id="status") }}
+        {% for error in form.status.errors %}
+            <p class="form-error">{{ error }}</p>
+        {% endfor %}
+        <p class="form-help">Disabling the user will not log them out but will prevent them from logging in.</p>
 
-                        <div class="mt-4">
-                            {{ field(class="checkbox", id=field_name, type="checkbox") }}
-                            {{ field.label(class="label") }}
+        {{ form.password.label(class="label mt-4") }}
+        {{ form.password(class="input mt-1 w-full", id="password", type="password") }}
+        <p class="form-help">Leave this field blank unless you want to make changes. Editing will log the
+        user out.</p>
+        {% for error in form.password.errors %}
+            <p class="form-error">{{ error }}</p>
+        {% endfor %}
 
-                            {% if permission.description %}
-                                <p class="form-help">{{ permission.description }}</p>
-                            {% endif %}
+        <div class="flex flex-row gap-2">
+            <button type="button" class="btn btn-soft mt-4" onclick="impersonate_modal.showModal()" {% if not current_user.can('users.impersonate') or user.id == current_user.id or session.get('actual_user', None) %}disabled{% endif %}>Impersonate User</button>
+            <button type="button" class="btn btn-soft btn-error mt-4" onclick="delete_modal.showModal()" {% if not current_user.can('users.delete') %}disabled{% endif %}>Delete User</button>
+            <button type="button" class="btn btn-soft btn-error mt-4" onclick="lockdown_modal.showModal()">Lockdown User</button>
+        </div>
 
-                            {% for error in field.errors %}
-                                <p class="form-error">{{ error }}</p>
+
+        <details class="collapse collapse-arrow bg-base-100 border border-base-300 mt-8" name="groups-accordion">
+            <summary class="collapse-title font-semibold">Groups</summary>
+            <div class="collapse-content">
+                {% if current_user.can('groups.update') %}
+                    <p class="support text-base-content/80">To edit user groups, please view the <a class="link" href="{{ url_for('core.group_settings') }}">group management page</a>.</p>
+                {% else %}
+                    <p class="support text-base-content/80">To edit user groups, please contact an administrator.</p>
+                {% endif %}
+                {% if user.groups %}
+                    <div class="mt-2 flex flex-wrap items-center gap-2">
+                        {% for group in user.groups %}
+                            <span class="badge badge-ghost">
+                        {{ group.title }}
+                    </span>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p class="mt-2 support text-base-content/60">User does not belong to any groups.</p>
+                {% endif %}
+            </div>
+        </details>
+
+        <details class="collapse collapse-arrow bg-base-100 border border-base-300 mt-4" name="permissions-accordion">
+            <summary class="collapse-title font-semibold">Permissions</summary>
+            <div class="collapse-content">
+                <div class="divide-y divide-base-300">
+                    {% for group, permissions in permission_groups.items() %}
+                        <div class="py-4">
+                            <h6 class="h6 text-base-content">{{ group }}</h6>
+                            {% for permission in permissions %}
+                                {% set field_name = permission.permission_field_name %}
+                                {% set field = form[field_name] %}
+
+                                <div class="mt-4">
+                                    {{ field(class="checkbox", id=field_name, type="checkbox") }}
+                                    {{ field.label(class="label") }}
+
+                                    {% if permission.description %}
+                                        <p class="form-help">{{ permission.description }}</p>
+                                    {% endif %}
+
+                                    {% for error in field.errors %}
+                                        <p class="form-error">{{ error }}</p>
+                                    {% endfor %}
+                                </div>
                             {% endfor %}
                         </div>
                     {% endfor %}
                 </div>
-            {% endfor %}
+            </div>
+        </details>
 
-            {{ form.submit(class='btn btn-primary text-neutral-content mt-8 w-full') }}
-        </form>
+        {{ form.submit(class='btn btn-primary text-neutral-content mt-8 w-full') }}
+    </form>
 
     <dialog id="impersonate_modal" class="modal modal-bottom sm:modal-middle">
         <div class="modal-box">
