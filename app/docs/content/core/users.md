@@ -51,7 +51,7 @@ This action can only be undone through the database via the `deleted` column.
 1. From the user management page, click the "Edit User" button beside the user you'd like to impersonate.
 2. From this page, click on the "Impersonate User" button and continue through the dialog.
 
-_Note: You must have the "Impersonate Users" and "Update Users" permission to impersonate a user._
+_Note: You must have the "Update Users" permission to view the "Edit User" page/button._
 
 Impersonating a user will sign you in as that user for the duration of the session. In this state, you will be able to
 interact with the application as if you were that user, without having to request their credentials.  

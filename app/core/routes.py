@@ -440,7 +440,7 @@ def impersonate_user(uuid36: str = None):
 
 @core.route('/system-settings/system', methods=['GET', 'POST'])
 @login_required
-@require_permission('system')
+@require_permission('system.update')
 def system_settings():
     form = SystemSettingsForm()
     if form.validate_on_submit():
