@@ -79,6 +79,8 @@ Each login has an authorization source which describes how the login was attepmt
 - traditional login needing 2fa: login with email and password that requires a second factor of authentication
 - oauth authorization state: login with an external authentication provider
 - magic link: login with a magic link sent to email or phone
+- impersonation session: another user logged in as you via the impersonation feature
+- restoring from impersonation session: you were logged back in to your account after impersonating another user
 - welcome email: login from the welcome email link
 
 ### TOTP Authentication
