@@ -523,13 +523,15 @@ def login_with_token(raw_token: str):
 
 @auth.route('/logout')
 def logout():
-    next_url = request.args.get('next', None)
-    preserve_user = request.args.get('preserve_user', False)
-    actual_user = session.get('actual_user', None)
+    next_url = request.args.get('next')
+    preserve_user = request.args.get('preserve_user', '').lower() in ('1', 'true', 'yes')
+    actual_user = session.get('actual_user')
 
     logout_user()
     session.clear()
-    if preserve_user:
+    session['_remember'] = 'clear'
+
+    if preserve_user and actual_user is not None:
         session['actual_user'] = actual_user
 
     if next_url and is_internal_url(next_url):

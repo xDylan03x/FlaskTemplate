@@ -33,7 +33,7 @@
                 {{ form.profile_picture_url.label(class="label") }}
                 {{ form.profile_picture_url(**{'x-model': 'profile_picture_url'}) }}
 
-                <div class="flex flex-col sm:flex-row items-center gap-4 mt-1 p-2 bg-base-200 rounded sm:rounded-l-full sm:rounded-r-md">
+                <div class="flex flex-col sm:flex-row items-center mt-1 p-2 bg-base-200 rounded sm:rounded-l-full sm:rounded-r-md">
                     <div class="avatar shrink-0">
                         <div class="w-12 h-12 rounded-full ring ring-base-300 ring-offset-base-100 ring-offset-2 overflow-hidden">
                             <template x-if="profile_picture_url">
@@ -45,11 +45,11 @@
                         </div>
                     </div>
 
-                    <div class="flex flex-row gap-2 sm:flex-1">
-                        <button type="button" class="btn btn-soft w-1/2 sm:flex-1" onclick="upload_modal.showModal()">
+                    <div class="flex flex-row gap-2 flex-1 pt-4 sm:pt-0 px-4">
+                        <button type="button" class="btn btn-soft w-1/2" onclick="upload_modal.showModal()">
                             Upload Image
                         </button>
-                        <button type="button" class="btn btn-soft btn-error w-1/2 sm:flex-1" @click="profile_picture_url = ''" :disabled="!profile_picture_url">
+                        <button type="button" class="btn btn-soft btn-error w-1/2" @click="profile_picture_url = ''" :disabled="!profile_picture_url">
                             Remove Image
                         </button>
                     </div>

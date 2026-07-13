@@ -84,7 +84,7 @@ def parse_device(user_agent: str):
     device_os = device.os_name()
     device_brand = device.device_brand()
     device_model = device.device_model()
-    device_type = device.device_type().value
+    device_type = device.device_type()
     browser = device.client_name()
     return {"user_agent": user_agent, "is_bot": is_bot, "device_os": device_os, "device_brand": device_brand, "device_model": device_model, "device_type": device_type, "browser": browser}
 

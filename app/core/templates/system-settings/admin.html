@@ -39,8 +39,8 @@
             <div class="mt-1 divide-y divide-base-300">
                 {% for key, value in platform.items() %}
                     <div class="flex flex-col gap-1 py-2 sm:flex-row sm:items-center sm:justify-between">
-                        <div>{{ key }}</div>
-                        <div>{{ value }}</div>
+                        <div class="font-medium">{{ key }}</div>
+                        <div class="min-w-0 max-w-full break-all">{{ value }}</div>
                     </div>
                 {% endfor %}
             </div>
@@ -52,8 +52,8 @@
         <div class="collapse-content">
             <div class="mt-1 divide-y divide-base-300">
                 <div class="flex flex-col gap-1 py-2 sm:flex-row sm:items-center sm:justify-between">
-                    <div>Main Repository URL</div>
-                    <div>
+                    <div class="font-medium">Main Repository URL</div>
+                    <div class="min-w-0 max-w-full break-all">
                         {% if config.get('MAIN_REPO_URL') %}
                             <a class="link" target="_blank" href="{{ config.get('MAIN_REPO_URL') }}">{{ config.get('MAIN_REPO_URL') }}</a>
                         {% else %}
@@ -62,8 +62,8 @@
                     </div>
                 </div>
                 <div class="flex flex-col gap-1 py-2 sm:flex-row sm:items-center sm:justify-between">
-                    <div>Template Repository URL</div>
-                    <div>
+                    <div class="font-medium">Template Repository URL</div>
+                    <div class="min-w-0 max-w-full break-all">
                         {% if config.get('TEMPLATE_REPO_URL') %}
                             <a class="link" target="_blank" href="{{ config.get('TEMPLATE_REPO_URL') }}">{{ config.get('TEMPLATE_REPO_URL') }}</a>
                         {% else %}
@@ -81,8 +81,8 @@
             <div class="mt-1 divide-y divide-base-300">
                 {% for key, value in config.items() %}
                     <div class="flex flex-col gap-1 py-2 sm:flex-row sm:items-center sm:justify-between">
-                        <div>{{ key }}</div>
-                        <div>{{ value }}</div>
+                        <div class="font-medium">{{ key }}</div>
+                        <div class="min-w-0 max-w-full break-all">{{ value }}</div>
                     </div>
                 {% endfor %}
             </div>

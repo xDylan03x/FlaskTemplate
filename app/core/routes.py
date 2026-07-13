@@ -418,7 +418,7 @@ def impersonate_user(uuid36: str = None):
         audit.log("User stopped impersonating", actor=real_user)
         flash('Ended impersonation session.', 'success')
         next_url_after_logout = url_for('core.user_settings')
-        _, raw_token = LoginTokenManager.create_login_token(immediate_login=True, for_impersonation=True, next_url=next_url_after_logout, user_id=real_user.id, auth_source='restoring from impersonation session')
+        _, raw_token = LoginTokenManager.create_login_token(immediate_login=True, next_url=next_url_after_logout, user_id=real_user.id, auth_source='restoring from impersonation session')
         next_url = url_for('auth.login_with_token', raw_token=raw_token)
         return redirect(url_for('auth.logout', next=next_url))
 
@@ -433,7 +433,7 @@ def impersonate_user(uuid36: str = None):
     NotificationManager.send_notification(user, "Impersonation Alert", f"Your account was accessed by {current_user.name}. No action is needed from you.", NotificationCategory.ACCOUNT_IMPERSONATION)
     # Save the actual user's ID in the session
     session['actual_user'] = current_user.uuid36
-    _, raw_token = LoginTokenManager.create_login_token(immediate_login=True, user_id=user.id, auth_source='starting impersonation session')
+    _, raw_token = LoginTokenManager.create_login_token(immediate_login=True, for_impersonation=True, user_id=user.id, auth_source='starting impersonation session')
     next_url = url_for('auth.login_with_token', raw_token=raw_token)
     return redirect(url_for('auth.logout', next=next_url, preserve_user=True))
 

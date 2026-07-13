@@ -4,7 +4,7 @@
     <form action="" method="post">
         {{ form.csrf_token }}
 
-        {{ form.title.label(class="label mt-8") }}
+        {{ form.title.label(class="label") }}
         {{ form.title(class="input mt-1 w-full", id="title", type="text") }}
         {% for error in form.title.errors %}
             <p class="form-error">{{ error }}</p>
