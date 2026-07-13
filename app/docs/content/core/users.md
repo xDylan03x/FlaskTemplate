@@ -4,6 +4,7 @@ description: How to create, edit, and delete users.
 group: Core
 visibility: private
 topics: [users, administration]
+order: 20
 ---
 [TOC]
 

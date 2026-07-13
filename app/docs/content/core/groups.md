@@ -4,6 +4,7 @@ description: How to create, edit, and delete user groups.
 group: Core
 visibility: private
 topics: [users, groups, administration]
+order: 21
 ---
 [TOC]
 

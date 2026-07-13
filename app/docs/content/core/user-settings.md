@@ -4,7 +4,7 @@ description: How to view and manage your settings.
 group: Core
 visibility: private
 topics: [user, settings]
-order: 1
+order: 10
 ---
 [TOC]
 

@@ -4,7 +4,7 @@ description: How to view and manage your notifications.
 group: Core
 visibility: private
 topics: [user, notifications]
-order: 2
+order: 11
 ---
 [TOC]
 

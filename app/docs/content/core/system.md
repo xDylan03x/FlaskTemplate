@@ -4,6 +4,7 @@ description: How to view and edit system settings.
 group: Core
 visibility: private
 topics: [system, administration]
+order: 22
 ---
 [TOC]
 
