@@ -459,6 +459,10 @@ def login_with_token(raw_token: str):
         flash(CONTACT_ADMINISTRATOR_MESSAGE, 'error')
         return redirect(url_for('auth.login'))
 
+    # If impersonating another user
+    if login_token.for_impersonation:
+        login_token.update_risk_score(RiskAction.ACCOUNT_IMPERSONATION)
+
     # For create-account tokens
     if login_token.create_account:
         if user and not user.email_verified:
@@ -519,6 +523,15 @@ def login_with_token(raw_token: str):
 
 @auth.route('/logout')
 def logout():
+    next_url = request.args.get('next', None)
+    preserve_user = request.args.get('preserve_user', False)
+    actual_user = session.get('actual_user', None)
+
     logout_user()
     session.clear()
+    if preserve_user:
+        session['actual_user'] = actual_user
+
+    if next_url and is_internal_url(next_url):
+        return redirect(next_url)
     return redirect(url_for('auth.login'))

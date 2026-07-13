@@ -167,6 +167,7 @@ class LoginTokenManager:
                            create_account: bool = False,
                            risk_score: int = 40,
                            auth_source: str = None,
+                           for_impersonation: bool = False,
                            user_id: int = None) -> (LoginToken, str):
         """
         Generate and store a new login token.
@@ -193,6 +194,7 @@ class LoginTokenManager:
             create_account=create_account,
             risk_score=risk_score,
             auth_source=auth_source,
+            for_impersonation=for_impersonation,
             user_id=user_id
         )
         raw_token = token.set_secure_token()

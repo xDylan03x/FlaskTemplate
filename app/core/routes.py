@@ -107,7 +107,7 @@ def profile_settings():
                 current_user.phone_number = None
                 current_user.phone_number_verified = False
         db.session.commit()
-        flash('Your profile has been updated.', 'success')
+        flash('Your profile settings have been updated.', 'success')
         return redirect(url_for('core.profile_settings'))
 
     form.name.data = current_user.name
@@ -140,7 +140,7 @@ def application_settings():
             current_user.set_setting('preferences.theme', form.theme.data)
             session['theme'] = form.theme.data
         db.session.commit()
-        flash('Your notification settings have been updated.', 'success')
+        flash('Your application settings have been updated.', 'success')
         return redirect(url_for('core.application_settings'))
     form.theme.data = current_user.get_setting('preferences.theme')
     return render_template('account-settings/application.html', title="Application Settings", tab='application', form=form)
@@ -403,6 +403,41 @@ def delete_user(uuid36):
     return redirect(url_for('core.user_settings'))
 
 
+@core.route('/system-settings/users/impersonate')
+@core.route('/system-settings/users/impersonate/<string:uuid36>')
+@login_required
+def impersonate_user(uuid36: str = None):
+    # If ending the session
+    if uuid36 is None:
+        real_user = UserManager.get_user_by_uuid36(session.get('actual_user', None))
+        # If the actual user was not found, error out
+        if real_user is None:
+            flash('Error ending session. You have been logged out.', 'error')
+            return redirect(url_for('auth.logout'))
+        # If the actual user was found, log them out and back in
+        audit.log("User stopped impersonating", actor=real_user)
+        flash('Ended impersonation session.', 'success')
+        next_url_after_logout = url_for('core.user_settings')
+        _, raw_token = LoginTokenManager.create_login_token(immediate_login=True, for_impersonation=True, next_url=next_url_after_logout, user_id=real_user.id, auth_source='restoring from impersonation session')
+        next_url = url_for('auth.login_with_token', raw_token=raw_token)
+        return redirect(url_for('auth.logout', next=next_url))
+
+    if not current_user.can('users.impersonate'):
+        abort(403)
+    # If starting the session
+    user = UserManager.get_user_by_uuid36(uuid36)
+    if user is None:
+        flash('User not found.', 'error')
+        return redirect(url_for('core.user_settings'))
+    audit.log("User started impersonating", actor=current_user)
+    NotificationManager.send_notification(user, "Impersonation Alert", f"Your account was accessed by {current_user.name}. No action is needed from you.", NotificationCategory.ACCOUNT_IMPERSONATION)
+    # Save the actual user's ID in the session
+    session['actual_user'] = current_user.uuid36
+    _, raw_token = LoginTokenManager.create_login_token(immediate_login=True, user_id=user.id, auth_source='starting impersonation session')
+    next_url = url_for('auth.login_with_token', raw_token=raw_token)
+    return redirect(url_for('auth.logout', next=next_url, preserve_user=True))
+
+
 @core.route('/system-settings/system', methods=['GET', 'POST'])
 @login_required
 @require_permission('system')
@@ -488,12 +523,3 @@ def external_redirect():
     next_url = request.args.get("next", None)
     return render_template("external-redirect.html", url=next_url)
 
-
-@core.route('/test')
-def test():
-    for x in range(5):
-        body = f"This is a test notification {x}. This content is really long and may even wrap multiple lines. No one may ever know..."
-        n = UserNotification(title=f"Test Notification {x}", body=body, sender="System", category="Test", channel="web", user_id=current_user.id, link='/account-settings/profile')
-        db.session.add(n)
-    db.session.commit()
-    return "ok"

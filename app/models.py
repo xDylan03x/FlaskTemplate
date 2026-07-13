@@ -166,6 +166,7 @@ class RiskAction(enum.Enum):
     TWO_FACTOR_AUTH = ("two-factor authentication", 50)
     MAGIC_LINK_LOGIN = ("magic link login", 50)
     SOCIAL_LOGIN = ("social login", 0)
+    ACCOUNT_IMPERSONATION = ("account impersonation", 50)
 
     # Devices and characteristics
     EXISTING_DEVICE = ("existing device identified", 10)
@@ -186,6 +187,7 @@ class LoginToken(db.Model):
         next_url: URL to redirect to after login
         remember_login
         reset_password: Whether the token is for password reset
+        for_impersonation: Whether the token is for account impersonation
         verify_phone_number: Whether the token is for phone number verification
         create_account: Whether the token is used for account creation
         risk_score: Risk score associated with the token
@@ -206,6 +208,7 @@ class LoginToken(db.Model):
     next_url: so.Mapped[Optional[str]] = so.mapped_column(sa.String(2048))
     remember_login: so.Mapped[bool] = so.mapped_column(sa.Boolean, default=False, nullable=False)
     reset_password: so.Mapped[Optional[bool]] = so.mapped_column(sa.Boolean, default=False)
+    for_impersonation: so.Mapped[Optional[bool]] = so.mapped_column(sa.Boolean, default=False)
     verify_phone_number: so.Mapped[Optional[bool]] = so.mapped_column(sa.Boolean, default=False)
     create_account: so.Mapped[Optional[bool]] = so.mapped_column(sa.Boolean, default=False)
     risk_score: so.Mapped[int] = so.mapped_column(sa.Numeric, index=True, default=40, nullable=False)
@@ -343,6 +346,7 @@ class NotificationCategory(enum.Enum):
     PHONE_NUMBER_CHANGE = "notifications.security_alerts"
     NEW_DEVICE_LOGIN = "notifications.security_alerts"
     ACCOUNT_LOCKDOWN = "notifications.security_alerts"
+    ACCOUNT_IMPERSONATION = "notifications.security_alerts"
 
 
 class UserNotification(SearchableMixin, db.Model):
