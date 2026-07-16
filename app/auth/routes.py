@@ -11,7 +11,7 @@ from app.auth import auth
 from .forms import LoginForm, TwoFactorAuthSelectForm, TwoFactorAuthCodeForm, MagicLinkEmailForm, MagicLinkSelectForm, \
     ForgotPasswordEmailForm, ResetPasswordForm
 from app import db
-from ..core.helper import send_email, send_sms, parse_device
+from ..core.helper import send_email, send_sms, parse_user_agent
 
 LOGIN_RISK_SCORE_THRESHOLD = 50
 CONTACT_ADMINISTRATOR_MESSAGE = 'There was an error logging you in. Please contact an administrator.'
@@ -22,6 +22,7 @@ WRONG_EMAIL_PASSWORD_MESSAGE = 'Incorrect email or password.'
 
 @auth.route('/login', methods=['GET', 'POST'])
 def login():
+    """The actual login form page"""
     next_url = request.args.get('next', None)
     form = LoginForm()
     create_accounts = SystemManager.get_setting('allow_account_creation')
@@ -63,6 +64,7 @@ def login():
 @auth.route('/forgot-password', methods=['GET', 'POST'])
 @auth.route('/forgot-password/<string:raw_token>', methods=['GET', 'POST'])
 def forgot_password(raw_token: str = None):
+    """The forgot password page"""
     # If the user has not entered their email
     if raw_token is None:
         form = ForgotPasswordEmailForm()
@@ -128,6 +130,7 @@ def forgot_password(raw_token: str = None):
 @auth.route('/magic-link', methods=['GET', 'POST'])
 @auth.route('/magic-link/<string:raw_token>', methods=['GET', 'POST'])
 def magic_link(raw_token: str = None):
+    """Page to generate and verify magic links"""
     # If the user has not entered their email
     if raw_token is None:
         form = MagicLinkEmailForm()
@@ -204,6 +207,7 @@ def magic_link(raw_token: str = None):
 
 @auth.route('/oauth/authorize/<string:provider>')
 def oauth_authorize(provider: str):
+    """Page to generate and direct to oauth verification"""
     provider_data = current_app.config['OAUTH2_PROVIDERS'].get(provider)
     next_url = request.args.get('next', None)
 
@@ -231,6 +235,7 @@ def oauth_authorize(provider: str):
 
 @auth.route('/oauth/callback/<string:provider>')
 def oauth_callback(provider: str):
+    """Page to verify and sign the user in from an oauth attempt"""
     provider_data = current_app.config['OAUTH2_PROVIDERS'].get(provider)
 
     # If the provider isn't supported
@@ -301,6 +306,7 @@ def oauth_callback(provider: str):
 
 @auth.route('/2fa/<string:raw_token>', methods=['GET', 'POST'])
 def two_factor_auth(raw_token: str):
+    """Page to generate and verify a two-factor authentication code."""
     login_token = LoginTokenManager.get_login_token(raw_token)
     verification_method = request.args.get('verification_method', None)
     code_sent = request.args.get('code_sent', False)
@@ -424,11 +430,12 @@ def two_factor_auth(raw_token: str):
 
 @auth.route('/<string:raw_token>')
 def login_with_token(raw_token: str):
+    """The actual route that logs the user in. All other authentication routes eventually end up here."""
     login_token = LoginTokenManager.get_login_token(raw_token)
     user_agent = request.headers.get('User-Agent', '')
 
     # If suspicious user agents are not allowed to log in
-    if SystemManager.get_setting('strict_login') and parse_device(user_agent)["is_bot"]:
+    if SystemManager.get_setting('strict_login') and parse_user_agent(user_agent)["is_bot"]:
         flash(CONTACT_ADMINISTRATOR_MESSAGE, 'error')
         return redirect(url_for('auth.login'))
 
@@ -523,14 +530,17 @@ def login_with_token(raw_token: str):
 
 @auth.route('/logout')
 def logout():
+    """Page to log the user out"""
     next_url = request.args.get('next')
     preserve_user = request.args.get('preserve_user', '').lower() in ('1', 'true', 'yes')
     actual_user = session.get('actual_user')
 
     logout_user()
+    # Clear the cookies (except the _remember cookie as it will keep a user signed in)
     session.clear()
     session['_remember'] = 'clear'
 
+    # If preserving the user (for an impersonation session)
     if preserve_user and actual_user is not None:
         session['actual_user'] = actual_user
 

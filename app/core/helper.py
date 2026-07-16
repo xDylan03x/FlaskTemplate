@@ -1,5 +1,6 @@
 import re
-
+from device_detector.enums import DeviceType
+from sentry_sdk.client import BaseClient
 from sqlalchemy import text
 import os
 import platform
@@ -34,6 +35,7 @@ BLOCKED_SQL_WORDS = (
 
 
 def send_email(subject: str, body: str, recipient: str, preheader="", sender=None, sender_name=None, template_id=None) -> str:
+    """Send an email directly using SendGrid. Use NotificationManager.send_notification() for most cases."""
     if sender is None:
         sender = current_app.config["FROM_EMAIL"]
     if sender_name is None:
@@ -58,6 +60,7 @@ def send_email(subject: str, body: str, recipient: str, preheader="", sender=Non
 
 
 def send_sms(body: str, recipient: str, sender=None) -> str:
+    """Send an SMS message directly using Twilio. Use NotificationManager.send_notification() for most cases."""
     if sender is None:
         sender = current_app.config["FROM_PHONE_NUMBER"]
 
@@ -65,9 +68,11 @@ def send_sms(body: str, recipient: str, sender=None) -> str:
     return message.sid
 
 
-def parse_device(user_agent: str):
+def parse_user_agent(user_agent: str) -> dict[str, str | bool | DeviceType]:
     """
     Parses a user agent string to extract device information and determine if it is a bot.
+    This will also detect good bots (like web crawlers).
+    It's best to use something like Cloudflare Bots in most cases, this is just a simple check of the user agent string.
 
     :param user_agent:
     Returns:
@@ -89,7 +94,8 @@ def parse_device(user_agent: str):
     return {"user_agent": user_agent, "is_bot": is_bot, "device_os": device_os, "device_brand": device_brand, "device_model": device_model, "device_type": device_type, "browser": browser}
 
 
-def get_s3_client():
+def get_s3_client() -> BaseClient:
+    """Creates a new S3 compatible client """
     return boto3.client(
         service_name="s3",
         endpoint_url=current_app.config["S3_UPLOAD_ENDPOINT_URL"],
@@ -97,7 +103,20 @@ def get_s3_client():
     )
 
 
+def delete_uploaded_object(object_key: str) -> None:
+    """Delete an object from an S3 bucket"""
+    if not object_key:
+        raise ValueError("An object key is required.")
+
+    s3_client = get_s3_client()
+    s3_client.delete_object(
+        Bucket=current_app.config["S3_BUCKET_NAME"],
+        Key=object_key,
+    )
+
+
 def get_routes():
+    """Get a list of all routes registered with the app instance"""
     routes = []
     for rule in current_app.url_map.iter_rules():
         routes.append({
@@ -110,6 +129,7 @@ def get_routes():
 
 
 def get_blueprints():
+    """Get a list of all blueprints registered with the app instance"""
     blueprints = []
     for name, blueprint in current_app.blueprints.items():
         blueprints.append({
@@ -121,6 +141,7 @@ def get_blueprints():
 
 
 def get_extensions():
+    """Get a list of all extensions registered with the app instance"""
     extensions = []
     for name, extension in current_app.extensions.items():
         extensions.append({
@@ -131,6 +152,7 @@ def get_extensions():
 
 
 def get_database_status():
+    """Get a rough database status (just for display purposes - app functions will fail if database is not connected)"""
     try:
         db.session.execute(text("SELECT 1"))
         return {
@@ -145,6 +167,7 @@ def get_database_status():
 
 
 def get_platform_info():
+    """Get the platform info the app is running on"""
     info = {
         "python_version": sys.version,
         "platform": platform.platform(),
@@ -157,6 +180,7 @@ def get_platform_info():
 
 
 def is_safe_read_query(query: str) -> tuple[bool, str | None]:
+    """Determine if the query is a safe read-only query that can be executed directly on the database"""
     cleaned = query.strip().lower()
 
     if not cleaned:
@@ -176,5 +200,6 @@ def is_safe_read_query(query: str) -> tuple[bool, str | None]:
 
 
 def modify_query(query: str) -> str:
-    strict_pattern = r"\buser\b"
+    """Replace certain keywords with a format that works better with the database"""
+    strict_pattern = r"\buser\b"  # Replace user with "user" to query the user table and not database users
     return re.sub(strict_pattern, '"user"', query)

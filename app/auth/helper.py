@@ -28,6 +28,8 @@ def twilio_verify_send(to: str, channel: str) -> None:
 def twilio_verify_check(to: str, code: str, totp_entity: str = False, totp_factor: str = None) -> bool:
     """Check the verification code provided by the user."""
     sid = current_app.config["TWILIO_SERVICE_SID"]
+
+    # If submitting a TOTP code
     if totp_entity and totp_factor:
         challenge = (
             twilio_client.verify.v2.services(sid)
@@ -38,6 +40,7 @@ def twilio_verify_check(to: str, code: str, totp_entity: str = False, totp_facto
             return True
         else:
             return False
+    # If submitting a standard verification code
     verify = twilio_client.verify.v2.services(sid).verification_checks.create(to=to, code=code)
     if verify.status == "approved":
         return True
@@ -53,6 +56,8 @@ def hibp_password_check(password: str) -> bool:
     This function uses the k-Anonymity method to securely check the password
     without exposing the full password or its hash to the server.
 
+    View more at https://haveibeenpwned.com/API/v3#BreachesForHashRange
+
     Args:
         password: The raw password string to check.
 
@@ -60,14 +65,16 @@ def hibp_password_check(password: str) -> bool:
         True if the password was found in a breach (should not be used),
         False otherwise.
     """
-
+    # TODO: Modify the function to only check once per x week period (something like 2 weeks). Will require a last checked and check result attribute on the user class
     if not password:
         return False
 
+    # Encode the password and get the prefix and suffix
     sha1_password = hashlib.sha1(password.encode('utf-8')).hexdigest().upper()
     prefix = sha1_password[:5]
     suffix = sha1_password[5:]
 
+    # Make the API request
     api_url = f'https://api.pwnedpasswords.com/range/{prefix}'
 
     response = requests.get(api_url, timeout=5)
@@ -90,9 +97,10 @@ def hibp_password_check(password: str) -> bool:
 
 
 def is_internal_url(url: str) -> bool:
+    """Determine whether a given URL is internal to the application or to another domain."""
     if not url or url == '':
         return True
-    domains = ["localhost", "127.0.0.1:5000"]
+    domains = ["localhost", "127.0.0.1:8080"]
     parsed_url = urlparse(url)
     if not parsed_url.scheme:
         return True

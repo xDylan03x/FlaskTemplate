@@ -3,7 +3,6 @@ from flask import render_template, request, flash, redirect, url_for, current_ap
 from flask_login import login_required, current_user, login_user, logout_user
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
-
 from app.core import core
 from app import db, twilio_client, audit
 from .forms import ChangePasswordForm, ProfileSettingsForm, NotificationSettingsForm, SecuritySettingsForm, \
@@ -11,12 +10,12 @@ from .forms import ChangePasswordForm, ProfileSettingsForm, NotificationSettings
     build_edit_user_form, ApplicationSettingsForm, SystemSettingsForm, BugReportForm, NewGroupForm, EditGroupForm
 import phonenumbers
 from app.model_managers import UserManager, UserDeviceManager, FileManager, NotificationManager, SystemManager
-from .helper import send_sms, parse_device, get_routes, get_blueprints, get_extensions, get_database_status, \
+from .helper import send_sms, parse_user_agent, get_routes, get_blueprints, get_extensions, get_database_status, \
     get_platform_info, is_safe_read_query, modify_query, send_email
 from ..model_managers import LoginTokenManager
 from ..extensions.flask_permissions import require_permission
 from app import pm
-from ..models import NotificationCategory, UserNotification, User
+from ..models import NotificationCategory, User
 
 
 @core.route('/')
@@ -304,7 +303,7 @@ def manage_device(uuid36):
         flash('Device trust status has been updated.', 'success')
         return redirect(url_for('core.login_history'))
     form.device_trusted.data = device.device_trusted
-    parsed_device = parse_device(device.user_agent)
+    parsed_device = parse_user_agent(device.user_agent)
     return render_template('account-settings/manage-device.html', title="Manage Device", tab="security", device=device, parsed_device=parsed_device, user_ip=request.remote_addr, form=form)
 
 

@@ -31,6 +31,7 @@ def presign_upload():
     safe_name = secure_filename(original_filename)
     ext = safe_name.rsplit(".", 1)[-1].lower() if "." in safe_name else "bin"
 
+    # Save the file record to the database
     uploaded_file = File(
         original_filename=original_filename,
         content_type=content_type,
@@ -42,10 +43,12 @@ def presign_upload():
     db.session.add(uploaded_file)
     db.session.commit()
 
+    # Create the file's key
     object_key = f"uploads/{context}/{uploaded_file.uuid36}.{ext}"
     uploaded_file.object_key = object_key
     db.session.commit()
 
+    # Generate a presigned URL to upload the file
     s3 = get_s3_client()
     presigned_url = s3.generate_presigned_url(
         ClientMethod="put_object",
@@ -58,10 +61,10 @@ def presign_upload():
     )
 
     return jsonify({
-        "file_id": uploaded_file.uuid36,
-        "upload_url": presigned_url,
-        "object_key": object_key,
-        "expires_in": 300,
+        'file_id': uploaded_file.uuid36,
+        'object_key': object_key,
+        'upload_url': presigned_url,
+        'content_type': content_type,
     })
 
 
@@ -76,7 +79,7 @@ def notifications(uuid36: str = None):
         recent_only = recent_only_str.lower() in ['true', '1', 't', 'y', 'yes']
         page = request.args.get('page', 1, type=int)
 
-        # Fetch from manager
+        # Fetch notifications from manager
         notification_page = NotificationManager.get_web_notifications(
             current_user,
             page=page,
@@ -98,6 +101,7 @@ def notifications(uuid36: str = None):
 
         return jsonify(notifications_data), 200
 
+    # If marking the notification as read
     elif request.method == 'PATCH':
         if not uuid36:
             return jsonify({"error": "Notification ID is required"}), 400
