@@ -1,7 +1,7 @@
 from flask import request, jsonify, current_app
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
-from ..core.helper import get_s3_client
+from ..core.helper import get_s3_client, route_url
 from app import db
 from app.api import apiv1
 from app.models import File
@@ -95,8 +95,8 @@ def notifications(uuid36: str = None):
                 "title": n.title,
                 "body": n.body,
                 "sender": n.sender,
-                "link": n.link,
-                "timestamp": n.created_at
+                "link": route_url(n.link) if n.link else None,
+                "timestamp": n.created_at,
             })
 
         return jsonify(notifications_data), 200

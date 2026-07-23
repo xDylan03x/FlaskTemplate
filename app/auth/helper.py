@@ -94,16 +94,3 @@ def hibp_password_check(password: str) -> bool:
 
     # If the loop completes without finding a match, the password is not breached.
     return False
-
-
-def is_internal_url(url: str) -> bool:
-    """Determine whether a given URL is internal to the application or to another domain."""
-    if not url or url == '':
-        return True
-    domains = ["localhost", "127.0.0.1:8080"]
-    parsed_url = urlparse(url)
-    if not parsed_url.scheme:
-        return True
-    if parsed_url.netloc in domains:
-        return True
-    return False

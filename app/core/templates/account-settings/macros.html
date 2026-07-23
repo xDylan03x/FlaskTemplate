@@ -118,7 +118,7 @@
 
                 {% if notification.link %}
                     <div class="mt-4 flex items-center gap-2">
-                        <a href="{{ notification.link }}"
+                        <a href="{{ route_url(notification.link) }}"
                            class="btn btn-sm btn-soft {% if not notification.read %}btn-primary{% endif %}">
                             View
                         </a>

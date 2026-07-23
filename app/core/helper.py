@@ -5,12 +5,13 @@ from sqlalchemy import text
 import os
 import platform
 import sys
+from werkzeug.sansio.utils import host_is_trusted
 from app import sendgrid_client, twilio_client, db
 from sendgrid.helpers.mail import Mail, From
-from flask import current_app
+from flask import current_app, url_for
 from device_detector import DeviceDetector
 import boto3
-
+from urllib.parse import urlsplit, urlunsplit
 
 READ_ONLY_PREFIXES = ("select", "show", "describe", "explain", "pragma")
 BLOCKED_SQL_WORDS = (
@@ -32,6 +33,78 @@ BLOCKED_SQL_WORDS = (
     "detach",
     "copy",
 )
+
+
+def _normalize_local_url(value: str):
+    value = value.strip()
+
+    if not value or "\\" in value:
+        return None
+
+    if any(ord(char) < 32 or ord(char) == 127 for char in value):
+        return None
+
+    try:
+        parts = urlsplit(value)
+    except ValueError:
+        return None
+
+    # Normal root-relative URL.
+    if not parts.scheme and not parts.netloc:
+        if not parts.path.startswith("/") or parts.path.startswith("//"):
+            return None
+        return value
+
+    # Absolute URL pointing to one of this application's trusted hosts.
+    if (
+            parts.scheme in {"http", "https"}
+            and not parts.username
+            and not parts.password
+            and host_is_trusted(
+        parts.netloc,
+        current_app.config.get("TRUSTED_HOSTS", []),
+    )
+    ):
+        # Return it as a local path so navigation uses the current origin.
+        return urlunsplit((
+            "",
+            "",
+            parts.path or "/",
+            parts.query,
+            parts.fragment,
+        ))
+
+    return None
+
+
+def _normalize_external_url(value: str):
+    parts = urlsplit(value.strip())
+    if parts.scheme not in {"http", "https"}:
+        return None
+    if not parts.hostname:
+        return None
+    if parts.username or parts.password:
+        return None
+
+    return value
+
+
+def route_url(url: str) -> str:
+    """
+    Take in url and return a redirect version of it that goes through the external redirect route
+    """
+    if not url:
+        return "/"
+
+    local = _normalize_local_url(url)
+    if local:
+        return local
+
+    external = _normalize_external_url(url)
+    if external:
+        return url_for("core.external_redirect", next=external)
+
+    return "/"
 
 
 def send_email(subject: str, body: str, recipient: str, preheader="", sender=None, sender_name=None, template_id=None) -> str:

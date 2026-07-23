@@ -11,7 +11,7 @@ from app.auth import auth
 from .forms import LoginForm, TwoFactorAuthSelectForm, TwoFactorAuthCodeForm, MagicLinkEmailForm, MagicLinkSelectForm, \
     ForgotPasswordEmailForm, ResetPasswordForm
 from app import db
-from ..core.helper import send_email, send_sms, parse_user_agent
+from ..core.helper import send_email, send_sms, parse_user_agent, route_url
 
 LOGIN_RISK_SCORE_THRESHOLD = 50
 CONTACT_ADMINISTRATOR_MESSAGE = 'There was an error logging you in. Please contact an administrator.'
@@ -533,9 +533,7 @@ def login_with_token(raw_token: str):
     elif next_url is None:
         next_url = '/'
 
-    if is_internal_url(next_url):
-        return redirect(next_url)
-    return redirect((url_for('core.external_redirect', next=next_url)))
+    return redirect(route_url(next_url))
 
 
 @auth.route('/logout')
@@ -554,6 +552,6 @@ def logout():
     if preserve_user and actual_user is not None:
         session['actual_user'] = actual_user
 
-    if next_url and is_internal_url(next_url):
-        return redirect(next_url)
+    if next_url:
+        return redirect(route_url(next_url))
     return redirect(url_for('auth.login'))
