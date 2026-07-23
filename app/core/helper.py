@@ -65,14 +65,7 @@ def _normalize_local_url(value: str):
         current_app.config.get("TRUSTED_HOSTS", []),
     )
     ):
-        # Return it as a local path so navigation uses the current origin.
-        return urlunsplit((
-            "",
-            "",
-            parts.path or "/",
-            parts.query,
-            parts.fragment,
-        ))
+        return value
 
     return None
 

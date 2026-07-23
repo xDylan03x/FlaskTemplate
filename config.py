@@ -1,5 +1,6 @@
 import os
 import logging
+import re
 from dotenv import load_dotenv
 from git import Repo
 
@@ -40,11 +41,13 @@ class Config:
             "text/csv",
         }
 
-        raw = os.environ.get("TRUSTED_HOSTS")
-        if raw is None:
-            self.TRUSTED_HOSTS = ["localhost:8080", "127.0.0.1:8080", self.S3_PUBLIC_ENDPOINT_URL]
+        trusted = os.environ.get("TRUSTED_HOSTS")
+        if trusted is None:
+            self.TRUSTED_HOSTS = ["localhost:8080", "127.0.0.1:8080"]
+            if self.S3_PUBLIC_ENDPOINT_URL is not None:
+                self.TRUSTED_HOSTS.append(re.sub(r"^https?://", "", self.S3_PUBLIC_ENDPOINT_URL))
         else:
-            self.TRUSTED_HOSTS = [item.strip() for item in raw.split(",") if item.strip()]
+            self.TRUSTED_HOSTS = [item.strip() for item in trusted.split(",") if item.strip()]
 
         # Admin credentials
         self.ADMIN_NAME = os.environ.get('ADMIN_NAME', None)
