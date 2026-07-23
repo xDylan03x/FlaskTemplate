@@ -293,6 +293,10 @@ def login_history():
 @login_required
 def manage_device(uuid36):
     device = UserDeviceManager.get_device_by_uuid36(uuid36)
+    # Make sure the device exists and the user owns it
+    if device is None or device.user_id != current_user.id:
+        abort(403)
+
     user = UserManager.get_user_by_id(device.user_id)
 
     form = DeviceManagerForm()

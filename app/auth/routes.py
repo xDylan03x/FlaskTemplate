@@ -514,6 +514,10 @@ def login_with_token(raw_token: str):
         flash('Your phone number has been successfully verified.', 'success')
         body = f'The phone number ({user.phone_number}) associated with your {current_app.config["APP_NAME"]} account has just been verified.\n\nIf you did not perform this action, please secure your account immediately.'
         NotificationManager.send_notification(user, 'Phone Number Verified', body, NotificationCategory.PHONE_NUMBER_CHANGE)
+    # If the user cannot log in
+    if not user.can_login():
+        flash(CONTACT_ADMINISTRATOR_MESSAGE, 'error')
+        return redirect(url_for('auth.login'))
     # Otherwise, log the user in
     else:
         LoginRecordManager.create_login_record(user.id, get_ip_from_request(request), user_agent, login_token)
