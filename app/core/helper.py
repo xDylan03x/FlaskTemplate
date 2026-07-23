@@ -77,7 +77,7 @@ def _normalize_local_url(value: str):
     return None
 
 
-def _normalize_external_url(value: str):
+def normalize_external_url(value: str):
     parts = urlsplit(value.strip())
     if parts.scheme not in {"http", "https"}:
         return None
@@ -100,7 +100,7 @@ def route_url(url: str) -> str:
     if local:
         return local
 
-    external = _normalize_external_url(url)
+    external = normalize_external_url(url)
     if external:
         return url_for("core.external_redirect", next=external)
 

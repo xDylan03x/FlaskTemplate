@@ -11,7 +11,7 @@ from .forms import ChangePasswordForm, ProfileSettingsForm, NotificationSettings
 import phonenumbers
 from app.model_managers import UserManager, UserDeviceManager, FileManager, NotificationManager, SystemManager
 from .helper import send_sms, parse_user_agent, get_routes, get_blueprints, get_extensions, get_database_status, \
-    get_platform_info, is_safe_read_query, modify_query, send_email
+    get_platform_info, is_safe_read_query, modify_query, send_email, normalize_external_url
 from ..model_managers import LoginTokenManager
 from ..extensions.flask_permissions import require_permission
 from app import pm
@@ -591,5 +591,8 @@ def bug_report():
 @core.route("/external-redirect")
 def external_redirect():
     next_url = request.args.get("next", None)
-    return render_template("external-redirect.html", url=next_url)
+    destination = normalize_external_url(next_url)
+    if destination is None:
+        abort(400)
+    return render_template("external-redirect.html", url=destination)
 

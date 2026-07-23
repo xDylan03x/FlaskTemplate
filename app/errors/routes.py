@@ -3,6 +3,13 @@ from flask import current_app, render_template
 from app import db
 
 
+@errors.app_errorhandler(400)
+def bad_request_error(error):
+    if current_app.config["DEBUG"]:
+        return render_template("400.html", error=error), 400
+    return render_template('400.html'), 400
+
+
 @errors.app_errorhandler(403)
 def forbidden_error(error):
     if current_app.config["DEBUG"]:
