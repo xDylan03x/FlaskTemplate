@@ -42,7 +42,7 @@
         {% endfor %}
 
         <div class="mt-4 flex flex-wrap gap-2">
-            <button type="button" class="btn btn-soft" onclick="impersonate_modal.showModal()" {% if not current_user.can('users.impersonate') or user.id == current_user.id or session.get('actual_user', None) %}disabled{% endif %}>Impersonate User</button>
+            <button type="button" class="btn btn-soft" onclick="impersonate_modal.showModal()" {% if not current_user.can('users.impersonate') or user.id == current_user.id or session.get('actual_user', None) or user.status == 'disabled' %}disabled{% endif %}>Impersonate User</button>
             <button type="button" class="btn btn-soft btn-error" onclick="delete_modal.showModal()" {% if not current_user.can('users.delete') %}disabled{% endif %}>Delete User</button>
             <button type="button" class="btn btn-soft btn-error" onclick="lockdown_modal.showModal()">Lockdown User</button>
         </div>

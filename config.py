@@ -32,7 +32,6 @@ class Config:
             self.TRUSTED_HOSTS = ["localhost:8080", "127.0.0.1:8080"]
         else:
             self.TRUSTED_HOSTS = [item.strip() for item in raw.split(",") if item.strip()]
-        self.PUBLIC_BASE_URL = os.environ.get("PUBLIC_BASE_URL", "http://127.0.0.1:8080").rstrip("/")
 
         # File uploads
         self.S3_UPLOAD_ENDPOINT_URL = os.environ.get("S3_UPLOAD_ENDPOINT_URL") or None
@@ -95,10 +94,6 @@ class Config:
         # Checks
         if self.SECRET_KEY == "dev_secret":
             logging.warning("Using default secret key. This is insecure and should be changed in production.")
-        if self.PUBLIC_BASE_URL in ('localhost', '127.0.0.1'):
-            logging.warning("Using localhost as public URL. This will need to be changed in production.")
-        if not any(host in self.PUBLIC_BASE_URL for host in self.TRUSTED_HOSTS):
-            logging.warning("Public URL is not in trusted hosts. This may cause issues with redirects.")
         if not self.TWILIO_ACCOUNT_SID or not self.TWILIO_AUTH_TOKEN or not self.TWILIO_SERVICE_SID or not self.FROM_PHONE_NUMBER:
             logging.fatal("Twilio configuration is incomplete.")
         if not self.FROM_EMAIL or not self.SENDGRID_API_KEY or not self.SENDGRID_EMAIL_TEMPLATE_ID:
