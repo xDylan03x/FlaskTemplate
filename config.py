@@ -27,12 +27,6 @@ class Config:
         except:
             pass
 
-        raw = os.environ.get("TRUSTED_HOSTS")
-        if raw is None:
-            self.TRUSTED_HOSTS = ["localhost:8080", "127.0.0.1:8080"]
-        else:
-            self.TRUSTED_HOSTS = [item.strip() for item in raw.split(",") if item.strip()]
-
         # File uploads
         self.S3_UPLOAD_ENDPOINT_URL = os.environ.get("S3_UPLOAD_ENDPOINT_URL") or None
         self.S3_PUBLIC_ENDPOINT_URL = os.environ.get("S3_PUBLIC_ENDPOINT_URL") or None
@@ -45,6 +39,12 @@ class Config:
             "application/pdf",
             "text/csv",
         }
+
+        raw = os.environ.get("TRUSTED_HOSTS")
+        if raw is None:
+            self.TRUSTED_HOSTS = ["localhost:8080", "127.0.0.1:8080", self.S3_PUBLIC_ENDPOINT_URL]
+        else:
+            self.TRUSTED_HOSTS = [item.strip() for item in raw.split(",") if item.strip()]
 
         # Admin credentials
         self.ADMIN_NAME = os.environ.get('ADMIN_NAME', None)
