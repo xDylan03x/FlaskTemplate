@@ -311,9 +311,12 @@ def manage_device(uuid36):
 @core.route('/account-settings/security/lockdown')
 @login_required
 def lockdown(uuid36: str = None):
+    # If the user is locking down another account, make sure they have permission
     if uuid36 is None:
         user = current_user
     else:
+        if not current_user.can('users.update'):
+            abort(403)
         user = UserManager.get_user_by_uuid36(uuid36)
         if user is None:
             abort(404)
