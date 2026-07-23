@@ -25,7 +25,7 @@ class PermissionSpec:
         """
         Returns the permission in a user-friendly format (i.e. Create Users)
         """
-        return f"{self.action} {self.group}"
+        return f"{self.action}".title()
 
     @property
     def permission_field_name(self) -> str:

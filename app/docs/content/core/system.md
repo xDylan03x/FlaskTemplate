@@ -10,10 +10,10 @@ order: 22
 
 ---
 # Related Permissions
-| Permission    | Description                                   |
-|---------------|-----------------------------------------------|
-| Admin System  | Able to view the admin dashboard (if enabled) |
-| Update System | Able to edit system settings                  |
+| Permission      | Description                                   |
+|-----------------|-----------------------------------------------|
+| System - Admin  | Able to view the admin dashboard (if enabled) |
+| System - Update | Able to edit system settings                  |
 
 # Instructions
 To view and modify system settings or the admin panel, click on the "System" tab in the system settings menu (you must have the "Update System" permission to see this option).

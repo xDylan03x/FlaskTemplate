@@ -10,12 +10,13 @@ order: 20
 
 ---
 # Related Permissions
-| Permission        | Description                                                               |
-|-------------------|---------------------------------------------------------------------------|
-| Create Users      | Able to create uses via the dashboard                                     |
-| Update Users      | Able to modify user information, their permissions, and lockdown the user |
-| Delete Users      | Able to delete users                                                      |
-| Impersonate Users | Able to impersonate other users for troubleshooting                       |
+| Permission                 | Description                                                               |
+|----------------------------|---------------------------------------------------------------------------|
+| Users - Create             | Able to create uses via the dashboard                                     |
+| Users - Update             | Able to modify user information, their permissions, and lockdown the user |
+| Users - Delete             | Able to delete users                                                      |
+| Users - Update Permissions | Able to impersonate other users for troubleshooting                       |
+| Users - Impersonate        | Able to impersonate other users for troubleshooting                       |
 
 # Instructions
 To view and modify users, click on the "User Management" tab in the system settings menu (you must have one of the above permissions to see this option).
@@ -47,6 +48,13 @@ This will set the status of the user to disabled and disable all the user's perm
 
 This will delete the user, preventing them from interacting with the system.
 This action can only be undone through the database via the `deleted` column.
+
+## Updating User Permissions
+1. From the user management page, click the "Edit User" button beside the user you'd like to edit.
+2. From this page, check or uncheck the permissions you want to grant or revoke from the user.
+3. Click the "Save" button.
+
+_Note: You must have the "Update Permissions" permission to see or change the permission options._
 
 ## Impersonating Users
 1. From the user management page, click the "Edit User" button beside the user you'd like to impersonate.

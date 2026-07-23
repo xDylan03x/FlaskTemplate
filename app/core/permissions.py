@@ -4,6 +4,7 @@ permissions = [
     PermissionSpec(action="Create", group="Users", description="Create new users"),
     PermissionSpec(action="Update", group="Users", description="Edit existing users"),
     PermissionSpec(action="Delete", group="Users", description="Delete existing users"),
+    PermissionSpec(action="Update Permissions", group="Users", description="Update user permissions"),
     PermissionSpec(action="Impersonate", group="Users", description="Impersonate users for troubleshooting"),
     PermissionSpec(action="Create", group="Groups", description="Create new groups"),
     PermissionSpec(action="Update", group="Groups", description="Edit existing groups"),

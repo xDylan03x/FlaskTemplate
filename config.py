@@ -17,8 +17,8 @@ class Config:
         self.APP_ABBR = os.environ.get("APP_ABBR") or "UA"
         self.SITE_THEME = os.environ.get("SITE_THEME") or "light"
         self.APP_VERSION = os.environ.get("APP_VERSION") or "N/A"
+        self.ADMIN_PANEL = os.getenv("ADMIN_PANEL", 'False').lower() in ('true', '1', 't')
 
-        self.ADMIN_PANEL = True  # Allow users to access the admin panel (given the proper permissions)
         self.MAIN_REPO_URL = None
         self.TEMPLATE_REPO_URL = None
         try:

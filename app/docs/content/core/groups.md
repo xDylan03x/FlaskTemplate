@@ -10,11 +10,11 @@ order: 21
 
 ---
 # Related Permissions
-| Permission     | Description                                       |
-|----------------|---------------------------------------------------|
-| Create Groups  | Able to create groups via the dashboard           |
-| Update Groups  | Able to modify group information and assign users |
-| Delete Groups  | Able to delete groups                             |
+| Permission      | Description                                       |
+|-----------------|---------------------------------------------------|
+| Groups - Create | Able to create groups via the dashboard           |
+| Groups - Update | Able to modify group information and assign users |
+| Groups - Delete | Able to delete groups                             |
 
 # Instructions
 To view and modify users, click on the "Group Management" tab in the system settings menu (you must have one of the above permissions to see this option).

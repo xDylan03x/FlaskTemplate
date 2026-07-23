@@ -54,7 +54,7 @@
                 {% if current_user.can('groups.update') %}
                     <p class="support text-base-content/80">To edit user groups, please view the <a class="link" href="{{ url_for('core.group_settings') }}">group management page</a>.</p>
                 {% else %}
-                    <p class="support text-base-content/80">To edit user groups, please contact an administrator.</p>
+                    <p class="support text-base-content/80">You do not have permission to manage user groups.</p>
                 {% endif %}
                 {% if user.groups %}
                     <div class="mt-2 flex flex-wrap items-center gap-2">
@@ -74,28 +74,32 @@
             <summary class="collapse-title font-semibold">Permissions</summary>
             <div class="collapse-content">
                 <div class="divide-y divide-base-300">
-                    {% for group, permissions in permission_groups.items() %}
-                        <div class="py-4">
-                            <h6 class="h6 text-base-content">{{ group }}</h6>
-                            {% for permission in permissions %}
-                                {% set field_name = permission.permission_field_name %}
-                                {% set field = form[field_name] %}
+                    {% if current_user.can('users.update_permissions') %}
+                        {% for group, permissions in permission_groups.items() %}
+                            <div class="py-4">
+                                <h6 class="h6 text-base-content">{{ group }}</h6>
+                                {% for permission in permissions %}
+                                    {% set field_name = permission.permission_field_name %}
+                                    {% set field = form[field_name] %}
 
-                                <div class="mt-4">
-                                    {{ field(class="checkbox", id=field_name, type="checkbox") }}
-                                    {{ field.label(class="label") }}
+                                    <div class="mt-4">
+                                        {{ field(class="checkbox", id=field_name, type="checkbox") }}
+                                        {{ field.label(class="label") }}
 
-                                    {% if permission.description %}
-                                        <p class="form-help">{{ permission.description }}</p>
-                                    {% endif %}
+                                        {% if permission.description %}
+                                            <p class="form-help">{{ permission.description }}</p>
+                                        {% endif %}
 
-                                    {% for error in field.errors %}
-                                        <p class="form-error">{{ error }}</p>
-                                    {% endfor %}
-                                </div>
-                            {% endfor %}
-                        </div>
-                    {% endfor %}
+                                        {% for error in field.errors %}
+                                            <p class="form-error">{{ error }}</p>
+                                        {% endfor %}
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <p class="support text-base-content/80">You do not have permission to manage user permissions.</p>
+                    {% endif %}
                 </div>
             </div>
         </details>

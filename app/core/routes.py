@@ -371,9 +371,10 @@ def edit_user(uuid36):
                 user.set_password(form.password.data)
                 user.refresh_uuid36()
 
-            for field_name, permission_key in form.permission_field_map.items():
-                field = getattr(form, field_name)
-                user.set_permission(permission_key, field.data)
+            if current_user.can('users.update_permissions'):
+                for field_name, permission_key in form.permission_field_map.items():
+                    field = getattr(form, field_name)
+                    user.set_permission(permission_key, field.data)
 
         db.session.commit()
 
