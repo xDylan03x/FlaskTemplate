@@ -92,6 +92,8 @@ class Config:
         self.SENTRY_DSN = os.environ.get("SENTRY_DSN", None)
 
         # Checks
+        if self.ADMIN_PANEL:
+            logging.warning("The admin panel contains sensitive information and should be disabled in production.")
         if self.SECRET_KEY == "dev_secret":
             logging.warning("Using default secret key. This is insecure and should be changed in production.")
         if not self.TWILIO_ACCOUNT_SID or not self.TWILIO_AUTH_TOKEN or not self.TWILIO_SERVICE_SID or not self.FROM_PHONE_NUMBER:

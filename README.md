@@ -35,6 +35,7 @@ Once you clone the directory and set up your environment (see below), follow the
 5. Run `flask create_admin` to set up the admin user.
 6. Use `flask run --port 8080 --debug` to start the development server.
 7. Use `make vite` and `make tailwind` to build frontend resources.
+8. Run `flask doctor` to check the status of the database and external providers.
 
 _Note: You can use `make build` when you're ready to deploy your application. Use `make help` for a further list of commands._  
 _When ready to update the project from the template, run `make update`._
