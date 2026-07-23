@@ -108,7 +108,7 @@ class ApplicationSettingsForm(FlaskForm):
 
 
 class NotificationSettingsForm(FlaskForm):
-    security_alerts_email = BooleanField('Text')
+    security_alerts_email = BooleanField('Email')
     security_alerts_text = BooleanField('Text')
     submit = SubmitField('Save')
 

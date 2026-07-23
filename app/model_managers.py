@@ -348,7 +348,7 @@ class NotificationManager:
         channels_to_send = ['web']
         if user.get_setting(f"{category.value}_via_email"):
             channels_to_send.append('email')
-        if user.get_setting(f"{category.value}_via_email"):
+        if user.get_setting(f"{category.value}_via_text"):
             channels_to_send.append('text')
         # Add notification records to database
         notifications_to_send = []
