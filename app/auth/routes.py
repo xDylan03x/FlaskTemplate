@@ -1,7 +1,6 @@
 from urllib.parse import urlencode
 import requests
-from app.auth.helper import get_ip_from_request, twilio_verify_send, twilio_verify_check, hibp_password_check, \
-    is_internal_url
+from app.auth.helper import get_ip_from_request, twilio_verify_send, twilio_verify_check, hibp_password_check
 from app.models import NotificationCategory, RiskAction
 from app.model_managers import UserManager, LoginTokenManager, LoginRecordManager, UserDeviceManager, \
     NotificationManager, SystemManager
