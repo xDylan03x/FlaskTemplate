@@ -287,6 +287,12 @@ def oauth_callback(provider: str):
         return redirect(url_for('auth.login'))
     email = provider_data['userinfo']['email'](response.json())
 
+    # Make sure the email is verified by the OAuth provider
+    if response.json().get("email_verified", False) is not True:
+        flash(CONTACT_ADMINISTRATOR_MESSAGE, 'error')
+        flash("Provider does not support email verification. Use another form of authentication to log in.", 'info')
+        return redirect(url_for('auth.login'))
+
     # Find the user in the database
     user = UserManager.get_user_by_email(email)
     if user is None:
