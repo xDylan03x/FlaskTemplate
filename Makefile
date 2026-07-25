@@ -1,98 +1,198 @@
+SHELL := /bin/sh
 .SHELLFLAGS := -ec
+.DEFAULT_GOAL := help
 
-CSS_INPUT = ./app/core/static/css/styles.css
-CSS_OUTPUT = ./app/core/static/css/output.css
+PYTHON ?= python3
+NPM ?= npm
+NPX ?= npx
 
-MAGENTA = \033[0;35m
-YELLOW = \033[0;33m
-NC = \033[0m
+PIP := $(PYTHON) -m pip
+FLASK := $(PYTHON) -m flask --app app
 
-default: help
-.PHONY: help tailwind vite db requirements git setup_project update build
+CSS_INPUT := ./app/core/static/css/styles.css
+CSS_OUTPUT := ./app/core/static/css/output.css
+
+MAGENTA := \033[0;35m
+YELLOW := \033[0;33m
+GREEN := \033[1;32m
+NC := \033[0m
+
+.PHONY: \
+	help \
+	tailwind \
+	vite \
+	assets \
+	db \
+	db_check \
+	db_upgrade \
+	check_env \
+	doctor \
+	requirements \
+	install_python \
+	install_node \
+	git \
+	setup_project \
+	update \
+	build \
+	build_for_release \
+	build_for_server
+
 
 help: # Show this help message
-	@grep -E '^[a-zA-Z0-9 -]+:.*#'  Makefile | sort | while read -r l; do printf "\033[1;32m$$(echo $$l | cut -f 1 -d':')\033[00m:$$(echo $$l | cut -f 2- -d'#')\n"; done
+	@awk 'BEGIN {FS = ":.*# "} /^[A-Za-z0-9_.-]+:.*# / {printf "$(GREEN)%-24s$(NC) %s\n", $$1, $$2}' $(MAKEFILE_LIST)
+
 
 tailwind: # Compile Tailwind CSS for production
-	npx @tailwindcss/cli -i $(CSS_INPUT) -o $(CSS_OUTPUT) --minify
+	$(NPX) --no-install @tailwindcss/cli \
+		-i $(CSS_INPUT) \
+		-o $(CSS_OUTPUT) \
+		--minify
+
 
 vite: # Build the Vite project
-	npm run build
+	$(NPM) run build
 
-db: # Create the database status
-	flask db check
 
-requirements: # Update the requirements.txt file with the current environment's dependencies
-	pip freeze > requirements.txt
+assets: tailwind vite # Build all production frontend assets
 
-git: # Update the project with the current template files from the Git repository
+
+db: db_check # Check whether database migrations are current
+
+
+db_check: # Check for uncommitted database model migrations
+	$(FLASK) db check
+
+
+db_upgrade: # Apply committed database migrations
+	$(FLASK) db upgrade
+
+
+check_env: # Validate required production environment variables
+	$(FLASK) check_env
+
+
+doctor: # Check database and configured external services
+	$(FLASK) doctor
+
+
+requirements: # Freeze the active Python environment (developer maintenance only)
+	$(PIP) freeze > requirements.txt
+
+
+install_python: # Install locked Python dependencies
+	$(PIP) install -r requirements.txt
+
+
+install_node: # Install locked Node dependencies, including build tools
+	$(NPM) ci --include=dev
+
+
+git: # Merge the latest project-template changes
 	git fetch template
 	git merge template/master -m "Merge template/master into current branch"
 
-setup_project: # Set up the project by installing dependencies and configuring environment variables
-	@echo "$(YELLOW)> Setting Up Project$(NC)"
-	@echo "$(YELLOW)> Installing Python Dependencies$(NC)"
-	pip install -r requirements.txt
-	@echo "$(YELLOW)> Installing NPM Dependencies$(NC)"
-	npm install
-	@echo "$(YELLOW)> Creating .env File$(NC)"
-	cp .env.example .env
-	@echo "$(YELLOW)> Project Setup Complete - Modify .env file before continuing$(NC)"
 
-update: # Update the project with the current template files
-	@echo "$(MAGENTA)> Updating from Project Template$(NC)"
-	@echo "$(MAGENTA)> [1/8] Updating from GIT repository$(NC)"
-	@echo ""
+setup_project: # Install dependencies and create a local environment file
+	@printf "$(YELLOW)> Setting Up Project$(NC)\n"
+
+	@printf "$(YELLOW)> [1/3] Installing Python Dependencies$(NC)\n"
+	$(MAKE) install_python
+
+	@printf "$(YELLOW)> [2/3] Installing Node Dependencies$(NC)\n"
+	$(MAKE) install_node
+
+	@printf "$(YELLOW)> [3/3] Creating Environment File$(NC)\n"
+	@if [ -f .env ]; then \
+		printf "$(YELLOW)> .env already exists; leaving it unchanged$(NC)\n"; \
+	else \
+		cp .env.example .env; \
+		printf "$(YELLOW)> Created .env from .env.example$(NC)\n"; \
+	fi
+
+	@printf "$(MAGENTA)> Project Setup Complete$(NC)\n"
+	@printf "$(YELLOW)> Review .env before running the application$(NC)\n"
+
+
+update: # Merge template changes and update the local project
+	@printf "$(MAGENTA)> Updating from Project Template$(NC)\n"
+
+	@printf "$(MAGENTA)> [1/7] Updating Git Repository$(NC)\n"
 	$(MAKE) git
-	@echo ""
-	@echo "$(MAGENTA)> [2/8] Updating NPM Dependencies(NC)"
-	@echo ""
-	npm install
-	@echo ""
-	@echo "$(MAGENTA)> [3/8] Running Tailwind CSS Build$(NC)"
-	@echo ""
-	$(MAKE) tailwind
-	@echo ""
-	@echo "$(MAGENTA)> [4/8] Running Vite Build$(NC)"
-	@echo ""
-	$(MAKE) vite
-	@echo ""
-	@echo "$(MAGENTA)> [5/8] Updating Python Dependencies$(NC)"
-	@echo ""
-	pip install -r requirements.txt
-	@echo ""
-	@echo "$(MAGENTA)> [6/8] Upgrading Database$(NC)"
-	@echo ""
-	flask db migrate -m "Upgrade from template"
-	flask db upgrade
-	@echo ""
-	@echo "$(MAGENTA)> [7/8] Updating Users$(NC)"
-	@echo ""
-	flask update_users
-	@echo ""
-	@echo "$(MAGENTA)> [8/8] Updating App$(NC)"
-	@echo ""
-	flask update_app
-	@echo ""
-	@echo "$(MAGENTA)> Project Template Update Complete$(NC)"
-	@echo "$(YELLOW)> Note: You may need to run 'git push'$(NC)"
 
-build: # Build the project for production - combines other individual steps
-	@echo "$(MAGENTA)> Building Project$(NC)"
-	@echo "$(MAGENTA)> [1/4] Running Tailwind CSS Build$(NC)"
-	@echo ""
+	@printf "$(MAGENTA)> [2/7] Installing Node Dependencies$(NC)\n"
+	$(MAKE) install_node
+
+	@printf "$(MAGENTA)> [3/7] Installing Python Dependencies$(NC)\n"
+	$(MAKE) install_python
+
+	@printf "$(MAGENTA)> [4/7] Building Tailwind CSS$(NC)\n"
 	$(MAKE) tailwind
-	@echo ""
-	@echo "$(MAGENTA)> [2/4] Running Vite Build$(NC)"
-	@echo ""
+
+	@printf "$(MAGENTA)> [5/7] Building Vite Assets$(NC)\n"
 	$(MAKE) vite
-	@echo ""
-	@echo "$(MAGENTA)> [3/4] Checking Database Migrations$(NC)"
-	@echo ""
-	$(MAKE) db
-	@echo ""
-	@echo "$(MAGENTA)> [4/4] Freezing Python Dependencies$(NC)"
-	@echo ""
+
+	@printf "$(MAGENTA)> [6/7] Applying Database Migrations$(NC)\n"
+	$(MAKE) db_upgrade
+
+	@printf "$(MAGENTA)> [7/7] Updating Users and Application Settings$(NC)\n"
+	$(FLASK) update_users
+	$(FLASK) update_app
+
+	@printf "$(MAGENTA)> Project Template Update Complete$(NC)\n"
+	@printf "$(YELLOW)> Review the changes and push them when ready$(NC)\n"
+
+
+build: build_for_release # Build and validate the project for release
+
+
+build_for_release: # Build assets and validate migrations before release
+	@printf "$(MAGENTA)> Building Project for Release$(NC)\n"
+
+	@printf "$(MAGENTA)> [1/5] Installing Locked Node Dependencies$(NC)\n"
+	$(MAKE) install_node
+
+	@printf "$(MAGENTA)> [2/5] Building Tailwind CSS$(NC)\n"
+	$(MAKE) tailwind
+
+	@printf "$(MAGENTA)> [3/5] Building Vite Assets$(NC)\n"
+	$(MAKE) vite
+
+	@printf "$(MAGENTA)> [4/5] Checking Database Migrations$(NC)\n"
+	$(MAKE) db_check
+
+	@printf "$(MAGENTA)> [5/5] Freezing Python Requirements$(NC)\n"
 	$(MAKE) requirements
-	@echo ""
-	@echo "$(MAGENTA)> Build Complete$(NC)"
+
+	@printf "$(MAGENTA)> Release Build Complete$(NC)\n"
+
+
+build_for_server: # Install, validate, build, and deploy on the server
+	@printf "$(MAGENTA)> Building Project on Server$(NC)\n"
+
+	@printf "$(MAGENTA)> [1/8] Installing Python Dependencies$(NC)\n"
+	$(MAKE) install_python
+
+	@printf "$(MAGENTA)> [2/8] Checking Environment Variables$(NC)\n"
+	$(MAKE) check_env
+
+	@printf "$(MAGENTA)> [3/8] Installing Locked Node Dependencies$(NC)\n"
+	$(MAKE) install_node
+
+	@printf "$(MAGENTA)> [4/8] Building Tailwind CSS$(NC)\n"
+	$(MAKE) tailwind
+
+	@printf "$(MAGENTA)> [5/8] Building Vite Assets$(NC)\n"
+	$(MAKE) vite
+
+	@printf "$(MAGENTA)> [6/8] Applying Database Migrations$(NC)\n"
+	$(MAKE) db_upgrade
+
+	@printf "$(MAGENTA)> [7/8] Creating Initial Admin User$(NC)\n"
+	$(FLASK) create_admin
+
+	@printf "$(MAGENTA)> [8/8] Updating Users and Application Settings$(NC)\n"
+	$(FLASK) update_users
+	$(FLASK) update_app
+
+	@printf "$(MAGENTA)> Server Build Complete$(NC)\n"
+	@printf "$(YELLOW)> Run 'make doctor' for post-deployment health checks$(NC)\n"
