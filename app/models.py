@@ -506,7 +506,7 @@ class File(db.Model):
 
     original_filename: so.Mapped[str] = so.mapped_column(sa.String(512), nullable=False)
     object_key: so.Mapped[str] = so.mapped_column(sa.String(2048), unique=True, nullable=False)
-    content_type: so.Mapped[str] = so.mapped_column(sa.String(256), nullable=False)
+    content_type: so.Mapped[str] = so.mapped_column(sa.String(128), nullable=False)
     size: so.Mapped[int] = so.mapped_column(sa.Integer, nullable=False)
     context: so.Mapped[str] = so.mapped_column(sa.String(256), nullable=False)
     public: so.Mapped[bool] = so.mapped_column(sa.Boolean, default=False, nullable=False)
