@@ -7,10 +7,11 @@ import platform
 import sys
 from werkzeug.sansio.utils import host_is_trusted
 from app import sendgrid_client, twilio_client, db
-from sendgrid.helpers.mail import Mail, From
+from sendgrid.helpers.mail import Mail, From, ReplyTo
 from flask import current_app, url_for
 from device_detector import DeviceDetector
 import boto3
+import phonenumbers
 from urllib.parse import urlsplit, urlunsplit
 
 READ_ONLY_PREFIXES = ("select", "show", "describe", "explain", "pragma")
@@ -33,6 +34,25 @@ BLOCKED_SQL_WORDS = (
     "detach",
     "copy",
 )
+
+
+def normalize_phone_number(raw_phone: str, region: str = "US") -> str:
+    """Validate and format a phone number for E.164 database storage."""
+    parsed = phonenumbers.parse(raw_phone, region)
+    if not phonenumbers.is_valid_number(parsed):
+        raise ValueError("Invalid phone number")
+    return phonenumbers.format_number(parsed, phonenumbers.PhoneNumberFormat.E164)
+
+
+def format_phone_number(phone_number: str) -> str:
+    """Format a stored E.164 phone number for human-friendly display."""
+    if not phone_number:
+        return ""
+    try:
+        parsed = phonenumbers.parse(phone_number, None)
+    except phonenumbers.NumberParseException:
+        return phone_number
+    return phonenumbers.format_number(parsed, phonenumbers.PhoneNumberFormat.NATIONAL)
 
 
 def _normalize_local_url(value: str):
@@ -100,7 +120,15 @@ def route_url(url: str) -> str:
     return "/"
 
 
-def send_email(subject: str, body: str, recipient: str, preheader="", sender=None, sender_name=None, template_id=None) -> str:
+def send_email(
+        subject: str,
+        body: str,
+        recipient: str,
+        preheader="",
+        sender=None,
+        sender_name=None,
+        template_id=None,
+        reply_to=None) -> str:
     """Send an email directly using SendGrid. Use NotificationManager.send_notification() for most cases."""
     if sender is None:
         sender = current_app.config["FROM_EMAIL"]
@@ -110,6 +138,8 @@ def send_email(subject: str, body: str, recipient: str, preheader="", sender=Non
         template_id = current_app.config["SENDGRID_EMAIL_TEMPLATE_ID"]
 
     message = Mail(from_email=From(sender, sender_name), to_emails=recipient)
+    if reply_to:
+        message.reply_to = ReplyTo(reply_to)
     message.dynamic_template_data = {
         'body': body.replace('\n', '<br>'),
         'subject': subject,

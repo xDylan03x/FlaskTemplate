@@ -1,9 +1,35 @@
+{% set center_menu_items %}
+<li><a href="/">Links go Here</a></li>
+<li>
+    <details>
+        <summary>Dropdown</summary>
+        <ul class="p-2 bg-base-200 text-base-content w-40 z-1">
+            <li><a href="/">Dropdown Item</a></li>
+        </ul>
+    </details>
+</li>
+{% endset %}
 <div class="bg-neutral shadow text-neutral-content print:hidden">
     <div class="navbar max-w-[85rem] px-4 mx-auto">
-        <div class="flex-1">
-            <a href="{{ url_for('core.index') }}" class="btn btn-ghost text-xl text-neutral-content">{{ app_name }}</a>
+        <div class="navbar-start">
+            <div class="dropdown">
+                <div tabindex="0" role="button" class="btn btn-ghost text-neutral-content me-4 lg:hidden">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"/>
+                    </svg>
+                </div>
+                <ul tabindex="-1" class="menu gap-0.5 dropdown-content bg-base-200 text-base-content rounded-box z-1 mt-2 w-max shadow">
+                    {{ center_menu_items|safe }}
+                </ul>
+            </div>
+            <a href="/" class="text-xl font-medium">{{ app_name }}</a>
         </div>
-        <div class="flex gap-2">
+        <div class="navbar-center hidden lg:flex">
+            <ul class="menu menu-horizontal gap-0.5 px-1">
+                {{ center_menu_items|safe }}
+            </ul>
+        </div>
+        <div class="navbar-end gap-2">
             {% if current_user.is_authenticated %}
 
                 {# When adding other options/roles to this dropdown, make sure to add it as an or condition here as well #}

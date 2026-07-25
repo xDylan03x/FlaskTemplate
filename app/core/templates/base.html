@@ -20,14 +20,14 @@
     {% block head %}{% endblock %}
 </head>
 
-<body class="min-h-screen flex flex-col">
+<body class="flex flex-col min-h-screen">
 
 {% include 'includes/banner.html' %}
 {% include 'includes/header.html' %}
 
 {% block outside %}{% endblock %}
 {% if self.content() | trim %}
-    <main class="min-h-full px-4 py-8 md:px-12 md:py-16">
+    <main class="max-w-7xl mx-auto w-full px-6 py-10 flex-1">
         {% block content %}{% endblock %}
     </main>
 {% endif %}

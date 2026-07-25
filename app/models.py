@@ -120,7 +120,7 @@ class User(db.Model, UserMixin):
     def can_login(self) -> bool:
         if self.deleted or not self.email_verified:
             return False
-        return self.status == 'active'
+        return self.status in ('active', 'pending')
 
     def get_setting(self, key: str) -> str | bool:
         setting_record = self.settings.filter_by(key=key).first()

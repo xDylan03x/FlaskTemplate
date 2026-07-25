@@ -11,7 +11,7 @@ from .forms import ChangePasswordForm, ProfileSettingsForm, NotificationSettings
 import phonenumbers
 from app.model_managers import UserManager, UserDeviceManager, FileManager, NotificationManager, SystemManager
 from .helper import send_sms, parse_user_agent, get_routes, get_blueprints, get_extensions, get_database_status, \
-    get_platform_info, is_safe_read_query, modify_query, send_email, normalize_external_url
+    get_platform_info, is_safe_read_query, modify_query, send_email, normalize_external_url, normalize_phone_number
 from ..model_managers import LoginTokenManager
 from ..extensions.flask_permissions import require_permission
 from app import pm
@@ -83,25 +83,23 @@ def profile_settings():
             # If the user hasn't entered an empty value
             if raw_phone:
                 try:
-                    parsed = phonenumbers.parse(raw_phone, region)
+                    normalized_phone = normalize_phone_number(raw_phone, region)
                     # If the phone number has changed
-                    if phonenumbers.format_number(parsed, phonenumbers.PhoneNumberFormat.E164) != current_user.phone_number:
-                        # Validate the phone number
-                        if phonenumbers.is_valid_number(parsed):
-                            current_user.phone_number = phonenumbers.format_number(parsed, phonenumbers.PhoneNumberFormat.E164)
-                            current_user.phone_number_verified = False
-                            # Send text to verify phone number.
-                            new_token_obj, new_token = LoginTokenManager.create_login_token(expiration_minutes=30, user_id=current_user.id, auth_source='phone number verification')
-                            new_token_obj.verify_phone_number = True
-                            db.session.commit()
-                            verify_url = url_for('auth.login_with_token', raw_token=new_token, _external=True)
-                            message = f'Click the following link to verify the phone number in your {current_app.config["APP_NAME"]} account: {verify_url}\n\nIf you did not request this link, please ignore this text.'
-                            send_sms(body=message, recipient=current_user.phone_number)
-                            flash('A link has been sent to your phone via text. Please click this link to verify your phone number.', 'info')
-                        else:
-                            flash("Phone number is not valid", "error")
+                    if normalized_phone != current_user.phone_number:
+                        current_user.phone_number = normalized_phone
+                        current_user.phone_number_verified = False
+                        # Send text to verify phone number.
+                        new_token_obj, new_token = LoginTokenManager.create_login_token(expiration_minutes=30, user_id=current_user.id, auth_source='phone number verification')
+                        new_token_obj.verify_phone_number = True
+                        db.session.commit()
+                        verify_url = url_for('auth.login_with_token', raw_token=new_token, _external=True)
+                        message = f'Click the following link to verify the phone number in your {current_app.config["APP_NAME"]} account: {verify_url}\n\nIf you did not request this link, please ignore this text.'
+                        send_sms(body=message, recipient=current_user.phone_number)
+                        flash('A link has been sent to your phone via text. Please click this link to verify your phone number.', 'info')
                 except phonenumbers.NumberParseException:
                     flash("Error validating phone number", "error")
+                except ValueError:
+                    flash("Phone number is not valid", "error")
             else:
                 current_user.phone_number = None
                 current_user.phone_number_verified = False
@@ -595,4 +593,3 @@ def external_redirect():
     if destination is None:
         abort(400)
     return render_template("external-redirect.html", url=destination)
-
