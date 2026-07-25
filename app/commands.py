@@ -264,6 +264,7 @@ def create_admin():
     user.set_permission('users.create', True)
     user.set_permission('users.update', True)
     user.set_permission('users.delete', True)
+    user.set_setting('users.update_permissions', True)
     user.set_setting('security.two_factor_auth', True)  # Disable this if you do not have a way to send emails
     user.set_setting('security.password_breach_check', False)
     user.set_setting('notifications.security_alerts_via_email', True)
