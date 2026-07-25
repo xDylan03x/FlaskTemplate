@@ -1,11 +1,49 @@
-from flask import request, jsonify, current_app
+from flask import request, jsonify, current_app, abort, redirect
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
 from ..core.helper import get_s3_client, route_url
 from app import db
 from app.api import apiv1
 from app.models import File
-from ..model_managers import NotificationManager
+from ..model_managers import NotificationManager, FileManager
+
+
+@apiv1.route("/files/<string:uuid36>", methods=["GET"])
+def get_file_url(uuid36: str):
+    file = FileManager.get_file_by_uuid36(uuid36)
+
+    if file is None:
+        abort(404)
+
+    if not file.public and not current_user.is_authenticated:
+        abort(401)
+
+    # Add ownership/authorization checks here when necessary.
+    # Example:
+    # if not file.public and file.uploader_id != current_user.id:
+    #     abort(403)
+
+    s3 = get_s3_client()
+
+    presigned_url = s3.generate_presigned_url(
+        ClientMethod="get_object",
+        Params={
+            "Bucket": current_app.config["S3_BUCKET_NAME"],
+            "Key": file.object_key,
+            "ResponseContentType": file.content_type,
+            "ResponseContentDisposition": (
+                f'inline; filename="{file.original_filename}"'
+            ),
+        },
+        ExpiresIn=current_app.config.get(
+            "S3_PRESIGNED_URL_EXPIRATION",
+            3600,
+        ),
+    )
+
+    response = redirect(presigned_url, code=302)
+    response.headers["Cache-Control"] = "private, max-age=240"
+    return response
 
 
 @apiv1.route('/uploads/presign', methods=['POST'])

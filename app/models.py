@@ -1,7 +1,6 @@
 import enum
 import hashlib
 from typing import Optional
-from flask import current_app
 from flask_login import UserMixin
 import sqlalchemy as sa
 import sqlalchemy.orm as so
@@ -496,6 +495,7 @@ class File(db.Model):
         content_type: MIME type of the file
         size: Size of the file in bytes
         context: Use of the file (form attachment, profile picture, etc.)
+        public: whether a user must be logged in to view the file
 
         uploader_id: Foreign key to the User model
     """
@@ -509,15 +509,12 @@ class File(db.Model):
     content_type: so.Mapped[str] = so.mapped_column(sa.String(256), nullable=False)
     size: so.Mapped[int] = so.mapped_column(sa.Integer, nullable=False)
     context: so.Mapped[str] = so.mapped_column(sa.String(256), nullable=False)
+    public: so.Mapped[bool] = so.mapped_column(sa.Boolean, default=False, nullable=False)
 
     uploader_id: so.Mapped[int] = so.mapped_column(sa.Integer, sa.ForeignKey('user.id'))
 
     def __repr__(self):
         return '<File {}>'.format(self.uuid36)
-
-    @property
-    def url(self) -> str:
-        return f"{current_app.config['S3_PUBLIC_ENDPOINT_URL']}/{self.object_key}"
 
 
 @login.user_loader

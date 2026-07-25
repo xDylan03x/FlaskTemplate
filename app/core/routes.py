@@ -72,7 +72,7 @@ def profile_settings():
                 if not form.profile_picture_url.data.startswith('http'):
                     file = FileManager.get_file_by_uuid36(form.profile_picture_url.data)
                     if file is not None:
-                        current_user.profile_picture_url = file.url
+                        current_user.profile_picture_url = url_for('api.get_file_url', uuid36=file.uuid36)
                     else:
                         flash("Error uploading profile picture", "error")
             else:
