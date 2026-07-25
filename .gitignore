@@ -185,7 +185,6 @@ fabric.properties
 .idea/*
 
 # Application Specific
-migrations/
 node_modules
 TODO.md
 /app/core/static/css/output.css
