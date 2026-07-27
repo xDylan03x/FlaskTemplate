@@ -287,7 +287,13 @@ def update_users():
         UserManager.update_settings(user)
         users_updated.append(user.email)
 
-    click.echo(f'All users updated.\nFound {user_count} users.\nUpdated: {', '.join(users_updated)}')
+    updated_names = ", ".join(users_updated) if users_updated else "None"
+
+    click.echo(
+        f"All users updated.\n"
+        f"Found {user_count} users.\n"
+        f"Updated: {updated_names}"
+    )
 
 
 @click.command(name='update_app')

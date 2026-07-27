@@ -7,11 +7,10 @@ from git import Repo
 
 class Config:
     def __init__(self):
-        cwd = os.getcwd()
         basedir = os.path.abspath(os.path.dirname(__file__))
         repo = Repo(search_parent_directories=True)
         # After creating a .env file (you can use .env.example as a template), this will load it
-        load_dotenv(os.path.join(basedir, '.env'))
+        load_dotenv(os.path.join(basedir, ".env"))
 
         # Site Basics
         self.APP_NAME = os.environ.get("APP_NAME") or "Unnamed App"
@@ -61,8 +60,8 @@ class Config:
         self.SQLALCHEMY_TRACK_MODIFICATIONS = False
         self.SQLALCHEMY_RECORD_QUERIES = True
 
-        self.TEMPLATE_FOLDER = os.path.join(cwd, "app", "core", "templates")
-        self.STATIC_FOLDER = os.path.join(cwd, "app", "core", "static")
+        self.TEMPLATE_FOLDER = os.path.join(basedir, "app", "core", "templates")
+        self.STATIC_FOLDER = os.path.join(basedir, "app", "core", "static")
 
         # For each OAuth2 provider, set up the necessary configuration below.
         self.OAUTH2_PROVIDERS = {
@@ -93,6 +92,8 @@ class Config:
 
         # Sentry configuration
         self.SENTRY_DSN = os.environ.get("SENTRY_DSN", None)
+
+        self.BEHIND_PROXY = os.getenv("BEHIND_PROXY", "false").lower() in ("true", "1", "t")
 
         # Checks
         if self.ADMIN_PANEL:

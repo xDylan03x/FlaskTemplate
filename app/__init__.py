@@ -10,6 +10,7 @@ from flask_login import LoginManager
 from flask_sqlalchemy import SQLAlchemy
 from flask_compress import Compress
 import sentry_sdk
+from werkzeug.middleware.proxy_fix import ProxyFix
 from .commands import create_admin, update_users, update_app, doctor, check_env
 from .extensions.flask_permissions import PermissionManager
 from .extensions.flask_settings import SettingsManager
@@ -37,6 +38,15 @@ def create_app(cfg: Config = Config) -> Flask:
     app = Flask(__name__, template_folder=getattr(cfg, "TEMPLATE_FOLDER", None), static_folder=getattr(cfg, "STATIC_FOLDER", None))
 
     app.config.from_object(cfg)
+
+    if app.config.get("BEHIND_PROXY"):
+        app.wsgi_app = ProxyFix(
+            app.wsgi_app,
+            x_for=1,
+            x_proto=1,
+            x_host=1,
+            x_port=1,
+        )
 
     db.init_app(app)
     migrate.init_app(app, db)
