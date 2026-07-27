@@ -35,10 +35,7 @@ def get_file_url(uuid36: str):
                 f'inline; filename="{file.original_filename}"'
             ),
         },
-        ExpiresIn=current_app.config.get(
-            "S3_PRESIGNED_URL_EXPIRATION",
-            3600,
-        ),
+        ExpiresIn=3600
     )
 
     response = redirect(presigned_url, code=302)

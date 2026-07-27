@@ -25,7 +25,6 @@ NC := \033[0m
 	db \
 	db_check \
 	db_upgrade \
-	check_env \
 	doctor \
 	requirements \
 	install_python \
@@ -33,9 +32,8 @@ NC := \033[0m
 	git \
 	setup_project \
 	update \
-	build \
 	build_for_release \
-	build_for_server
+	setup_for_server
 
 
 help: # Show this help message
@@ -65,10 +63,6 @@ db_check: # Check for uncommitted database model migrations
 
 db_upgrade: # Apply committed database migrations
 	$(FLASK) db upgrade
-
-
-check_env: # Validate required production environment variables
-	$(FLASK) check_env
 
 
 doctor: # Check database and configured external services
@@ -142,9 +136,6 @@ update: # Merge template changes and update the local project
 	@printf "$(YELLOW)> Review the changes and push them when ready$(NC)\n"
 
 
-build: build_for_release # Build and validate the project for release
-
-
 build_for_release: # Build assets and validate migrations before release
 	@printf "$(MAGENTA)> Building Project for Release$(NC)\n"
 
@@ -166,23 +157,28 @@ build_for_release: # Build assets and validate migrations before release
 	@printf "$(MAGENTA)> Release Build Complete$(NC)\n"
 
 
-build_for_server: # Install, validate, build, and deploy on the server
+setup_for_server: # Setup the project for deployment on a server
 	@printf "$(MAGENTA)> Building Project on Server$(NC)\n"
 
 	@printf "$(MAGENTA)> [1/8] Installing Python Dependencies$(NC)\n"
 	$(MAKE) install_python
 
-	@printf "$(MAGENTA)> [2/8] Checking Environment Variables$(NC)\n"
-	$(MAKE) check_env
-
-	@printf "$(MAGENTA)> [3/8] Installing Locked Node Dependencies$(NC)\n"
+	@printf "$(MAGENTA)> [2/8] Installing Locked Node Dependencies$(NC)\n"
 	$(MAKE) install_node
 
-	@printf "$(MAGENTA)> [4/8] Building Tailwind CSS$(NC)\n"
+	@printf "$(MAGENTA)> [3/8] Building Tailwind CSS$(NC)\n"
 	$(MAKE) tailwind
 
-	@printf "$(MAGENTA)> [5/8] Building Vite Assets$(NC)\n"
+	@printf "$(MAGENTA)> [4/8] Building Vite Assets$(NC)\n"
 	$(MAKE) vite
+
+	@printf "$(MAGENTA)> [5/8] Creating Environment File$(NC)\n"
+	@if [ -f .env ]; then \
+    		printf "$(YELLOW)> .env already exists; leaving it unchanged$(NC)\n"; \
+    	else \
+    		cp .env.production.example .env; \
+    		printf "$(YELLOW)> Created .env from .env.production.example$(NC)\n"; \
+    	fi
 
 	@printf "$(MAGENTA)> [6/8] Applying Database Migrations$(NC)\n"
 	$(MAKE) db_upgrade

@@ -11,7 +11,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_compress import Compress
 import sentry_sdk
 from werkzeug.middleware.proxy_fix import ProxyFix
-from .commands import create_admin, update_users, update_app, doctor, check_env
+from .commands import create_admin, update_users, update_app, doctor
 from .extensions.flask_permissions import PermissionManager
 from .extensions.flask_settings import SettingsManager
 from .extensions.flask_audit import AuditManager
@@ -86,7 +86,6 @@ def create_app(cfg: Config = Config) -> Flask:
     app.cli.add_command(update_users)
     app.cli.add_command(update_app)
     app.cli.add_command(doctor)
-    app.cli.add_command(check_env)
 
     from . import models
 

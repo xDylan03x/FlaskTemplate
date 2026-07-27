@@ -1,6 +1,5 @@
 import os
 import logging
-import re
 from dotenv import load_dotenv
 from git import Repo
 
@@ -12,11 +11,14 @@ class Config:
         # After creating a .env file (you can use .env.example as a template), this will load it
         load_dotenv(os.path.join(basedir, ".env"))
 
+        # Environment
+        self.FLASK_ENV = os.environ.get("FLASK_ENV", "development")
+
         # Site Basics
         self.APP_NAME = os.environ.get("APP_NAME") or "Unnamed App"
         self.APP_ABBR = os.environ.get("APP_ABBR") or "UA"
         self.SITE_THEME = os.environ.get("SITE_THEME") or "light"
-        self.APP_VERSION = os.environ.get("APP_VERSION") or "N/A"
+        self.APP_VERSION = "1.2.0" # Change this for you app
         self.ADMIN_PANEL = os.getenv("ADMIN_PANEL", 'False').lower() in ('true', '1', 't')
 
         self.MAIN_REPO_URL = None
@@ -29,7 +31,6 @@ class Config:
 
         # File uploads
         self.S3_UPLOAD_ENDPOINT_URL = os.environ.get("S3_UPLOAD_ENDPOINT_URL") or None
-        self.S3_PUBLIC_ENDPOINT_URL = os.environ.get("S3_PUBLIC_ENDPOINT_URL") or None
         self.S3_BUCKET_NAME = os.environ.get("S3_BUCKET_NAME") or None
         self.MAX_UPLOAD_SIZE = 25 * 1024 * 1024  # 25 MB
         self.ALLOWED_CONTENT_TYPES = {
@@ -40,21 +41,34 @@ class Config:
             "text/csv",
         }
 
-        trusted = os.environ.get("TRUSTED_HOSTS")
-        if trusted is None:
-            self.TRUSTED_HOSTS = ["localhost:8080", "127.0.0.1:8080"]
-            if self.S3_PUBLIC_ENDPOINT_URL is not None:
-                self.TRUSTED_HOSTS.append(re.sub(r"^https?://", "", self.S3_PUBLIC_ENDPOINT_URL))
-        else:
-            self.TRUSTED_HOSTS = [item.strip() for item in trusted.split(",") if item.strip()]
+        # Trusted Hosts
+        trusted = os.environ.get("TRUSTED_HOSTS", None)
+        if not trusted:
+            if self.FLASK_ENV == "production":
+                raise RuntimeError("TRUSTED_HOSTS must be configured in production.")
+            if trusted is None:
+                self.TRUSTED_HOSTS = ["localhost:8080", "127.0.0.1:8080"]
+            else:
+                self.TRUSTED_HOSTS = [item.strip() for item in trusted.split(",") if item.strip()]
 
         # Admin credentials
         self.ADMIN_NAME = os.environ.get('ADMIN_NAME', None)
         self.ADMIN_EMAIL = os.environ.get('ADMIN_EMAIL', None)
         self.ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', None)
 
-        self.SQLALCHEMY_DATABASE_URI = os.environ.get("DATABASE_URL") or f"postgresql://localhost/{self.APP_ABBR.lower()}_dev"
-        self.SECRET_KEY = os.environ.get('SECRET_KEY') or 'dev_secret'
+        # Database URI
+        self.SQLALCHEMY_DATABASE_URI = os.environ.get("DATABASE_URL", None)
+        if not self.SQLALCHEMY_DATABASE_URI:
+            if self.FLASK_ENV == "production":
+                raise RuntimeError("DATABASE_URL must be configured in production.")
+            self.SQLALCHEMY_DATABASE_URI = f"postgresql://localhost/{self.APP_ABBR.lower()}_dev"
+
+        # Secret Key
+        self.SECRET_KEY = os.environ.get('SECRET_KEY', None)
+        if not self.SECRET_KEY:
+            if self.FLASK_ENV == "production":
+                raise RuntimeError("SECRET_KEY must be configured in production.")
+            self.SECRET_KEY = "dev_secret"
 
         self.SSL_REDIRECT = False
         self.SQLALCHEMY_TRACK_MODIFICATIONS = False
@@ -95,7 +109,7 @@ class Config:
 
         self.BEHIND_PROXY = os.getenv("BEHIND_PROXY", "false").lower() in ("true", "1", "t")
 
-        # Checks
+        # Other Checks
         if self.ADMIN_PANEL:
             logging.warning("The admin panel contains sensitive information and should be disabled in production.")
         if self.SECRET_KEY == "dev_secret":
