@@ -13,4 +13,4 @@ keepalive = int(os.getenv("GUNICORN_KEEPALIVE", "5"))
 accesslog = "-"
 errorlog = "-"
 capture_output = True
-control_socket = None
+control_socket = True
