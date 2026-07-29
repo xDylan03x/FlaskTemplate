@@ -30,14 +30,15 @@ The user permissions and settings system is built with extendability in mind. It
 Once you clone the directory and set up your environment (see below), follow these steps to get started:
 1. Run `make setup_project` to install Python and NPM dependencies.
 2. Edit the newly created `.env` file to set your environment variables.
-3. Once your local PostgreSQL database is set up and running, run `flask db init` to set up the migration folder. Then run `flask db migrate -m "Initial setup"` and `flask db upgrade`.
+3. Once your local PostgreSQL database is set up and running, run `flask db upgrade` to set up the tables.
 4. From the project's root directory, run `export FLASK_APP=app`.
 5. Run `flask create_admin` to set up the admin user.
-6. Use `flask run --port 8080 --debug` to start the development server.
-7. Use `make vite` and `make tailwind` to build frontend resources.
-8. Run `flask doctor` to check the status of the database and external providers.
+6. Run `flask update_upp` to set up the application settings
+7. Use `flask run --port 8080 --debug` to start the development server.
+8. Use `make vite` and `make tailwind` to build frontend resources.
+9. Run `flask doctor` to check the status of the database and external providers.
 
-_Note: You can use `make build` when you're ready to deploy your application. Use `make help` for a further list of commands._  
+_Note: Use `make help` for a further list of commands._  
 _When ready to update the project from the template, run `make update`._
 
 ### Cloning The Repository
