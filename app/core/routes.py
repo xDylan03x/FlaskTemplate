@@ -111,16 +111,23 @@ def profile_settings():
     form = ProfileSettingsForm(phone_user_id=current_user.id)
 
     if form.validate_on_submit():
+        picture_url = form.profile_picture_url.data
+        picture_changed = picture_url != current_user.profile_picture_url
+        file = None
+        if picture_changed and picture_url:
+            file = FileManager.get_file_by_uuid36(picture_url, uploader_id=current_user.id,
+                                                  attached=False, context='profile_picture')
+            if file is None:
+                form.profile_picture_url.errors.append('Error uploading profile picture')
+                return render_template('account-settings/profile.html', title="Profile Settings", tab='profile', form=form)
+
         with audit.track(current_user, actor=current_user, message="User updating profile settings"):
             current_user.name = form.name.data.strip()
-            if form.profile_picture_url.data:
-                if not form.profile_picture_url.data.startswith('http'):
-                    file = FileManager.get_file_by_uuid36(form.profile_picture_url.data)
-                    if file is not None:
-                        current_user.profile_picture_url = url_for('api.get_file_url', uuid36=file.uuid36)
-                    else:
-                        flash("Error uploading profile picture", "error")
-            else:
+            if file is not None:
+                file.public = True
+                file.attached = True
+                current_user.profile_picture_url = url_for('api.get_file_url', uuid36=file.uuid36)
+            elif picture_changed:
                 current_user.profile_picture_url = f'https://api.dicebear.com/10.x/initials/svg?size=50&initialsVariant=alt:1&lettersVariant=double:1&seed={current_user.name}'
             normalized_phone = form.normalized_phone_number
             if normalized_phone != current_user.phone_number:

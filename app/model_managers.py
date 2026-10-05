@@ -405,6 +405,16 @@ class NotificationManager:
 
 class FileManager:
     @staticmethod
-    def get_file_by_uuid36(uuid36: str) -> File | None:
-        file = db.session.scalar(sa.select(File).where(File.uuid36 == uuid36))
+    def get_file_by_uuid36(uuid36: str, uploader_id: int = None, attached: bool = None,
+                           context: str = None, public: bool = None) -> File | None:
+        statement = sa.select(File).where(File.uuid36 == uuid36)
+        if uploader_id is not None:
+            statement = statement.where(File.uploader_id == uploader_id)
+        if attached is not None:
+            statement = statement.where(File.attached == attached)
+        if context is not None:
+            statement = statement.where(File.context == context)
+        if public is not None:
+            statement = statement.where(File.public == public)
+        file = db.session.scalar(statement)
         return file

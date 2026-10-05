@@ -541,6 +541,7 @@ class File(db.Model):
         size: Size of the file in bytes
         context: Use of the file (form attachment, profile picture, etc.)
         public: whether a user must be logged in to view the file
+        attached: whether the upload has been accepted for use by an application record
 
         uploader_id: Foreign key to the User model
     """
@@ -555,6 +556,7 @@ class File(db.Model):
     size: so.Mapped[int] = so.mapped_column(sa.Integer, nullable=False)
     context: so.Mapped[str] = so.mapped_column(sa.String(256), nullable=False)
     public: so.Mapped[bool] = so.mapped_column(sa.Boolean, default=False, nullable=False)
+    attached: so.Mapped[bool] = so.mapped_column(sa.Boolean, default=False, nullable=False)
 
     uploader_id: so.Mapped[int] = so.mapped_column(sa.Integer, sa.ForeignKey('user.id'))
 
