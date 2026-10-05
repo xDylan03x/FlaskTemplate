@@ -18,6 +18,21 @@
             <p class="form-error">{{ error }}</p>
         {% endfor %}
 
+        <div class="form-control w-full mt-4">
+            {{ form.phone_number.label(class="label") }}
+            <div class="join w-full mt-1">
+                {{ form.country_code(class="select select-bordered join-item w-24", id="country_code", aria_label="Country Code") }}
+                {{ form.phone_number(class="input input-bordered join-item flex-1", id="phone_number", type="tel") }}
+            </div>
+            {% for error in form.country_code.errors %}
+                <p class="form-error">{{ error }}</p>
+            {% endfor %}
+            {% for error in form.phone_number.errors %}
+                <p class="form-error">{{ error }}</p>
+            {% endfor %}
+        </div>
+        <p class="form-help">Optional. Phone numbers entered by an administrator are automatically marked as trusted and verified. No verification text will be sent.</p>
+
         {{ form.submit(class='btn btn-primary text-neutral-content mt-8 w-full') }}
     </form>
 

@@ -1,7 +1,11 @@
 from flask_wtf import FlaskForm
 from wtforms import SubmitField, PasswordField, StringField, SelectField, BooleanField, EmailField, SelectMultipleField
 from wtforms.fields.simple import TelField, HiddenField, TextAreaField
-from wtforms.validators import DataRequired, EqualTo, Optional, Length
+from wtforms.validators import DataRequired, EqualTo, Optional, Length, ValidationError
+import phonenumbers
+from app import db
+from app.models import User
+from .helper import normalize_phone_number
 
 COUNTRY_CODE_CHOICES = [
     ("US", "US +1"),
@@ -76,7 +80,33 @@ class SetupAccountForm(FlaskForm):
     submit = SubmitField('Setup Account')
 
 
-class CreateAccountForm(FlaskForm):
+class PhoneNumberForm(FlaskForm):
+    country_code = SelectField("Country Code", choices=COUNTRY_CODE_CHOICES, default="US", validators=[DataRequired()])
+    phone_number = TelField('Phone Number')
+
+    def __init__(self, *args, phone_user_id=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.phone_user_id = phone_user_id
+        self.normalized_phone_number = None
+
+    def validate_phone_number(self, field):
+        raw_phone = (field.data or '').strip()
+        self.normalized_phone_number = None
+        if not raw_phone:
+            return
+        try:
+            normalized_phone = normalize_phone_number(raw_phone, self.country_code.data or "US")
+        except phonenumbers.NumberParseException:
+            raise ValidationError("Error validating phone number")
+        except ValueError:
+            raise ValidationError("Phone number is not valid")
+        user = db.session.scalar(db.select(User).where(User.phone_number == normalized_phone))
+        if user and user.id != self.phone_user_id:
+            raise ValidationError("An account with that phone number already exists.")
+        self.normalized_phone_number = normalized_phone
+
+
+class CreateAccountForm(PhoneNumberForm):
     name = StringField('Name', validators=[DataRequired()])
     email = EmailField('Email', validators=[DataRequired()])
     submit = SubmitField('Create Account')
@@ -94,11 +124,9 @@ class ChangePasswordForm(FlaskForm):
     submit = SubmitField('Change Password')
 
 
-class ProfileSettingsForm(FlaskForm):
+class ProfileSettingsForm(PhoneNumberForm):
     name = StringField('Name', validators=[DataRequired()])
     profile_picture_url = HiddenField('Profile Picture')
-    country_code = SelectField("Country Code", choices=COUNTRY_CODE_CHOICES, default="US", validators=[DataRequired()])
-    phone_number = TelField('Phone Number')
     submit = SubmitField('Save')
 
 
@@ -119,7 +147,7 @@ class SecuritySettingsForm(FlaskForm):
     submit = SubmitField('Save')
 
 
-class NewUserForm(FlaskForm):
+class NewUserForm(PhoneNumberForm):
     name = StringField('Name', validators=[DataRequired()])
     email = EmailField('Email', validators=[DataRequired()])
     submit = SubmitField('Create User')

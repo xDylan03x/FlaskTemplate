@@ -79,7 +79,7 @@
                     </button>
                 </div>
 
-                {% for error in form.name.errors %}
+                {% for error in form.country_code.errors + form.phone_number.errors %}
                     <p class="form-error">{{ error }}</p>
                 {% endfor %}
             </div>

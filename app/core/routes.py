@@ -2,7 +2,7 @@ from flask import render_template, request, flash, redirect, url_for, current_ap
     render_template_string
 from flask_login import login_required, current_user, login_user, logout_user
 from sqlalchemy import text
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 from app.core import core
 from app import db, twilio_client, audit
 from .forms import ChangePasswordForm, ProfileSettingsForm, NotificationSettingsForm, SecuritySettingsForm, \
@@ -11,11 +11,35 @@ from .forms import ChangePasswordForm, ProfileSettingsForm, NotificationSettings
 import phonenumbers
 from app.model_managers import UserManager, UserDeviceManager, FileManager, NotificationManager, SystemManager
 from .helper import send_sms, parse_user_agent, get_routes, get_blueprints, get_extensions, get_database_status, \
-    get_platform_info, is_safe_read_query, modify_query, send_email, normalize_external_url, normalize_phone_number
+    get_platform_info, is_safe_read_query, modify_query, send_email, normalize_external_url
 from ..model_managers import LoginTokenManager
 from ..extensions.flask_permissions import require_permission
 from app import pm
 from ..models import NotificationCategory, User
+
+
+def _send_phone_verification(user):
+    new_token_obj, new_token = LoginTokenManager.create_login_token(expiration_minutes=30, user_id=user.id, auth_source='phone number verification')
+    new_token_obj.verify_phone_number = True
+    db.session.commit()
+    verify_url = url_for('auth.login_with_token', raw_token=new_token, _external=True)
+    message = f'Click the following link to verify the phone number in your {current_app.config["APP_NAME"]} account: {verify_url}\n\nIf you did not request this link, please ignore this text.'
+    send_sms(body=message, recipient=user.phone_number)
+
+
+def _create_user_from_form(form, trust_phone=False):
+    try:
+        return UserManager.create_user(name=form.name.data.strip(), email=form.email.data.strip().lower(),
+                                       send_welcome_email=True, status='pending',
+                                       phone_number=form.normalized_phone_number,
+                                       phone_number_verified=bool(trust_phone and form.normalized_phone_number))
+    except IntegrityError:
+        db.session.rollback()
+        # Another account may have claimed the number after form validation.
+        if form.normalized_phone_number and db.session.scalar(db.select(User).where(User.phone_number == form.normalized_phone_number)):
+            form.phone_number.errors.append('An account with that phone number already exists.')
+            return None
+        raise
 
 
 @core.route('/')
@@ -54,7 +78,12 @@ def create_account():
         if UserManager.get_user_by_email(form.email.data.lower().strip()):
             flash('An account with that email already exists. Please login or reset your password to continue.', 'error')
             return redirect(url_for('auth.login'))
-        UserManager.create_user(name=form.name.data.strip(), email=form.email.data.strip().lower(), send_welcome_email=True, status='pending')
+        user = _create_user_from_form(form)
+        if user is None:
+            return render_template('create-account.html', title="Create Account", form=form)
+        if user.phone_number:
+            _send_phone_verification(user)
+            flash('A link has been sent to your phone via text. Please click this link to verify your phone number.', 'info')
         flash('Your account has been created. Please check your email to finish setting up your account.', 'success')
         return redirect(url_for('auth.login'))
     return render_template('create-account.html', title="Create Account", form=form)
@@ -63,7 +92,7 @@ def create_account():
 @core.route('/account-settings/profile', methods=['GET', 'POST'])
 @login_required
 def profile_settings():
-    form = ProfileSettingsForm()
+    form = ProfileSettingsForm(phone_user_id=current_user.id)
 
     if form.validate_on_submit():
         with audit.track(current_user, actor=current_user, message="User updating profile settings"):
@@ -77,35 +106,19 @@ def profile_settings():
                         flash("Error uploading profile picture", "error")
             else:
                 current_user.profile_picture_url = f'https://api.dicebear.com/10.x/initials/svg?size=50&initialsVariant=alt:1&lettersVariant=double:1&seed={current_user.name}'
-            # Get the user entered phone number and country code
-            raw_phone = form.phone_number.data.strip()
-            region = form.country_code.data or "US"
-            # If the user hasn't entered an empty value
-            if raw_phone:
-                try:
-                    normalized_phone = normalize_phone_number(raw_phone, region)
-                    # If the phone number has changed
-                    if normalized_phone != current_user.phone_number:
-                        current_user.phone_number = normalized_phone
-                        current_user.phone_number_verified = False
-                        # Send text to verify phone number.
-                        new_token_obj, new_token = LoginTokenManager.create_login_token(expiration_minutes=30, user_id=current_user.id, auth_source='phone number verification')
-                        new_token_obj.verify_phone_number = True
-                        db.session.commit()
-                        verify_url = url_for('auth.login_with_token', raw_token=new_token, _external=True)
-                        message = f'Click the following link to verify the phone number in your {current_app.config["APP_NAME"]} account: {verify_url}\n\nIf you did not request this link, please ignore this text.'
-                        send_sms(body=message, recipient=current_user.phone_number)
-                        flash('A link has been sent to your phone via text. Please click this link to verify your phone number.', 'info')
-                except phonenumbers.NumberParseException:
-                    flash("Error validating phone number", "error")
-                except ValueError:
-                    flash("Phone number is not valid", "error")
-            else:
-                current_user.phone_number = None
+            normalized_phone = form.normalized_phone_number
+            if normalized_phone != current_user.phone_number:
+                current_user.phone_number = normalized_phone
                 current_user.phone_number_verified = False
+                if normalized_phone:
+                    _send_phone_verification(current_user)
+                    flash('A link has been sent to your phone via text. Please click this link to verify your phone number.', 'info')
         db.session.commit()
         flash('Your profile settings have been updated.', 'success')
         return redirect(url_for('core.profile_settings'))
+
+    if request.method == 'POST':
+        return render_template('account-settings/profile.html', title="Profile Settings", tab='profile', form=form)
 
     form.name.data = current_user.name
     form.profile_picture_url.data = current_user.profile_picture_url
@@ -149,12 +162,7 @@ def send_phone_number_verification():
     if 'HX-Request' not in request.headers:
         return abort(404)
     audit.log("User requested phone number verification", actor=current_user)
-    new_token_obj, new_token = LoginTokenManager.create_login_token(expiration_minutes=30, user_id=current_user.id, auth_source='phone number verification')
-    new_token_obj.verify_phone_number = True
-    db.session.commit()
-    verify_url = url_for('auth.login_with_token', raw_token=new_token, _external=True)
-    message = f'Click the following link to verify the phone number in your {current_app.config["APP_NAME"]} account: {verify_url}\n\nIf you did not request this link, please ignore this text.'
-    send_sms(body=message, recipient=current_user.phone_number)
+    _send_phone_verification(current_user)
     return '''<button type="button" class="btn btn-neutral join-item" disabled>Link Sent</button>'''
 
 
@@ -350,7 +358,9 @@ def new_user():
         if UserManager.get_user_by_email(form.email.data.lower().strip()):
             flash('An account with that email already exists.', 'error')
             return render_template('system-settings/new-user.html', title="New User", form=form)
-        UserManager.create_user(form.name.data.strip(), form.email.data.strip(), send_welcome_email=True, status='pending')
+        user = _create_user_from_form(form, trust_phone=True)
+        if user is None:
+            return render_template('system-settings/new-user.html', title="New User", tab='users', form=form)
         flash('New user has been created and a welcome email has been sent.', 'success')
         return redirect(url_for('core.user_settings'))
     return render_template('system-settings/new-user.html', title="New User", tab='users', form=form)
