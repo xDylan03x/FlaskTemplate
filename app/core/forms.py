@@ -218,3 +218,29 @@ def build_edit_user_form(permission_manager):
     DynamicEditUserForm.permission_specs = permission_specs
 
     return DynamicEditUserForm
+
+
+def build_group_form(permission_manager, editing=False, manage_permissions=True):
+    fields = {}
+    permission_field_map = {}
+    for permission in permission_manager.all():
+        field_name = permission.permission_field_name
+        fields[field_name] = SelectField(
+            label=permission.label,
+            description=permission.description,
+            choices=[('', 'Not defined'), ('allow', 'Allow'), ('deny', 'Deny')],
+            default='',
+        )
+        permission_field_map[field_name] = permission.permission
+
+    class GroupForm(EditGroupForm if editing else NewGroupForm):
+        def validate(self, extra_validators=None):
+            if not manage_permissions:
+                # Ignore submitted definitions, including invalid values, for membership managers.
+                for field_name in self.permission_field_map:
+                    self[field_name].data = ''
+            return super().validate(extra_validators=extra_validators)
+
+    DynamicGroupForm = type('DynamicGroupForm', (GroupForm,), fields)
+    DynamicGroupForm.permission_field_map = permission_field_map
+    return DynamicGroupForm

@@ -179,10 +179,6 @@ class UserManager:
 
     @staticmethod
     def delete_user_group(group: UserGroup) -> None:
-        for user in group.users:
-            user.groups.remove(group)
-        for task in group.tasks:
-            task.assigned_group_id = None
         db.session.delete(group)
         db.session.commit()
 

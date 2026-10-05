@@ -34,6 +34,8 @@
 
         <button type="button" class="btn btn-soft btn-error mt-4" onclick="delete_modal.showModal()" {% if not current_user.can('groups.delete') %}disabled{% endif %}>Delete Group</button>
 
+        {% include 'system-settings/group-permissions.html' %}
+
         {{ form.submit(class='btn btn-primary text-neutral-content mt-8 w-full') }}
     </form>
 

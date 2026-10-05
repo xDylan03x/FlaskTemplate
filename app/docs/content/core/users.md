@@ -15,7 +15,7 @@ order: 20
 | Users - Create             | Able to create uses via the dashboard                                     |
 | Users - Update             | Able to modify user information, their permissions, and lockdown the user |
 | Users - Delete             | Able to delete users                                                      |
-| Users - Update Permissions | Able to impersonate other users for troubleshooting                       |
+| Users - Update Permissions | Able to change individual and group permission definitions                 |
 | Users - Impersonate        | Able to impersonate other users for troubleshooting                       |
 
 # Instructions
@@ -56,6 +56,8 @@ This action can only be undone through the database via the `deleted` column.
 
 _Note: You must have the "Update Permissions" permission to see or change the permission options._
 
+Permissions inherited from groups appear locked and show the source groups and their definitions. If source groups disagree, **Allow wins**. Changes to inherited permission fields are ignored when saving, so the user's stored individual values remain intact. Those individual values apply again when no group defines the permission.
+
 ## Impersonating Users
 1. From the user management page, click the "Edit User" button beside the user you'd like to impersonate.
 2. From this page, click on the "Impersonate User" button and continue through the dialog.
@@ -68,4 +70,4 @@ Upon starting the session, the user will receive a notification that you are imp
 To end the session, click the "End Session" button in the banner at the top of the screen. This will sign you out of their account, and back into yours.
 
 ## User Groups
-To learn about managing user groups and assign users to them, [click here]({{ doc_link_article("core/group-management") }}).
+To learn about managing user groups and assign users to them, [click here]({{ doc_link_article("core/groups") }}).

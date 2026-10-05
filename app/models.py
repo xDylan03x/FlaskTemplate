@@ -155,20 +155,29 @@ class User(db.Model, UserMixin):
         else:
             permission_record.value = value
 
+    def inherited_permissions(self) -> dict:
+        inherited = {}
+        for group in self.groups:
+            for definition in group.permissions:
+                sources = inherited.setdefault(definition.key, {'allow_groups': [], 'deny_groups': []})
+                sources['allow_groups' if definition.value else 'deny_groups'].append(group)
+        for sources in inherited.values():
+            sources['value'] = bool(sources['allow_groups'])
+            sources['conflict'] = bool(sources['allow_groups'] and sources['deny_groups'])
+        return inherited
+
     def can(self, permission: str) -> bool:
         permission = permission.lower()
-        # If looking for a specific permission
+        inherited = self.inherited_permissions()
         if "." in permission:
+            if permission in inherited:
+                return inherited[permission]['value']
             perm_record = self.permissions.filter_by(key=permission).first()
-            if perm_record is not None and perm_record.value:
-                return True
-            return False
-        # If looking for a group permission
-        perm_records = self.permissions.filter(UserPermission.key.startswith(permission + ".")).all()
-        for perm_record in perm_records:
-            if perm_record.value:
-                return True
-        return False
+            return bool(perm_record and perm_record.value)
+        # Broad checks use the effective value of each matching permission.
+        values = {record.key: record.value for record in self.permissions.all()}
+        values.update({key: sources['value'] for key, sources in inherited.items()})
+        return any(value for key, value in values.items() if key.startswith(permission + "."))
 
 
 class UserGroup(db.Model):
@@ -194,6 +203,20 @@ class UserGroup(db.Model):
     description: so.Mapped[Optional[str]] = so.mapped_column(sa.String(256))
 
     users: so.Mapped[list["User"]] = db.relationship("User", secondary=user_group_members, back_populates="groups")
+    permissions: so.Mapped[list["UserGroupPermission"]] = so.relationship('UserGroupPermission', back_populates='group', cascade='all, delete-orphan')
+
+    def set_permission(self, permission: str, value: bool | None) -> None:
+        permission = permission.lower()
+        if pm.get(permission) is None:
+            raise ValueError(f"Invalid permission: {permission}")
+        permission_record = next((record for record in self.permissions if record.key == permission), None)
+        if value is None:
+            if permission_record is not None:
+                self.permissions.remove(permission_record)
+        elif permission_record is None:
+            self.permissions.append(UserGroupPermission(key=permission, value=value))
+        else:
+            permission_record.value = value
 
     def __repr__(self):
         return '<UserGroup {}>'.format(self.title)
@@ -363,6 +386,8 @@ class UserPermission(db.Model):
 
         user_id: Foreign key to the User model
     """
+    __table_args__ = (sa.UniqueConstraint('user_id', 'key', name='uq_user_permission_user_key'),)
+
     id: so.Mapped[int] = so.mapped_column(primary_key=True)
     uuid36: so.Mapped[str] = so.mapped_column(sa.String(36), unique=True, index=True, nullable=False, default=lambda: str(uuid.uuid4()))
     created_at: so.Mapped[datetime] = so.mapped_column(sa.DateTime(timezone=True), nullable=False, default=lambda: datetime.now(tz=timezone.utc))
@@ -375,6 +400,24 @@ class UserPermission(db.Model):
 
     def __repr__(self):
         return '<UserPermission {}: {}>'.format(self.key, self.value)
+
+
+class UserGroupPermission(db.Model):
+    """A group permission definition; an absent record means not defined."""
+    __table_args__ = (sa.UniqueConstraint('group_id', 'key', name='uq_user_group_permission_group_key'),)
+
+    id: so.Mapped[int] = so.mapped_column(primary_key=True)
+    uuid36: so.Mapped[str] = so.mapped_column(sa.String(36), unique=True, index=True, nullable=False, default=lambda: str(uuid.uuid4()))
+    created_at: so.Mapped[datetime] = so.mapped_column(sa.DateTime(timezone=True), nullable=False, default=lambda: datetime.now(tz=timezone.utc))
+    updated_at: so.Mapped[datetime] = so.mapped_column(sa.DateTime(timezone=True), nullable=False, default=lambda: datetime.now(tz=timezone.utc), onupdate=lambda: datetime.now(tz=timezone.utc))
+
+    key: so.Mapped[str] = so.mapped_column(sa.String(128), nullable=False)
+    value: so.Mapped[bool] = so.mapped_column(sa.Boolean, nullable=False)
+    group_id: so.Mapped[int] = so.mapped_column(sa.Integer, sa.ForeignKey('user_group.id'), nullable=False)
+    group: so.Mapped["UserGroup"] = so.relationship('UserGroup', back_populates='permissions')
+
+    def __repr__(self):
+        return '<UserGroupPermission {}: {}>'.format(self.key, self.value)
 
 
 class NotificationCategory(enum.Enum):

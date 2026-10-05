@@ -1,0 +1,29 @@
+<details class="collapse collapse-arrow bg-base-100 border border-base-300 mt-8" name="permissions-accordion">
+    <summary class="collapse-title font-semibold">Permissions</summary>
+    <div class="collapse-content">
+        <p class="form-help">Members inherit Allow and Deny definitions. Not defined uses the member's individual permission. Allow wins when groups disagree.</p>
+        {% if not manage_permissions %}
+            <p class="support text-base-content/80">You do not have permission to change group permissions. You can still manage group membership.</p>
+        {% endif %}
+        <div class="divide-y divide-base-300">
+            {% for group_title, permissions in permission_groups.items() %}
+                <div class="py-4">
+                    <h6 class="h6 text-base-content">{{ group_title }}</h6>
+                    {% for permission in permissions %}
+                        {% set field = form[permission.permission_field_name] %}
+                        <div class="mt-4">
+                            {{ field.label(class="label") }}
+                            {{ field(class="select mt-1 w-full", disabled=not manage_permissions) }}
+                            {% if permission.description %}
+                                <p class="form-help">{{ permission.description }}</p>
+                            {% endif %}
+                            {% for error in field.errors %}
+                                <p class="form-error">{{ error }}</p>
+                            {% endfor %}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+</details>

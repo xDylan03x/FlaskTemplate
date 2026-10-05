@@ -10,40 +10,45 @@ order: 21
 
 ---
 # Related Permissions
-| Permission      | Description                                       |
-|-----------------|---------------------------------------------------|
-| Groups - Create | Able to create groups via the dashboard           |
-| Groups - Update | Able to modify group information and assign users |
-| Groups - Delete | Able to delete groups                             |
+| Permission                 | Description                                      |
+|----------------------------|--------------------------------------------------|
+| Groups - Create            | Create groups                                    |
+| Groups - Update            | Modify group details and membership              |
+| Groups - Delete            | Delete groups                                    |
+| Users - Update Permissions | Change permission definitions on users or groups |
 
 # Instructions
-To view and modify users, click on the "Group Management" tab in the system settings menu (you must have one of the above permissions to see this option).
+Open **Group Management** from the system settings menu to view groups, their member counts, and their permission counts.
 
-## Creating Group
-1. From the group management page, click the "New Group" button.
-2. Enter the title of the group.
-3. Click the "Create Group" button.
+## Creating Groups
+1. Click **New Group**.
+2. Enter a title and optional description.
+3. If you have **Users - Update Permissions**, choose permission definitions in the **Permissions** section.
+4. Click **Create Group**.
 
-## Editing Group
-1. From the group management page, click the "Edit Group" button beside the group you'd like to edit.
-2. Click the "Save" button.
+## Editing Groups
+1. Click **Edit group** beside the group.
+2. Update its title, description, or selected members.
+3. If you have **Users - Update Permissions**, update permission definitions.
+4. Click **Save**.
 
-From this page you can edit the title of the group. 
+Group managers without **Users - Update Permissions** can still manage membership and group details. Permission controls are locked, and submitted changes to those definitions are ignored.
 
-## Deleting Users
-1. From the user management page, click the "Edit User" button beside the user you'd like to delete.
-2. From this page, click on the "Delete User" button and continue through the dialog.
+## Permission Inheritance
+Each registered permission supports three group definitions:
 
-This will delete the user, preventing them from interacting with the system.
-This action can only be undone through the database via the `deleted` column.
+- **Not defined**: This group does not define the permission. If no other group defines it, the user's individual value applies.
+- **Allow**: Members receive the permission, overriding their individual value.
+- **Deny**: Members do not receive the permission, overriding their individual value unless another group allows it.
 
-## Impersonating Users
-1. From the user management page, click the "Edit User" button beside the user you'd like to impersonate.
-2. From this page, click on the "Impersonate User" button and continue through the dialog.
+When groups disagree, **Allow wins**. For example, if one group denies **Create Users** and another allows it, a member of both groups can create users. Saving memberships or definitions that produce conflicting permissions shows a warning explaining this rule.
 
-_Note: You must have the "Update Users" permission to view the "Edit User" page/button._
+On the individual user editor, inherited permissions show the effective value, are locked, and list all source groups with their Allow or Deny definitions. Conflicts are identified beside the permission. The user's individual value remains stored underneath and applies again when no membership group defines the permission.
 
-Impersonating a user will sign you in as that user for the duration of the session. In this state, you will be able to
-interact with the application as if you were that user, without having to request their credentials.  
-Upon starting the session, the user will receive a notification that you are impersonating them, and you will have a banner at the top of the screen indicating that you are impersonating them.  
-To end the session, click the "End Session" button in the banner at the top of the screen. This will sign you out of their account, and back into yours.
+Broad permission checks also use inherited definitions. For example, access to the user management area requires at least one effective permission in the Users category.
+
+## Deleting Groups
+1. Click **Edit group** beside the group.
+2. Click **Delete Group** and confirm.
+
+Deleting a group removes its memberships and permission definitions. Users keep their individual permissions and definitions inherited from other groups. Group deletion cannot be undone.

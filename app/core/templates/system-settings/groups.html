@@ -16,6 +16,7 @@
             <tr>
                 <th>Group</th>
                 <th>Number of Users</th>
+                <th>Permissions</th>
                 <th>Actions</th>
             </tr>
             </thead>
@@ -29,6 +30,7 @@
                     <td>
                         {{ group.users|length }}
                     </td>
+                    <td>{{ group.permissions|length }}</td>
                     <td>
                         <a class="btn btn-sm btn-soft w-max" href="{{ url_for('core.edit_group', uuid36=group.uuid36) }}" {% if not current_user.can('groups.update') %}disabled{% endif %}>
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="size-4">
@@ -51,13 +53,13 @@
 
         <div class="join">
             {% if groups.has_prev %}
-                <a class="join-item btn btn-sm btn-neutral btn-outline" href="{{ url_for('core.all_groups', page=groups.prev_num) }}">Previous</a>
+                <a class="join-item btn btn-sm btn-neutral btn-outline" href="{{ url_for('core.group_settings', page=groups.prev_num) }}">Previous</a>
             {% else %}
                 <button class="join-item btn btn-sm btn-neutral btn-outline" disabled>Previous</button>
             {% endif %}
 
             {% if groups.has_next %}
-                <a class="join-item btn btn-sm btn-neutral btn-outline" href="{{ url_for('core.all_groups', page=groups.next_num) }}">Next</a>
+                <a class="join-item btn btn-sm btn-neutral btn-outline" href="{{ url_for('core.group_settings', page=groups.next_num) }}">Next</a>
             {% else %}
                 <button class="join-item btn btn-sm btn-neutral btn-outline" disabled>Next</button>
             {% endif %}

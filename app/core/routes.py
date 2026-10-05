@@ -7,7 +7,7 @@ from app.core import core
 from app import db, twilio_client, audit
 from .forms import ChangePasswordForm, ProfileSettingsForm, NotificationSettingsForm, SecuritySettingsForm, \
     SetupAccountForm, NewUserForm, TOTPVerifyForm, CreateAccountForm, DeviceManagerForm, \
-    build_edit_user_form, ApplicationSettingsForm, SystemSettingsForm, BugReportForm, NewGroupForm, EditGroupForm
+    build_edit_user_form, ApplicationSettingsForm, SystemSettingsForm, BugReportForm, build_group_form
 import phonenumbers
 from app.model_managers import UserManager, UserDeviceManager, FileManager, NotificationManager, SystemManager
 from .helper import send_sms, parse_user_agent, get_routes, get_blueprints, get_extensions, get_database_status, \
@@ -40,6 +40,22 @@ def _create_user_from_form(form, trust_phone=False):
             form.phone_number.errors.append('An account with that phone number already exists.')
             return None
         raise
+
+
+def _save_group_permissions(group, form):
+    values = {'': None, 'allow': True, 'deny': False}
+    for field_name, permission_key in form.permission_field_map.items():
+        group.set_permission(permission_key, values[form[field_name].data])
+
+
+def _warn_group_permission_conflicts(users):
+    conflicts = []
+    for user in users:
+        keys = [key for key, sources in user.inherited_permissions().items() if sources['conflict']]
+        if keys:
+            conflicts.append(f'{user.name} ({", ".join(sorted(keys))})')
+    if conflicts:
+        flash('Conflicting group permissions affect ' + '; '.join(conflicts) + '. Allow wins when groups disagree, even if another group denies the permission.', 'warning')
 
 
 @core.route('/')
@@ -376,6 +392,7 @@ def edit_user(uuid36):
 
     EditUserForm = build_edit_user_form(pm)
     form = EditUserForm()
+    inherited_permissions = user.inherited_permissions()
 
     if form.validate_on_submit():
         with audit.track(user, actor=current_user, message="User updating other user's settings"):
@@ -389,7 +406,8 @@ def edit_user(uuid36):
             if current_user.can('users.update_permissions'):
                 for field_name, permission_key in form.permission_field_map.items():
                     field = getattr(form, field_name)
-                    user.set_permission(permission_key, field.data)
+                    if permission_key not in inherited_permissions:
+                        user.set_permission(permission_key, field.data)
 
         db.session.commit()
 
@@ -401,9 +419,10 @@ def edit_user(uuid36):
 
     for field_name, permission_key in form.permission_field_map.items():
         field = getattr(form, field_name)
-        field.data = user.can(permission_key)
+        if request.method == 'GET' or permission_key in inherited_permissions:
+            field.data = user.can(permission_key)
 
-    return render_template('system-settings/edit-user.html', title="Edit User", tab="users", form=form, user=user, permission_groups=pm.grouped())
+    return render_template('system-settings/edit-user.html', title="Edit User", tab="users", form=form, user=user, permission_groups=pm.grouped(), inherited_permissions=inherited_permissions)
 
 
 @core.route('/system-settings/users/delete/<string:uuid36>')
@@ -466,12 +485,17 @@ def group_settings():
 @login_required
 @require_permission('groups.create')
 def new_group():
-    form = NewGroupForm()
+    manage_permissions = current_user.can('users.update_permissions')
+    GroupForm = build_group_form(pm, manage_permissions=manage_permissions)
+    form = GroupForm()
     if form.validate_on_submit():
-        UserManager.create_user_group(form.title.data.strip(), form.description.data.strip())
+        group = UserManager.create_user_group(form.title.data.strip(), (form.description.data or '').strip())
+        if manage_permissions:
+            _save_group_permissions(group, form)
+            db.session.commit()
         flash('New group has been created.', 'success')
         return redirect(url_for('core.group_settings'))
-    return render_template('system-settings/new-group.html', title="New Group", tab='groups', form=form)
+    return render_template('system-settings/new-group.html', title="New Group", tab='groups', form=form, permission_groups=pm.grouped(), manage_permissions=manage_permissions)
 
 
 @core.route('/system-settings/groups/<string:uuid36>', methods=['GET', 'POST'])
@@ -482,7 +506,9 @@ def edit_group(uuid36):
     if not group:
         abort(404)
 
-    form = EditGroupForm()
+    manage_permissions = current_user.can('users.update_permissions')
+    GroupForm = build_group_form(pm, editing=True, manage_permissions=manage_permissions)
+    form = GroupForm()
 
     users = UserManager.get_all_users(paginate=False)
     form.users.choices = [(user.id, user.name) for user in users]
@@ -490,18 +516,26 @@ def edit_group(uuid36):
     if form.validate_on_submit():
         with audit.track(group, actor=current_user, message="User updating group's settings"):
             group.title = form.title.data.strip()
-            group.description = form.description.data.strip()
+            group.description = (form.description.data or '').strip()
             selected_user_ids = set(form.users.data)
             group.users = [user for user in users if user.id in selected_user_ids]
+            if manage_permissions:
+                _save_group_permissions(group, form)
 
         db.session.commit()
+        _warn_group_permission_conflicts(group.users)
         flash('Your changes have been saved.', 'success')
         return redirect(url_for('core.group_settings'))
 
-    form.title.data = group.title
-    form.description.data = group.description
-    form.users.data = [user.id for user in group.users]
-    return render_template('system-settings/edit-group.html', title="Edit Group", tab="groups", form=form, group=group)
+    if request.method == 'GET':
+        form.title.data = group.title
+        form.description.data = group.description
+        form.users.data = [user.id for user in group.users]
+        definitions = {record.key: record.value for record in group.permissions}
+        for field_name, permission_key in form.permission_field_map.items():
+            value = definitions.get(permission_key)
+            form[field_name].data = '' if value is None else ('allow' if value else 'deny')
+    return render_template('system-settings/edit-group.html', title="Edit Group", tab="groups", form=form, group=group, permission_groups=pm.grouped(), manage_permissions=manage_permissions)
 
 
 @core.route('/system-settings/groups/delete/<string:uuid36>')

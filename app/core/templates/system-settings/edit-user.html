@@ -74,32 +74,48 @@
             <summary class="collapse-title font-semibold">Permissions</summary>
             <div class="collapse-content">
                 <div class="divide-y divide-base-300">
-                    {% if current_user.can('users.update_permissions') %}
-                        {% for group, permissions in permission_groups.items() %}
-                            <div class="py-4">
-                                <h6 class="h6 text-base-content">{{ group }}</h6>
-                                {% for permission in permissions %}
-                                    {% set field_name = permission.permission_field_name %}
-                                    {% set field = form[field_name] %}
-
-                                    <div class="mt-4">
-                                        {{ field(class="checkbox", id=field_name, type="checkbox") }}
-                                        {{ field.label(class="label") }}
-
-                                        {% if permission.description %}
-                                            <p class="form-help">{{ permission.description }}</p>
-                                        {% endif %}
-
-                                        {% for error in field.errors %}
-                                            <p class="form-error">{{ error }}</p>
-                                        {% endfor %}
-                                    </div>
-                                {% endfor %}
-                            </div>
-                        {% endfor %}
-                    {% else %}
+                    {% if not current_user.can('users.update_permissions') %}
                         <p class="support text-base-content/80">You do not have permission to manage user permissions.</p>
                     {% endif %}
+                    {% for group, permissions in permission_groups.items() %}
+                        <div class="py-4">
+                            <h6 class="h6 text-base-content">{{ group }}</h6>
+                            {% for permission in permissions %}
+                                {% set field_name = permission.permission_field_name %}
+                                {% set field = form[field_name] %}
+
+                                <div class="mt-4">
+                                    {% set inherited = inherited_permissions.get(permission.permission) %}
+                                    {{ field(class="checkbox", id=field_name, type="checkbox", disabled=inherited is not none or not current_user.can('users.update_permissions')) }}
+                                    {{ field.label(class="label") }}
+
+                                    {% if inherited %}
+                                        <div class="mt-2 flex flex-wrap gap-2">
+                                            <span class="badge badge-sm badge-ghost">Inherited: {{ 'Allow' if inherited.value else 'Deny' }}</span>
+                                            {% for source_group in inherited.allow_groups %}
+                                                <span class="badge badge-sm badge-success">{{ source_group.title }}: Allow</span>
+                                            {% endfor %}
+                                            {% for source_group in inherited.deny_groups %}
+                                                <span class="badge badge-sm badge-error">{{ source_group.title }}: Deny</span>
+                                            {% endfor %}
+                                        </div>
+                                        {% if inherited.conflict %}
+                                            <p class="form-help text-warning">Groups disagree. Allow wins over Deny.</p>
+                                        {% endif %}
+                                    {% endif %}
+
+                                    {% if permission.description %}
+                                        <p class="form-help">{{ permission.description }}</p>
+                                    {% endif %}
+
+                                    {% for error in field.errors %}
+                                        <p class="form-error">{{ error }}</p>
+                                    {% endfor %}
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% endfor %}
+
                 </div>
             </div>
         </details>
