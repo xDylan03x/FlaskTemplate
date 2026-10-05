@@ -17,6 +17,7 @@ class TwoFactorAuthSelectForm(FlaskForm):
 
 class TwoFactorAuthCodeForm(FlaskForm):
     code = StringField('Authentication Code', validators=[DataRequired()])
+    trust_device = BooleanField('Trust This Device')
     submit = SubmitField('Submit')
 
 

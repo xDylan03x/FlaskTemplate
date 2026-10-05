@@ -19,6 +19,37 @@ REQUIRES_2FA_MESSAGE = 'For security, please complete the two-factor authenticat
 WRONG_EMAIL_PASSWORD_MESSAGE = 'Incorrect email or password.'
 
 
+def _get_login_device(user, login_token):
+    user_agent = request.headers.get('User-Agent', '')
+    # Determine if the user is using a new device
+    user_device = UserDeviceManager.find_device(user.id, user_agent)
+    if user_device and user_device.device_trusted:
+        login_token.update_risk_score(RiskAction.EXISTING_DEVICE)
+    elif user_device and not user_device.device_trusted:
+        pass
+    else:
+        user_device = UserDeviceManager.create_user_device(user_id=user.id, user_agent=user_agent)
+        # If this is an account creation token
+        if login_token.create_account:
+            user_device.device_trusted = True
+            login_token.update_risk_score(RiskAction.EXISTING_DEVICE)
+        else:
+            login_token.update_risk_score(RiskAction.NEW_DEVICE)
+        manage_url = url_for('core.manage_device', uuid36=user_device.uuid36, _external=True)
+        NotificationManager.send_notification(user, "New Device Login", "A new device has logged in to your account. Please use the link below to manage it.", NotificationCategory.NEW_DEVICE_LOGIN, link=manage_url)
+
+    return user_device
+
+
+def _complete_two_factor_auth(user, login_token, form, can_trust_device):
+    login_token.immediate_login = True
+    login_token.update_risk_score(RiskAction.TWO_FACTOR_AUTH)
+    if can_trust_device and form.trust_device.data:
+        user_device = _get_login_device(user, login_token)
+        user_device.device_trusted = True
+    db.session.commit()
+
+
 @auth.route('/login', methods=['GET', 'POST'])
 def login():
     """The actual login form page"""
@@ -366,6 +397,11 @@ def two_factor_auth(raw_token: str):
 
     # If a code has been sent, show the appropriate form
     form = TwoFactorAuthCodeForm()
+    user_device = UserDeviceManager.find_device(user.id, request.headers.get('User-Agent', ''))
+    can_trust_device = (not user_device or not user_device.device_trusted) and not (
+        login_token.reset_password or login_token.for_impersonation or
+        login_token.verify_phone_number or login_token.create_account
+    )
 
     # If the user chose email verification
     if verification_method == 'email':
@@ -376,9 +412,7 @@ def two_factor_auth(raw_token: str):
         # If submitting, check the code
         if form.validate_on_submit():
             if twilio_verify_check(to=user.email, code=form.code.data):
-                login_token.immediate_login = True
-                login_token.update_risk_score(RiskAction.TWO_FACTOR_AUTH)
-                db.session.commit()
+                _complete_two_factor_auth(user, login_token, form, can_trust_device)
                 return redirect(url_for('auth.login_with_token', raw_token=raw_token))
             else:
                 flash('The code you entered is incorrect. Please try again.', 'warning')
@@ -392,9 +426,7 @@ def two_factor_auth(raw_token: str):
         # If submitting, check the code
         if form.validate_on_submit():
             if twilio_verify_check(to=user.phone_number, code=form.code.data):
-                login_token.immediate_login = True
-                login_token.update_risk_score(RiskAction.TWO_FACTOR_AUTH)
-                db.session.commit()
+                _complete_two_factor_auth(user, login_token, form, can_trust_device)
                 return redirect(url_for('auth.login_with_token', raw_token=raw_token))
             else:
                 flash('The code you entered is incorrect. Please try again.', 'warning')
@@ -408,9 +440,7 @@ def two_factor_auth(raw_token: str):
         # If submitting, check the code
         if form.validate_on_submit():
             if twilio_verify_check(to=user.phone_number, code=form.code.data):
-                login_token.immediate_login = True
-                login_token.update_risk_score(RiskAction.TWO_FACTOR_AUTH)
-                db.session.commit()
+                _complete_two_factor_auth(user, login_token, form, can_trust_device)
                 return redirect(url_for('auth.login_with_token', raw_token=raw_token))
             else:
                 flash('The code you entered is incorrect. Please try again.', 'warning')
@@ -424,13 +454,11 @@ def two_factor_auth(raw_token: str):
         # If submitting, check the code
         if form.validate_on_submit():
             if twilio_verify_check(to=user.email, code=form.code.data, totp_entity=user.totp_entity, totp_factor=user.totp_factor):
-                login_token.immediate_login = True
-                login_token.update_risk_score(RiskAction.TWO_FACTOR_AUTH)
-                db.session.commit()
+                _complete_two_factor_auth(user, login_token, form, can_trust_device)
                 return redirect(url_for('auth.login_with_token', raw_token=raw_token))
             else:
                 flash('The code you entered is incorrect. Please try again.', 'warning')
-    return render_template('2fa_enter_code.html', title='Two-Factor Authentication', raw_token=raw_token, method=verification_method, form=form)
+    return render_template('2fa_enter_code.html', title='Two-Factor Authentication', raw_token=raw_token, method=verification_method, form=form, can_trust_device=can_trust_device)
 
 
 @auth.route('/<string:raw_token>')
@@ -481,22 +509,7 @@ def login_with_token(raw_token: str):
             user.email_verified = True
             db.session.commit()
 
-    # Determine if the user is using a new device
-    user_device = UserDeviceManager.find_device(user.id, user_agent)
-    if user_device and user_device.device_trusted:
-        login_token.update_risk_score(RiskAction.EXISTING_DEVICE)
-    elif user_device and not user_device.device_trusted:
-        pass
-    else:
-        user_device = UserDeviceManager.create_user_device(user_id=user.id, user_agent=user_agent)
-        # If this is an account creation token
-        if login_token.create_account:
-            user_device.device_trusted = True
-            login_token.update_risk_score(RiskAction.EXISTING_DEVICE)
-        else:
-            login_token.update_risk_score(RiskAction.NEW_DEVICE)
-        manage_url = url_for('core.manage_device', uuid36=user_device.uuid36, _external=True)
-        NotificationManager.send_notification(user, "New Device Login", "A new device has logged in to your account. Please use the link below to manage it.", NotificationCategory.NEW_DEVICE_LOGIN, link=manage_url)
+    _get_login_device(user, login_token)
     db.session.commit()
 
     # If the token was found and valid

@@ -73,6 +73,8 @@ You can click on the IP button to view more information about the IP address (su
 of the login attempt, and view the device that was used to make the login attempt.  
 By clicking on the device button, you can view more information about the device (such as browser, device, and a list of logins).
 You can also manage the device's trust status by clicking the "Trust This Device" field and clicking the "Save" button.  
+When logging in from an untrusted device, you can also select **Trust This Device** while submitting your two-factor authentication code. The device is trusted only after the code is verified. Leaving it unchecked keeps the device untrusted. Trusting a device does not disable two-factor authentication if you have enabled it in your security settings.
+
 Each login has an authorization source which describes how the login was attepmted. These include:
 
 - traditional login: login with email and password

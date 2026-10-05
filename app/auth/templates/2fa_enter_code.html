@@ -23,10 +23,18 @@
                     {{ form.csrf_token }}
 
                     {{ form.code.label(class="label mt-8") }}
-                    {{ form.code(class="input mt-1 w-full", id="code", type="text", inputmode="numeric", autocomplete="one-time-code", pattern="[0-9]*", pattern="\d{6}", maxlength="6", autocomplete="off") }}
+                    {{ form.code(class="input mt-1 w-full", id="code", type="text", inputmode="numeric", autocomplete="one-time-code", pattern="[0-9]{6}", maxlength="6") }}
                     {% for error in form.code.errors %}
                         <p class="form-error">{{ error }}</p>
                     {% endfor %}
+
+                    {% if can_trust_device %}
+                        <div class="mt-4">
+                            {{ form.trust_device(class="checkbox", id="trust_device", type="checkbox") }}
+                            {{ form.trust_device.label(class="label") }}
+                            <p class="form-help">Only trust this device if it belongs to you and is not shared.</p>
+                        </div>
+                    {% endif %}
 
                     {{ form.submit(class='btn btn-primary text-neutral-content mt-8 w-full') }}
                 </form>
