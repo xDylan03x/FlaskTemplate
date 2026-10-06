@@ -31,7 +31,7 @@
                                 <div class="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
                                     <div class="min-w-0">
                                         <h6 class="h6 break-words">
-                                            Login at <time x-data="{ date: new Date($el.innerText) }" x-text="date.toLocaleString()">{{ record.occurred_at }}</time>
+                                            Login at <time datetime="{{ record.occurred_at|datetime_iso }}" x-data x-text="formatDateTime($el.dateTime)">{{ record.occurred_at|format_datetime }}</time>
                                         </h6>
                                     </div>
                                 </div>

@@ -94,8 +94,8 @@
                         <div class="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-base-content/70">
                             {{ notification.sender }}
                             <span aria-hidden="true">•</span>
-                            <time x-data="{ date: new Date($el.innerText) }"
-                                  x-text="date.toLocaleString()">{{ notification.created_at }}</time>
+                            <time datetime="{{ notification.created_at|datetime_iso }}" x-data
+                                  x-text="formatDateTime($el.dateTime)">{{ notification.created_at|format_datetime }}</time>
                         </div>
                     </div>
 

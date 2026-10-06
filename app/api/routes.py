@@ -1,7 +1,7 @@
 from flask import request, jsonify, current_app, abort, redirect
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
-from ..core.helper import get_s3_client, route_url
+from ..core.helper import get_s3_client, route_url, datetime_iso
 from app import db
 from app.api import apiv1
 from app.models import File
@@ -110,7 +110,7 @@ def notifications(uuid36: str = None):
     if request.method == 'GET':
         include_read_str = request.args.get("include_read", default="false", type=str)
         include_read = include_read_str.lower() in ['true', '1', 't', 'y', 'yes']
-        recent_only_str = request.args.get("recent_only", default="true", type=str)
+        recent_only_str = request.args.get("recent_only", default="false", type=str)
         recent_only = recent_only_str.lower() in ['true', '1', 't', 'y', 'yes']
         page = request.args.get('page', 1, type=int)
 
@@ -131,10 +131,11 @@ def notifications(uuid36: str = None):
                 "body": n.body,
                 "sender": n.sender,
                 "link": route_url(n.link) if n.link else None,
-                "timestamp": n.created_at,
+                "timestamp": datetime_iso(n.created_at),
             })
 
-        return jsonify(notifications_data), 200
+        return jsonify(notifications=notifications_data, has_more=notification_page.has_next,
+                       total=notification_page.total), 200
 
     # If marking the notification as read
     elif request.method == 'PATCH':

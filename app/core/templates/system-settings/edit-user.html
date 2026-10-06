@@ -1,6 +1,6 @@
 {% extends 'system-settings/base.html' %}
 {% block settings_content %}
-    <form action="" method="post">
+    <form action="" method="post" autocomplete="off">
         {{ form.csrf_token }}
 
         {% if user.id == current_user.id %}
@@ -15,14 +15,14 @@
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-8">
             <div>
                 {{ form.name.label(class="label") }}
-                {{ form.name(class="input mt-1 w-full", id="name", type="text") }}
+                {{ form.name(class="input mt-1 w-full", id="name", type="text", autocomplete="off") }}
                 {% for error in form.name.errors %}
                     <p class="form-error">{{ error }}</p>
                 {% endfor %}
             </div>
             <div>
                 <label class="label">Email</label>
-                <input class="input mt-1 w-full" id="email" type="email" value="{{ user.email }}" disabled>
+                <input class="input mt-1 w-full" id="email" type="email" autocomplete="off" value="{{ user.email }}" disabled>
             </div>
         </div>
 
@@ -34,7 +34,7 @@
         <p class="form-help">Disabling the user will not log them out but will prevent them from logging in.</p>
 
         {{ form.password.label(class="label mt-4") }}
-        {{ form.password(class="input mt-1 w-full", id="password", type="password") }}
+        {{ form.password(class="input mt-1 w-full", id="password", type="password", autocomplete="new-password") }}
         <p class="form-help">Leave this field blank unless you want to make changes. Editing will log the
         user out.</p>
         {% for error in form.password.errors %}

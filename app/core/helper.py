@@ -12,6 +12,7 @@ from flask import current_app, url_for
 from device_detector import DeviceDetector
 import boto3
 import phonenumbers
+from datetime import timezone
 from urllib.parse import urlsplit, urlunsplit
 
 READ_ONLY_PREFIXES = ("select", "show", "describe", "explain", "pragma")
@@ -34,6 +35,20 @@ BLOCKED_SQL_WORDS = (
     "detach",
     "copy",
 )
+
+
+def datetime_iso(value) -> str:
+    if value is None:
+        return ""
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=timezone.utc)
+    return value.isoformat()
+
+
+def format_datetime(value) -> str:
+    if value is None:
+        return ""
+    return f'{value.strftime("%b")} {value.day}, {value.year} at {value.strftime("%I").lstrip("0")}:{value.strftime("%M %p")}'
 
 
 def normalize_phone_number(raw_phone: str, region: str = "US") -> str:

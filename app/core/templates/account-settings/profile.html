@@ -18,7 +18,7 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                     {{ form.name.label(class="label") }}
-                    {{ form.name(class="input mt-1 w-full", id="name", type="text") }}
+                    {{ form.name(class="input mt-1 w-full", id="name", type="text", autocomplete="name") }}
                     {% for error in form.name.errors %}
                         <p class="form-error">{{ error }}</p>
                     {% endfor %}
@@ -70,7 +70,7 @@
 
                 <div class="join w-full mt-1">
                     {{ form.country_code(class="select select-bordered join-item w-24", id="country_code") }}
-                    {{ form.phone_number(class="input input-bordered join-item flex-1", id="phone_number", type="tel") }}
+                    {{ form.phone_number(class="input input-bordered join-item flex-1", id="phone_number", type="tel", autocomplete="tel") }}
                     <button type="button" class="btn btn-neutral join-item"
                             x-data="{ sending: false }"
                             @click="sending = true"

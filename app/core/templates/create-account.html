@@ -12,13 +12,13 @@
                 {{ form.csrf_token }}
 
                 {{ form.name.label(class="label mt-8") }}
-                {{ form.name(class="input mt-1 w-full", id="name", type="text") }}
+                {{ form.name(class="input mt-1 w-full", id="name", type="text", autocomplete="name") }}
                 {% for error in form.name.errors %}
                     <p class="form-error">{{ error }}</p>
                 {% endfor %}
 
                 {{ form.email.label(class="label mt-4") }}
-                {{ form.email(class="input mt-1 w-full", id="email", type="email") }}
+                {{ form.email(class="input mt-1 w-full", id="email", type="email", autocomplete="email") }}
                 {% for error in form.email.errors %}
                     <p class="form-error">{{ error }}</p>
                 {% endfor %}
@@ -27,7 +27,7 @@
                     {{ form.phone_number.label(class="label") }}
                     <div class="join w-full mt-1">
                         {{ form.country_code(class="select select-bordered join-item w-24", id="country_code", aria_label="Country Code") }}
-                        {{ form.phone_number(class="input input-bordered join-item flex-1", id="phone_number", type="tel") }}
+                        {{ form.phone_number(class="input input-bordered join-item flex-1", id="phone_number", type="tel", autocomplete="tel") }}
                     </div>
                     {% for error in form.country_code.errors %}
                         <p class="form-error">{{ error }}</p>

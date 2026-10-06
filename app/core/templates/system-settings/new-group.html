@@ -1,17 +1,17 @@
 {% extends 'system-settings/base.html' %}
 {% block settings_content %}
 
-    <form action="" method="post">
+    <form action="" method="post" autocomplete="off">
         {{ form.csrf_token }}
 
         {{ form.title.label(class="label") }}
-        {{ form.title(class="input mt-1 w-full", id="title", type="text") }}
+        {{ form.title(class="input mt-1 w-full", id="title", type="text", autocomplete="off") }}
         {% for error in form.title.errors %}
             <p class="form-error">{{ error }}</p>
         {% endfor %}
 
         {{ form.description.label(class="label mt-4") }}
-        {{ form.description(class="input mt-1 w-full", id="description") }}
+        {{ form.description(class="input mt-1 w-full", id="description", autocomplete="off") }}
         {% for error in form.description.errors %}
             <p class="form-error">{{ error }}</p>
         {% endfor %}

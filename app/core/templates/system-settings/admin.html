@@ -187,7 +187,7 @@
         <summary class="collapse-title font-semibold">Database Query</summary>
 
         <div class="collapse-content">
-            <form id="db-query-form" class="mb-6 space-y-4" hx-post="{{ url_for('core.admin_sql_console') }}" hx-target="#query-results" hx-swap="innerHTML">
+            <form autocomplete="off" id="db-query-form" class="mb-6 space-y-4" hx-post="{{ url_for('core.admin_sql_console') }}" hx-target="#query-results" hx-swap="innerHTML">
             <textarea id="query" name="query" class="textarea textarea-bordered w-full font-mono min-h-32" placeholder="SELECT * FROM user;"></textarea>
 
                 <div class="flex items-center justify-between gap-4">

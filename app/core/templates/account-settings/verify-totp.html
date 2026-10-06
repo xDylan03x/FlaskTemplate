@@ -8,11 +8,11 @@
                 <p class="support text-base-content/80 text-center">Please enter the code from your authenticator app.</p>
 
 
-                <form action="" method="post">
+                <form action="" method="post" autocomplete="off">
                     {{ form.csrf_token }}
 
                     {{ form.code.label(class="label mt-8") }}
-                    {{ form.code(class="input mt-1 w-full", id="code", type="text", inputmode="numeric", autocomplete="one-time-code", pattern="[0-9]*", pattern="\d{6}", maxlength="6", autocomplete="off") }}
+                    {{ form.code(class="input mt-1 w-full", id="code", type="text", inputmode="numeric", autocomplete="one-time-code", pattern="[0-9]{6}", maxlength="6") }}
                     {% for error in form.code.errors %}
                         <p class="form-error">{{ error }}</p>
                     {% endfor %}

@@ -2,6 +2,7 @@ document.addEventListener('alpine:init', () => {
     Alpine.data('notificationMenu', () => ({
         notifications: [],
         loading: false,
+        hasMore: false,
 
         get unreadCount() {
             return this.notifications.length;
@@ -10,15 +11,14 @@ document.addEventListener('alpine:init', () => {
         async fetchNotifications() {
             this.loading = true;
             try {
-                // Fetching default list (last 7 days, unread only)
-                const response = await fetch('/api/v1/notifications?include_read=false');
+                // Fetch the first 15 unread notifications regardless of age.
+                const response = await fetch('/api/v1/notifications?include_read=false&recent_only=false');
                 if (!response.ok) throw new Error('Network response was not ok');
 
                 const data = await response.json();
 
-                // Adjust this line depending on your Flask JSON structure
-                // (e.g., if you return { "notifications": [...] } or just the array)
                 this.notifications = data.notifications || data || [];
+                this.hasMore = Boolean(data.has_more);
             } catch (error) {
                 console.error('Failed to fetch notifications:', error);
             } finally {
@@ -44,6 +44,7 @@ document.addEventListener('alpine:init', () => {
                 if (!response.ok) {
                     throw new Error('Failed to update notification status on server');
                 }
+                await this.fetchNotifications();
             } catch (error) {
                 console.error(error);
                 // Revert the UI array if the backend request fails
@@ -52,14 +53,7 @@ document.addEventListener('alpine:init', () => {
         },
 
         formatDate(isoString) {
-            if (!isoString) return '';
-            const date = new Date(isoString);
-            return date.toLocaleDateString(undefined, {
-                month: 'short',
-                day: 'numeric',
-                hour: 'numeric',
-                minute: '2-digit'
-            });
+            return window.formatDateTime(isoString);
         }
     }));
 });

@@ -3,7 +3,7 @@
     {% extends 'account-settings/base.html' %}
     {% block settings_content %}
 
-        <form id="notification-search-form"
+        <form autocomplete="off" id="notification-search-form"
               class="mb-6 flex gap-4 items-center w-full sm:justify-between"
               hx-get="{{ url_for('core.all_notifications') }}"
               hx-target="#results"

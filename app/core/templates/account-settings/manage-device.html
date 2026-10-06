@@ -19,10 +19,10 @@
                 {% for login in device.logins %}
                     <div class="flex flex-col gap-1 py-2 sm:flex-row sm:items-center sm:justify-between">
                         <time class="body text-base-content"
-                              datetime="{{ login.occurred_at.isoformat() }}"
+                              datetime="{{ login.occurred_at|datetime_iso }}"
                               x-data
-                              x-text="new Date($el.dateTime).toLocaleString()">
-                            {{ login.occurred_at }}
+                              x-text="formatDateTime($el.dateTime)">
+                            {{ login.occurred_at|format_datetime }}
                         </time>
 
                         <a class="link link-neutral text-sm"
