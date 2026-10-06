@@ -32,7 +32,7 @@
             {% endfor %}
         </div>
 
-        <button type="button" class="btn btn-soft btn-error mt-4" onclick="delete_modal.showModal()" {% if not current_user.can('groups.delete') %}disabled{% endif %}>Delete Group</button>
+        <button type="button" class="btn btn-sm btn-soft btn-error mt-4" onclick="delete_modal.showModal()" {% if not current_user.can('groups.delete') %}disabled{% endif %}>Delete Group</button>
 
         {% include 'system-settings/group-permissions.html' %}
 
@@ -45,9 +45,9 @@
             <p class="py-4">Are you sure you want to delete {{ group.title }}? This action can not be undone.</p>
             <div class="modal-action">
                 <form method="dialog">
-                    <button class="btn">Cancel</button>
+                    <button class="btn btn-sm">Cancel</button>
                 </form>
-                <a class="btn btn-error" href="{{ url_for('core.delete_group', uuid36=group.uuid36) }}">Delete Group</a>
+                <a class="btn btn-sm btn-error" href="{{ url_for('core.delete_group', uuid36=group.uuid36) }}">Delete Group</a>
             </div>
         </div>
     </dialog>

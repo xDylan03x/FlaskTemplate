@@ -1,15 +1,17 @@
 {% extends 'system-settings/base.html' %}
-{% block settings_content %}
+{% block settings_actions %}
 
     {% if current_user.can('groups.create') %}
-        <a class="btn btn-soft" href="{{ url_for('core.new_group') }}">
+        <a class="btn btn-sm btn-primary w-full sm:w-auto" href="{{ url_for('core.new_group') }}">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="size-5">
                 <path d="M10 5a3 3 0 1 1-6 0 3 3 0 0 1 6 0ZM1.615 16.428a1.224 1.224 0 0 1-.569-1.175 6.002 6.002 0 0 1 11.908 0c.058.467-.172.92-.57 1.174A9.953 9.953 0 0 1 7 18a9.953 9.953 0 0 1-5.385-1.572ZM16.25 5.75a.75.75 0 0 0-1.5 0v2h-2a.75.75 0 0 0 0 1.5h2v2a.75.75 0 0 0 1.5 0v-2h2a.75.75 0 0 0 0-1.5h-2v-2Z" />
             </svg>
             New Group
         </a>
     {% endif %}
+{% endblock %}
 
+{% block settings_content %}
     <div class="overflow-x-auto mt-8">
         <table class="table table-auto w-full">
             <thead>
@@ -53,15 +55,15 @@
 
         <div class="join">
             {% if groups.has_prev %}
-                <a class="join-item btn btn-sm btn-neutral btn-outline" href="{{ url_for('core.group_settings', page=groups.prev_num) }}">Previous</a>
+                <a class="join-item btn btn-sm btn-ghost" href="{{ url_for('core.group_settings', page=groups.prev_num) }}">Previous</a>
             {% else %}
-                <button class="join-item btn btn-sm btn-neutral btn-outline" disabled>Previous</button>
+                <button class="join-item btn btn-sm btn-ghost" disabled>Previous</button>
             {% endif %}
 
             {% if groups.has_next %}
-                <a class="join-item btn btn-sm btn-neutral btn-outline" href="{{ url_for('core.group_settings', page=groups.next_num) }}">Next</a>
+                <a class="join-item btn btn-sm btn-ghost" href="{{ url_for('core.group_settings', page=groups.next_num) }}">Next</a>
             {% else %}
-                <button class="join-item btn btn-sm btn-neutral btn-outline" disabled>Next</button>
+                <button class="join-item btn btn-sm btn-ghost" disabled>Next</button>
             {% endif %}
         </div>
     </div>

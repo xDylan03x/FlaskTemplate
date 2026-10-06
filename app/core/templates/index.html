@@ -1,17 +1,8 @@
 {% extends 'base.html' %}
 {% block content %}
-    <div class="text-center mt-10 bg-red-400 w-full">
-        <h1 class="h1">Heading 1</h1>
-        <h2 class="h2">Heading 2</h2>
-        <h3 class="h3">Heading 3</h3>
-        <h4 class="h4">Heading 4</h4>
-        <h5 class="h5">Heading 5</h5>
-        <h6 class="h6">Heading 6</h6>
-    <br>
-        <h1 class="title">Title</h1>
-        <p class="subtitle">Subtitle text</p>
-    </div>
 
-    <div class="mt-10"></div>
+    <h3 class="h3 text-base-content">Dashboard</h3>
+    <p class="body text-base-content mt-4">{{ app_name }} is a starting point for building Flask applications for a single organization. It provides shared features such as account management, authentication, user groups, permissions, and notifications.</p>
+    <p class="support text-base-content/80 mt-2">Use this template as the foundation for your own application, then add the workflows and tools your organization needs. Customize this dashboard to give users a useful starting point for their work.</p>
 
 {% endblock %}

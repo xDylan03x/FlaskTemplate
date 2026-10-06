@@ -42,9 +42,9 @@
         {% endfor %}
 
         <div class="mt-4 flex flex-wrap gap-2">
-            <button type="button" class="btn btn-soft" onclick="impersonate_modal.showModal()" {% if not current_user.can('users.impersonate') or user.id == current_user.id or session.get('actual_user', None) or user.status == 'disabled' %}disabled{% endif %}>Impersonate User</button>
-            <button type="button" class="btn btn-soft btn-error" onclick="delete_modal.showModal()" {% if not current_user.can('users.delete') %}disabled{% endif %}>Delete User</button>
-            <button type="button" class="btn btn-soft btn-error" onclick="lockdown_modal.showModal()">Lockdown User</button>
+            <button type="button" class="btn btn-sm btn-soft" onclick="impersonate_modal.showModal()" {% if not current_user.can('users.impersonate') or user.id == current_user.id or session.get('actual_user', None) or user.status == 'disabled' %}disabled{% endif %}>Impersonate User</button>
+            <button type="button" class="btn btn-sm btn-soft btn-error" onclick="delete_modal.showModal()" {% if not current_user.can('users.delete') %}disabled{% endif %}>Delete User</button>
+            <button type="button" class="btn btn-sm btn-soft btn-error" onclick="lockdown_modal.showModal()">Lockdown User</button>
         </div>
 
 
@@ -129,9 +129,9 @@
             <p class="py-4">Impersonating a user will give you access to their account as if you were signed in to it directly.</p>
             <div class="modal-action">
                 <form method="dialog">
-                    <button class="btn">Cancel</button>
+                    <button class="btn btn-sm">Cancel</button>
                 </form>
-                <a class="btn btn-primary" href="{{ url_for('core.impersonate_user', uuid36=user.uuid36) }}">Continue</a>
+                <a class="btn btn-sm btn-primary" href="{{ url_for('core.impersonate_user', uuid36=user.uuid36) }}">Continue</a>
             </div>
         </div>
     </dialog>
@@ -142,9 +142,9 @@
             <p class="py-4">Are you sure you want to delete {{ user.name }}? This action can only be undone by an administrator.</p>
             <div class="modal-action">
                 <form method="dialog">
-                    <button class="btn">Cancel</button>
+                    <button class="btn btn-sm">Cancel</button>
                 </form>
-                <a class="btn btn-error" href="{{ url_for('core.delete_user', uuid36=user.uuid36) }}">Delete User</a>
+                <a class="btn btn-sm btn-error" href="{{ url_for('core.delete_user', uuid36=user.uuid36) }}">Delete User</a>
             </div>
         </div>
     </dialog>
@@ -155,9 +155,9 @@
             <p class="py-4">Are you sure you want to lockdown {{ user.name }}? This action can only be undone by an administrator.</p>
             <div class="modal-action">
                 <form method="dialog">
-                    <button class="btn">Cancel</button>
+                    <button class="btn btn-sm">Cancel</button>
                 </form>
-                <a class="btn btn-error" href="{{ url_for('core.lockdown', uuid36=user.uuid36) }}">Lockdown User</a>
+                <a class="btn btn-sm btn-error" href="{{ url_for('core.lockdown', uuid36=user.uuid36) }}">Lockdown User</a>
             </div>
         </div>
     </dialog>

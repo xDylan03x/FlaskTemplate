@@ -76,17 +76,17 @@
 
             <div class="join">
                 {% if records.has_prev %}
-                    <a class="join-item btn btn-sm btn-neutral btn-outline"
+                    <a class="join-item btn btn-sm btn-ghost"
                        href="{{ url_for('core.login_history', page=records.prev_num) }}">Previous</a>
                 {% else %}
-                    <button class="join-item btn btn-sm btn-neutral btn-outline" disabled>Previous</button>
+                    <button class="join-item btn btn-sm btn-ghost" disabled>Previous</button>
                 {% endif %}
 
                 {% if records.has_next %}
-                    <a class="join-item btn btn-sm btn-neutral btn-outline"
+                    <a class="join-item btn btn-sm btn-ghost"
                        href="{{ url_for('core.login_history', page=records.next_num) }}">Next</a>
                 {% else %}
-                    <button class="join-item btn btn-sm btn-neutral btn-outline" disabled>Next</button>
+                    <button class="join-item btn btn-sm btn-ghost" disabled>Next</button>
                 {% endif %}
             </div>
         </div>

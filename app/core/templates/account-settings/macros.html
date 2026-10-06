@@ -15,23 +15,23 @@
 
             <div class="join">
                 {% if notifications.has_prev %}
-                    <a class="join-item btn btn-sm btn-neutral btn-outline"
+                    <a class="join-item btn btn-sm btn-ghost"
                        href="{{ url_for('core.all_notifications', page=notifications.prev_num, query=request.args.get('query', '')) }}">
                         Previous
                     </a>
                 {% else %}
-                    <button class="join-item btn btn-sm btn-neutral btn-outline" disabled>
+                    <button class="join-item btn btn-sm btn-ghost" disabled>
                         Previous
                     </button>
                 {% endif %}
 
                 {% if notifications.has_next %}
-                    <a class="join-item btn btn-sm btn-neutral btn-outline"
+                    <a class="join-item btn btn-sm btn-ghost"
                        href="{{ url_for('core.all_notifications', page=notifications.next_num, query=request.args.get('query', '')) }}">
                         Next
                     </a>
                 {% else %}
-                    <button class="join-item btn btn-sm btn-neutral btn-outline" disabled>
+                    <button class="join-item btn btn-sm btn-ghost" disabled>
                         Next
                     </button>
                 {% endif %}
@@ -119,7 +119,7 @@
                 {% if notification.link %}
                     <div class="mt-4 flex items-center gap-2">
                         <a href="{{ route_url(notification.link) }}"
-                           class="btn btn-sm btn-soft {% if not notification.read %}btn-primary{% endif %}">
+                           class="btn btn-sm {% if notification.read %}btn-soft{% else %}btn-primary{% endif %}">
                             View
                         </a>
                         {% if not notification.read %}

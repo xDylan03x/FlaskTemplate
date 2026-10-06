@@ -186,7 +186,7 @@ def send_phone_number_verification():
         return abort(404)
     audit.log("User requested phone number verification", actor=current_user)
     _send_phone_verification(current_user)
-    return '''<button type="button" class="btn btn-neutral join-item" disabled>Link Sent</button>'''
+    return '''<button type="button" class="btn btn-sm btn-neutral join-item" disabled>Link Sent</button>'''
 
 
 @core.route('/account-settings/notifications', methods=['GET', 'POST'])

@@ -10,10 +10,10 @@
 </li>
 {% endset %}
 <div class="bg-neutral shadow text-neutral-content print:hidden">
-    <div class="navbar max-w-[85rem] px-4 mx-auto">
+    <div class="navbar max-w-6xl px-6 mx-auto">
         <div class="navbar-start">
             <div class="dropdown">
-                <div tabindex="0" role="button" class="btn btn-ghost text-neutral-content me-4 lg:hidden">
+                <div tabindex="0" role="button" class="btn btn-sm btn-ghost text-neutral-content me-4 lg:hidden">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"/>
                     </svg>
@@ -35,7 +35,7 @@
                 {# When adding other options/roles to this dropdown, make sure to add it as an or condition here as well #}
                 {% if current_user.can('users') or current_user.can('system') %}
                     <div class="dropdown dropdown-end">
-                        <div tabindex="0" role="button" class="btn btn-ghost btn-circle avatar text-neutral-content">
+                        <div tabindex="0" role="button" class="btn btn-sm btn-ghost btn-circle avatar text-neutral-content">
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
                                 <path fill-rule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25Zm0 8.625a1.125 1.125 0 1 0 0 2.25 1.125 1.125 0 0 0 0-2.25ZM15.375 12a1.125 1.125 0 1 1 2.25 0 1.125 1.125 0 0 1-2.25 0ZM7.5 10.875a1.125 1.125 0 1 0 0 2.25 1.125 1.125 0 0 0 0-2.25Z" clip-rule="evenodd" />
                             </svg>
@@ -72,7 +72,7 @@
                 {% endif %}
 
                 <div x-data="notificationMenu()" x-init="fetchNotifications()" class="dropdown dropdown-end">
-                    <div tabindex="0" role="button" class="btn btn-ghost btn-circle text-neutral-content me-1">
+                    <div tabindex="0" role="button" class="btn btn-sm btn-ghost btn-circle text-neutral-content me-1">
                         <div class="indicator">
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
                                 <path fill-rule="evenodd" d="M5.25 9a6.75 6.75 0 0 1 13.5 0v.75c0 2.123.8 4.057 2.118 5.52a.75.75 0 0 1-.297 1.206c-1.544.57-3.16.99-4.831 1.243a3.75 3.75 0 1 1-7.48 0 24.585 24.585 0 0 1-4.831-1.244.75.75 0 0 1-.298-1.205A8.217 8.217 0 0 0 5.25 9.75V9Zm4.502 8.9a2.25 2.25 0 1 0 4.496 0 25.057 25.057 0 0 1-4.496 0Z" clip-rule="evenodd" />
@@ -119,12 +119,12 @@
                                 </div>
                             </template>
                             <div x-show="hasMore" x-cloak class="p-2">
-                                <a href="{{ url_for('core.all_notifications') }}" class="btn btn-ghost btn-block">View More</a>
+                                <a href="{{ url_for('core.all_notifications') }}" class="btn btn-sm btn-ghost btn-block">View More</a>
                             </div>
                         </div>
 
                         <div x-show="!hasMore" class="bg-base-300 sticky bottom-0 z-20">
-                            <a href="{{ url_for('core.all_notifications') }}" class="btn btn-ghost btn-block">
+                            <a href="{{ url_for('core.all_notifications') }}" class="btn btn-sm btn-ghost btn-block">
                                 View All Notifications
                             </a>
                         </div>
@@ -132,7 +132,7 @@
                 </div>
 
                 <div class="dropdown dropdown-end">
-                    <div tabindex="0" role="button" class="btn btn-ghost btn-circle avatar bg-white">
+                    <div tabindex="0" role="button" class="btn btn-sm btn-ghost btn-circle avatar bg-white">
                         <img alt="{{ current_user.name }} Icon" src="{{ current_user.profile_picture_url }}" class="rounded-full" />
                     </div>
                     <div tabindex="-1" class="dropdown-content bg-base-200 text-base-content rounded-box z-1 mt-2 w-max shadow">
@@ -171,7 +171,7 @@
                     </div>
                 </div>
             {% else %}
-                <a href="{{ url_for('auth.login') }}" class="btn btn-ghost text-neutral-content">Log In</a>
+                <a href="{{ url_for('auth.login') }}" class="btn btn-sm btn-ghost text-neutral-content">Log In</a>
             {% endif %}
         </div>
     </div>
@@ -187,7 +187,7 @@
                             <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
                         </svg>
                         <span>{{ message }}</span>
-                        <button @click="show = false" class="btn btn-circle btn-ghost">
+                        <button @click="show = false" class="btn btn-sm btn-circle btn-ghost">
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
                             </svg>
@@ -199,7 +199,7 @@
                             <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
                         </svg>
                         <span>{{ message }}</span>
-                        <button @click="show = false" class="btn btn-circle btn-ghost">
+                        <button @click="show = false" class="btn btn-sm btn-circle btn-ghost">
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
                             </svg>
@@ -211,7 +211,7 @@
                             <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
                         </svg>
                         <span>{{ message }}</span>
-                        <button @click="show = false" class="btn btn-circle btn-ghost">
+                        <button @click="show = false" class="btn btn-sm btn-circle btn-ghost">
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
                             </svg>
@@ -223,7 +223,7 @@
                             <path stroke-linecap="round" stroke-linejoin="round" d="m9.75 9.75 4.5 4.5m0-4.5-4.5 4.5M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
                         </svg>
                         <span>{{ message }}</span>
-                        <button @click="show = false" class="btn btn-circle btn-ghost">
+                        <button @click="show = false" class="btn btn-sm btn-circle btn-ghost">
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
                             </svg>
@@ -236,7 +236,7 @@
                             <path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021 M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" />
                         </svg>
                         <span>{{ message }}</span>
-                        <button @click="show = false" class="btn btn-circle btn-ghost">
+                        <button @click="show = false" class="btn btn-sm btn-circle btn-ghost">
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
                             </svg>
