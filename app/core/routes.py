@@ -10,7 +10,7 @@ from .forms import ChangePasswordForm, ProfileSettingsForm, NotificationSettings
     build_edit_user_form, ApplicationSettingsForm, build_system_settings_form, BugReportForm, build_group_form
 import phonenumbers
 from app.model_managers import UserManager, UserDeviceManager, FileManager, NotificationManager, SystemManager
-from .helper import send_sms, parse_user_agent, get_routes, get_blueprints, get_extensions, get_database_status, \
+from .helper import send_sms, parse_user_agent, get_routes, get_blueprints, get_extensions, get_update_status, \
     get_platform_info, is_safe_read_query, modify_query, send_email, normalize_external_url
 from ..model_managers import LoginTokenManager
 from ..extensions.flask_permissions import require_permission
@@ -587,8 +587,8 @@ def admin():
     routes = get_routes()
     blueprints = get_blueprints()
     extensions = get_extensions()
-    db_status = get_database_status()
-    return render_template('system-settings/admin.html', title="Admin", tab='system', num_users=num_users, platform=platform, config=config, routes=routes, blueprints=blueprints, extensions=extensions, db_status=db_status)
+    update_status = get_update_status()
+    return render_template('system-settings/admin.html', title="Admin", tab='system', num_users=num_users, platform=platform, config=config, routes=routes, blueprints=blueprints, extensions=extensions, update_status=update_status)
 
 
 @core.route('/system-settings/admin/sql-console', methods=["POST"])

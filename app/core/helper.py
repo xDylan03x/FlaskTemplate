@@ -1,7 +1,7 @@
 import re
 from device_detector.enums import DeviceType
 from sentry_sdk.client import BaseClient
-from sqlalchemy import text
+from sqlalchemy import text, func
 import os
 import platform
 import sys
@@ -264,6 +264,30 @@ def get_extensions():
             "instance": extension,
         })
     return sorted(extensions, key=lambda e: e["name"])
+
+
+def get_update_status():
+    """Check for missing definitions that update_app/update_users would insert."""
+    from app import pm, sm
+    from app.models import User, SystemSetting, UserSetting, UserPermission
+
+    def users_need_update(model, keys):
+        if not keys:
+            return False
+        defined_count = db.select(func.count(func.distinct(model.key))).where(
+            model.user_id == User.id, model.key.in_(keys),
+        ).scalar_subquery()
+        return db.session.scalar(db.select(User.id).where(defined_count < len(keys)).limit(1)) is not None
+
+    system_keys = {setting.database_key for setting in sm.all(scope="system")}
+    stored_system_keys = set(db.session.scalars(db.select(SystemSetting.key)))
+    return {
+        "System/User Settings": (
+            not system_keys.issubset(stored_system_keys)
+            or users_need_update(UserSetting, [setting.setting for setting in sm.all()])
+        ),
+        "User Permissions": users_need_update(UserPermission, [permission.permission for permission in pm.all()]),
+    }
 
 
 def get_database_status():
