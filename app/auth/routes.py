@@ -1,6 +1,6 @@
 from urllib.parse import urlencode
 import requests
-from app.auth.helper import get_ip_from_request, twilio_verify_send, twilio_verify_check, hibp_password_check
+from app.auth.helper import get_ip_from_request, twilio_verify_send, twilio_verify_check, hibp_password_check, get_oauth_providers
 from app.models import NotificationCategory, RiskAction
 from app.model_managers import UserManager, LoginTokenManager, LoginRecordManager, UserDeviceManager, \
     NotificationManager
@@ -60,6 +60,8 @@ def login():
     next_url = request.args.get('next', None)
     form = LoginForm()
     create_accounts = sm.system_setting('authentication.allow_account_creation')
+    context = dict(title='Log In', form=form, next_url=next_url, create_accounts=create_accounts,
+                   oauth_providers=get_oauth_providers())
     if form.validate_on_submit():
         user = UserManager.get_user_by_email(form.email.data.lower().strip())
 
@@ -67,19 +69,19 @@ def login():
         if not user:
             audit.log("Login rejected: unknown account", actor="Anonymous")
             flash(WRONG_EMAIL_PASSWORD_MESSAGE, 'error')
-            return render_template('login.html', title='Log In', form=form), 401
+            return render_template('login.html', **context), 401
 
         # If the user cannot log in
         if not user.can_login():
             audit.log("Login rejected: account cannot log in", target=user, actor="Anonymous")
             flash(CONTACT_ADMINISTRATOR_MESSAGE, 'error')
-            return render_template('login.html', title='Log In', form=form), 401
+            return render_template('login.html', **context), 401
 
         # If the password is incorrect
         if not user.check_password(form.password.data):
             audit.log("Login rejected: incorrect password", target=user, actor="Anonymous")
             flash(WRONG_EMAIL_PASSWORD_MESSAGE, 'error')
-            return render_template('login.html', title='Log In', form=form), 401
+            return render_template('login.html', **context), 401
 
         # If the user has enabled password breach checking
         if user.get_setting('security.password_breach_check'):
@@ -95,7 +97,7 @@ def login():
 
         _, raw_token = LoginTokenManager.create_login_token(immediate_login=True, next_url=next_url, remember_login=form.remember_me.data, user_id=user.id, auth_source='traditional login')
         return redirect(url_for('auth.login_with_token', raw_token=raw_token))
-    return render_template('login.html', title='Log In', form=form, next_url=next_url, create_accounts=create_accounts)
+    return render_template('login.html', **context)
 
 
 @auth.route('/forgot-password', methods=['GET', 'POST'])

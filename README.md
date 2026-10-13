@@ -299,6 +299,13 @@ For AWS S3, create a bucket and grant the application principal the required buc
 
 #### Google login (optional)
 
+The login page automatically shows configured Google, Facebook, X, Apple, Microsoft, Slack, and LinkedIn
+entries from `OAUTH2_PROVIDERS` when both `client_id` and `client_secret` are set. Buttons use
+[DaisyUI's provider colors and logos](https://daisyui.com/components/button/#login-buttons).
+The `twitter` key also uses X branding; an optional `name` overrides the button label. Configure each
+provider's authorization URL, token URL, scopes, and user-info mapping to suit the existing OAuth callback,
+which requires a verified email address.
+
 1. Create a project in [Google Cloud Console](https://console.cloud.google.com/), then configure Google Auth Platform's branding, audience, and requested data access. This app requests the `email` scope.
 2. If the app is in testing mode with an external audience, add the accounts that will test login as test users.
 3. Create an OAuth client with application type **Web application**. Register the exact callback URLs you use:

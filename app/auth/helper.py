@@ -5,6 +5,19 @@ import hashlib
 import requests
 
 
+def get_oauth_providers():
+    names = {
+        'google': 'Google', 'facebook': 'Facebook', 'x': 'X', 'apple': 'Apple',
+        'microsoft': 'Microsoft', 'slack': 'Slack', 'linkedin': 'LinkedIn',
+    }
+    providers = []
+    for key, provider in (current_app.config.get('OAUTH2_PROVIDERS') or {}).items():
+        brand = 'x' if key.lower() == 'twitter' else key.lower()
+        if brand in names and provider and provider.get('client_id') and provider.get('client_secret'):
+            providers.append({'key': key, 'brand': brand, 'name': provider.get('name') or names[brand]})
+    return providers
+
+
 def get_ip_from_request(request_object: request) -> str:
     """Extract the client's IP address from a Flask request object."""
     if request_object.headers.get('X-Forwarded-For'):
