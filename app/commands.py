@@ -295,14 +295,13 @@ def update_users():
 @click.command(name='update_app')
 @with_appcontext
 def update_app():
+    from . import db, sm
     from .model_managers import SystemManager
+    from .models import SystemSetting
 
-    if SystemManager.get_setting('strict_login') is None:
-        SystemManager.set_setting('strict_login', True)
-    if SystemManager.get_setting('allow_account_creation') is None:
-        SystemManager.set_setting('allow_account_creation', True)
-    if SystemManager.get_setting('restrict_docs') is None:
-        SystemManager.set_setting('restrict_docs', False)
+    for setting in sm.all(scope="system"):
+        if db.session.scalar(db.select(SystemSetting).where(SystemSetting.key == setting.database_key)) is None:
+            SystemManager.set_setting(setting.setting, setting.default)
 
     click.echo('Application settings updated.')
 

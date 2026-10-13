@@ -21,18 +21,24 @@ class SystemManager:
 
     @staticmethod
     def get_setting(key: str) -> str | bool | None:
+        spec = sm.get(key, scope="system")
+        key = spec.database_key if spec is not None else key
         setting_record = db.session.scalar(sa.select(SystemSetting).where(SystemSetting.key == key))
         if setting_record:
+            if spec is not None and isinstance(spec.default, str):
+                return setting_record.value
             if setting_record.value in ["true", "True"]:
                 return True
             elif setting_record.value in ["false", "False"]:
                 return False
             return setting_record.value
         else:
-            return None
+            return spec.default if spec is not None else None
 
     @staticmethod
     def set_setting(key: str, value: str | bool) -> None:
+        spec = sm.get(key, scope="system")
+        key = spec.database_key if spec is not None else key
         setting_record = db.session.scalar(sa.select(SystemSetting).where(SystemSetting.key == key))
         if setting_record:
             setting_record.value = str(value)
@@ -143,7 +149,7 @@ class UserManager:
         for setting in sm.all():
             user_setting_record = db.session.scalar(sa.select(UserSetting).where(UserSetting.user_id == user.id, UserSetting.key == setting.setting))
             if user_setting_record is None:
-                user_setting_record = UserSetting(key=setting.setting, value=setting.default, user_id=user.id)
+                user_setting_record = UserSetting(key=setting.setting, value=str(setting.default), user_id=user.id)
                 db.session.add(user_setting_record)
             db.session.commit()
 

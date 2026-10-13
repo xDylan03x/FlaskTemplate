@@ -18,7 +18,6 @@ class Config:
         self.APP_NAME = os.environ.get("APP_NAME") or "Unnamed App"
         self.APP_ABBR = os.environ.get("APP_ABBR") or "UA"
         self.SITE_THEME = os.environ.get("SITE_THEME") or "light"
-        self.APP_VERSION = "1.2.0" # Change this for you app
         self.ADMIN_PANEL = os.getenv("ADMIN_PANEL", 'False').lower() in ('true', '1', 't')
 
         self.MAIN_REPO_URL = None

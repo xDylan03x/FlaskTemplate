@@ -243,11 +243,15 @@ def get_blueprints():
     """Get a list of all blueprints registered with the app instance"""
     blueprints = []
     for name, blueprint in current_app.blueprints.items():
-        blueprints.append({
+        info = {
             "name": name,
             "url_prefix": blueprint.url_prefix,
             "import_name": blueprint.import_name,
-        })
+        }
+        module = getattr(blueprint, "module_spec", None)
+        if module is not None:
+            info.update(module_name=module.name, version=module.version, description=module.description)
+        blueprints.append(info)
     return sorted(blueprints, key=lambda b: b["name"])
 
 

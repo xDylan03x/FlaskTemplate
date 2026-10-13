@@ -7,7 +7,7 @@ order: 0
 ---
 
 # Information
-This is a running list of changes to the application. The current application version is v{{ config['APP_VERSION'] }}.
+This is a running list of changes to the application.
 
 ---
 # Core

@@ -55,7 +55,7 @@ def login():
     """The actual login form page"""
     next_url = request.args.get('next', None)
     form = LoginForm()
-    create_accounts = SystemManager.get_setting('allow_account_creation')
+    create_accounts = SystemManager.get_setting('authentication.allow_account_creation')
     if form.validate_on_submit():
         user = UserManager.get_user_by_email(form.email.data.lower().strip())
 
@@ -468,7 +468,7 @@ def login_with_token(raw_token: str):
     user_agent = request.headers.get('User-Agent', '')
 
     # If suspicious user agents are not allowed to log in
-    if SystemManager.get_setting('strict_login') and parse_user_agent(user_agent)["is_bot"]:
+    if SystemManager.get_setting('authentication.strict_login') and parse_user_agent(user_agent)["is_bot"]:
         flash(CONTACT_ADMINISTRATOR_MESSAGE, 'error')
         return redirect(url_for('auth.login'))
 

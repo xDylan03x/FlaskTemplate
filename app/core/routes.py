@@ -4,10 +4,10 @@ from flask_login import login_required, current_user, login_user, logout_user
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 from app.core import core
-from app import db, twilio_client, audit
+from app import db, twilio_client, audit, sm
 from .forms import ChangePasswordForm, ProfileSettingsForm, NotificationSettingsForm, SecuritySettingsForm, \
     SetupAccountForm, NewUserForm, TOTPVerifyForm, CreateAccountForm, DeviceManagerForm, \
-    build_edit_user_form, ApplicationSettingsForm, SystemSettingsForm, BugReportForm, build_group_form
+    build_edit_user_form, ApplicationSettingsForm, build_system_settings_form, BugReportForm, build_group_form
 import phonenumbers
 from app.model_managers import UserManager, UserDeviceManager, FileManager, NotificationManager, SystemManager
 from .helper import send_sms, parse_user_agent, get_routes, get_blueprints, get_extensions, get_database_status, \
@@ -86,7 +86,7 @@ def setup_account():
 
 @core.route('/create-account', methods=['GET', 'POST'])
 def create_account():
-    if not SystemManager.get_setting('allow_account_creation'):
+    if not SystemManager.get_setting('authentication.allow_account_creation'):
         flash('Account creation is not enabled. Please contact an administrator for an account.', 'error')
         abort(403)
     form = CreateAccountForm()
@@ -561,16 +561,15 @@ def delete_group(uuid36):
 @login_required
 @require_permission('system.update')
 def system_settings():
-    form = SystemSettingsForm()
+    form = build_system_settings_form(sm)()
     if form.validate_on_submit():
         audit.log("User updated system settings", actor=current_user)
-        SystemManager.set_setting('allow_account_creation', form.allow_account_creation.data)
-        SystemManager.set_setting('strict_login', form.strict_login.data)
-        SystemManager.set_setting('restrict_docs', form.restrict_docs.data)
+        for field_name, key in form.setting_field_map.items():
+            sm.set_system_setting(key, form[field_name].data)
         flash('Your changes have been saved.', 'success')
-    form.allow_account_creation.data = SystemManager.get_setting('allow_account_creation')
-    form.strict_login.data = SystemManager.get_setting('strict_login')
-    form.restrict_docs.data = SystemManager.get_setting('restrict_docs')
+    if request.method == 'GET':
+        for field_name, key in form.setting_field_map.items():
+            form[field_name].data = sm.system_setting(key)
     return render_template('system-settings/system.html', title="System Settings", tab='system', form=form)
 
 
@@ -627,8 +626,7 @@ def bug_report():
     form = BugReportForm()
     if form.validate_on_submit():
         subject = f"New Bug Report Submission for {current_app.config['APP_NAME']}"
-        body = (f"App Version: {current_app.config['APP_VERSION']}\n"
-                f"User: {current_user.name} ({current_user.email})\n\n"
+        body = (f"User: {current_user.name} ({current_user.email})\n\n"
                 f"Report Subject: {form.subject.data.strip()}\n"
                 f"Report Message:\n{form.message.data.strip()}\n")
         send_email(subject, body, current_app.config["ADMIN_EMAIL"])

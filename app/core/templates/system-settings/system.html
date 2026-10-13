@@ -11,24 +11,32 @@
             {% endif %}
         </p>
 
-        <div class="mt-8">
-            {{ form.allow_account_creation(class="checkbox", id="allow_account_creation", type="checkbox") }}
-            {{ form.allow_account_creation.label(class="label") }}
-            <p class="form-help">Allow users to create an account (does not affect account creation in the user management tab).</p>
-        </div>
-
-        <div class="mt-4">
-            {{ form.strict_login(class="checkbox", id="strict_login", type="checkbox") }}
-            {{ form.strict_login.label(class="label") }}
-            <p class="form-help">Block users from signing in with suspicious user agents.</p>
-        </div>
-
-        <div class="mt-4">
-            {{ form.restrict_docs(class="checkbox", id="restrict_docs", type="checkbox") }}
-            {{ form.restrict_docs.label(class="label") }}
-            <p class="form-help">Block users viewing documentation without signing in.</p>
-        </div>
-
+        {% for group, settings in form.setting_groups.items() %}
+            <fieldset class="mt-8">
+                <legend class="h4">{{ group }}</legend>
+                {% for setting in settings %}
+                    {% set field = form[setting.setting_field_name] %}
+                    <div class="mt-4">
+                        {% if field.type == 'BooleanField' %}
+                            {{ field(class="checkbox") }}
+                            {{ field.label(class="label") }}
+                        {% else %}
+                            {{ field.label(class="label") }}
+                            {{ field(class="input mt-1 w-full", maxlength=2048) }}
+                        {% endif %}
+                        <p class="form-help">{{ field.description }}</p>
+                        {% for error in field.errors %}
+                            <p class="text-error">{{ error }}</p>
+                        {% endfor %}
+                    </div>
+                {% endfor %}
+            </fieldset>
+        {% endfor %}
+        {% if form.csrf_token is defined %}
+            {% for error in form.csrf_token.errors %}
+                <p class="text-error mt-4">{{ error }}</p>
+            {% endfor %}
+        {% endif %}
 
         {{ form.submit(class='btn btn-primary text-neutral-content mt-8 w-full') }}
     </form>

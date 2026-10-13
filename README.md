@@ -26,6 +26,56 @@ The user permissions and settings system is built with extendability in mind. It
 - The api module provides API endpoints (like notifications).
 - Other modules can be built out as needed.
 
+### Declaring module settings
+
+Keep user and system declarations together in a module's `settings.py`:
+
+```python
+from app.extensions.flask_settings import SettingSpec
+
+settings = [
+    SettingSpec(key="Compact View", group="Preferences", default=False),
+    SettingSpec(key="Enabled", group="Exports", default=True, scope="system"),
+]
+```
+
+Describe the module in `module.py` and reference those declarations:
+
+```python
+from app.extensions.flask_settings import ModuleSpec
+from .settings import settings
+
+module = ModuleSpec(name="Website Additions", description="Reporting and exports.", settings=settings, version="1.0.0")
+```
+
+Register it with `sm.register_module(module, blueprint=reports)` in the module's
+existing `__init__.py`, after creating its blueprint and before importing routes.
+The module name is a display label and can include spaces and capitalization;
+it does not need to match the directory or blueprint name. The admin panel shows
+its name, description, and optional version beside the blueprint's technical details.
+
+Both user and system keys use their group (`preferences.compact_view`,
+`exports.enabled`). Settings are grouped across modules and must be unique
+within their scope; they do not carry module ownership. Use `sm.all()` for user
+definitions and `sm.all(scope="system")` for system definitions; `get` and
+`grouped` accept the same scope argument. Inspect module metadata and its
+declaration list with `sm.get_module("Website Additions")` or `sm.all_modules()`.
+
+Read and write system values with `sm.system_setting("exports.enabled")` and
+`sm.set_system_setting("exports.enabled", False)`. Templates can use
+`system_setting(...)` alongside `user_setting(...)`. Missing system rows use
+the declared default; saved values take precedence. Boolean defaults produce
+checkboxes and string defaults produce text fields on the system settings page.
+
+Run `flask --app app update_app` to insert missing system defaults and
+`flask --app app update_users` to add missing user defaults. Neither overwrites
+saved settings. The three original system settings retain their database keys
+through `storage_key`, so both their old bare names and new group-prefixed names
+access the same saved values. New settings normally omit `storage_key`.
+Environment and deployment settings remain in `config.py`.
+
+---
+
 ## Getting Started
 
 1. Clone the repository and create a Python virtual environment:

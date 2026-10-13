@@ -25,11 +25,6 @@
                 <div class="stat-title">Total Users</div>
                 <div class="stat-value">{{ num_users }}</div>
             </div>
-
-            <div class="stat">
-                <div class="stat-title">Application Version</div>
-                <div class="stat-value">v{{ config.get('APP_VERSION') }}</div>
-            </div>
         </div>
     </div>
 
@@ -132,10 +127,26 @@
                             <div class="min-w-0 flex-1">
 
                                 <h6 class="h6">
-                                    {{ bp.get('name', 'Not Defined') }}
+                                    {{ bp.get('module_name') or bp.get('name', 'Not Defined') }}
                                 </h6>
 
+                                {% if bp.get('description') %}
+                                    <p class="mt-1 text-sm text-base-content/80">{{ bp.description }}</p>
+                                {% endif %}
+
                                 <div class="mt-2 flex flex-wrap gap-2 text-sm text-base-content/80">
+                                    {% if bp.get('version') %}
+                                        <div class="btn btn-sm pointer-events-none cursor-default hover:bg-base-200">
+                                            <span class="text-base-content/60">Version:</span>
+                                            <span class="font-medium">{{ bp.version }}</span>
+                                        </div>
+                                    {% endif %}
+                                    {% if bp.get('module_name') %}
+                                        <div class="btn btn-sm pointer-events-none cursor-default hover:bg-base-200">
+                                            <span class="text-base-content/60">Blueprint Name:</span>
+                                            <span class="font-medium">{{ bp.name }}</span>
+                                        </div>
+                                    {% endif %}
                                     <div class="btn btn-sm pointer-events-none cursor-default hover:bg-base-200">
                                         <span class="text-base-content/60">URL Prefix:</span>
                                         <span class="font-medium">{{ bp.get('url_prefix', 'none') }}</span>

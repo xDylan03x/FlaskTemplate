@@ -167,10 +167,25 @@ class TOTPVerifyForm(FlaskForm):
 
 
 class SystemSettingsForm(FlaskForm):
-    allow_account_creation = BooleanField('Allow Account Creation')
-    strict_login = BooleanField('Strict Login')
-    restrict_docs = BooleanField('Restrict Docs')
     submit = SubmitField('Save')
+
+
+def build_system_settings_form(settings_manager):
+    fields = {}
+    setting_field_map = {}
+    for setting in settings_manager.all(scope="system"):
+        field_name = setting.setting_field_name
+        options = dict(label=setting.key, description=setting.description)
+        fields[field_name] = (
+            BooleanField(**options) if isinstance(setting.default, bool)
+            else StringField(**options, validators=[Length(max=2048)])
+        )
+        setting_field_map[field_name] = setting.setting
+
+    DynamicSystemSettingsForm = type('DynamicSystemSettingsForm', (SystemSettingsForm,), fields)
+    DynamicSystemSettingsForm.setting_field_map = setting_field_map
+    DynamicSystemSettingsForm.setting_groups = settings_manager.grouped(scope="system")
+    return DynamicSystemSettingsForm
 
 
 class NewGroupForm(FlaskForm):
