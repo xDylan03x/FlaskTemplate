@@ -1,4 +1,7 @@
 {% extends 'system-settings/base.html' %}
+{% block settings_actions %}
+    <a class="btn btn-sm btn-neutral" href="{{ url_for('core.admin_audit_log') }}">Audit Log</a>
+{% endblock %}
 {% block settings_content %}
 
     <div role="alert" class="alert alert-warning">

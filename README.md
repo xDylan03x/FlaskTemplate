@@ -161,6 +161,10 @@ and effective values, including group conflicts. Membership `add`/`remove`
 commands leave other members unchanged and tolerate repeated operations.
 Changes are audited as CLI actions, and passwords are excluded from audit logs.
 
+The admin panel's **Audit Log** browser lists events newest first, with filters for the user who performed
+the action and the event type. Filters apply on selection; click an event name to see the full record. Access requires `ADMIN_PANEL=true`
+and the `system.admin` permission; CLI, system, anonymous, and historical user events are included.
+
 ### Cloning The Repository
 To make things easier in the future, you can set up your application repository
 in a way that allows you to merge new updates from this template repository.

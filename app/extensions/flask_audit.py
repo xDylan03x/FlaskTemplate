@@ -1,7 +1,8 @@
 import copy
+import re
 from contextlib import contextmanager, nullcontext
 from flask import g, has_request_context, current_app
-from sqlalchemy import inspect
+from sqlalchemy import case, func, inspect
 from sqlalchemy.orm.state import InstanceState
 from sqlalchemy.orm import sessionmaker
 from werkzeug.local import LocalProxy
@@ -92,6 +93,56 @@ class AuditManager:
             "message": message
         }
         self._record(self._create_audit_message(audit_record))
+
+    @staticmethod
+    def event_type(message):
+        # Keep parameters (setting keys, user IDs, login sources) out of the type.
+        for prefix in ('Updated setting', 'CLI initialized system setting', 'Set'):
+            if message.startswith(prefix + ' '):
+                return 'Set permission' if prefix == 'Set' else prefix
+        return re.split(r':| \(| \d+\b', message, maxsplit=1)[0].rstrip('.') or 'Other'
+
+    @staticmethod
+    def describe_event(message):
+        fields = {}
+        for line in message.splitlines():
+            key, separator, value = line.partition(': ')
+            if separator and key in ('Actor', 'Message', 'Target Representation'):
+                fields.setdefault(key, value)
+        return {
+            'actor': fields.get('Actor', 'Unknown'),
+            'summary': fields.get('Message', message.split('\n', 1)[0]),
+            'target': fields.get('Target Representation', ''),
+        }
+
+    def browse(self, actor='', event_type='', page=1):
+        from ..models import AuditEvent
+
+        # Extract only the header fields in SQL; do not load every full snapshot.
+        def field(label, fallback):
+            marker = f'\n{label}: '
+            source = '\n' + AuditEvent.message
+            position = (func.instr(source, marker) if self.db.engine.dialect.name == 'sqlite'
+                        else func.strpos(source, marker))
+            remaining = func.substr(source, position + len(marker))
+            end = (func.instr(remaining + '\n', '\n') if self.db.engine.dialect.name == 'sqlite'
+                   else func.strpos(remaining + '\n', '\n'))
+            return case((position > 0, func.substr(remaining, 1, end - 1)), else_=fallback)
+
+        actor_field = field('Actor', 'Unknown')
+        summary_field = field('Message', 'Other')
+        actors = self.db.session.scalars(self.db.select(actor_field).distinct().order_by(actor_field)).all()
+        summaries = self.db.session.scalars(self.db.select(summary_field).distinct()).all()
+        types = sorted({self.event_type(summary) for summary in summaries})
+        query = self.db.select(AuditEvent)
+        if actor:
+            query = query.where(actor_field == actor)
+        if event_type:
+            query = query.where(summary_field.in_([summary for summary in summaries
+                                                  if self.event_type(summary) == event_type]))
+        records = self.db.paginate(query.order_by(AuditEvent.occurred_at.desc(), AuditEvent.id.desc()),
+                                   page=page, per_page=25, error_out=False)
+        return records, actors, types
 
     @contextmanager
     def track(self, target: object, actor: object = None, message: str = None):

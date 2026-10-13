@@ -606,6 +606,23 @@ def admin():
     return render_template('system-settings/admin.html', title="Admin", tab='system', num_users=num_users, platform=platform, config=config, routes=routes, blueprints=blueprints, extensions=extensions, update_status=update_status)
 
 
+@core.route('/system-settings/admin/audit-log')
+@login_required
+@require_permission('system.admin')
+def admin_audit_log():
+    if not current_app.config.get('ADMIN_PANEL', False):
+        flash('Admin panel is disabled.', 'error')
+        abort(403)
+    actor = request.args.get('user', '').strip()
+    event_type = request.args.get('event_type', '').strip()
+    page = max(1, request.args.get('page', 1, type=int))
+    records, actors, event_types = audit.browse(actor=actor, event_type=event_type, page=page)
+    events = [{'record': record, **audit.describe_event(record.message)} for record in records.items]
+    audit.log("User accessed audit log", actor=current_user)
+    return render_template('system-settings/audit-log.html', title="Audit Log", tab='system', records=records,
+                           events=events, actors=actors, event_types=event_types, actor=actor, event_type=event_type)
+
+
 @core.route('/system-settings/admin/sql-console', methods=["POST"])
 @login_required
 @require_permission('system.admin')

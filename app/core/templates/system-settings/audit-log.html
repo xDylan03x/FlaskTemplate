@@ -1,0 +1,76 @@
+{% extends 'system-settings/base.html' %}
+{% block settings_content %}
+    <form method="get" x-data @change="$el.requestSubmit()" class="flex flex-col gap-4 sm:flex-row sm:items-end">
+        <div class="min-w-0 flex-1">
+            <label class="label" for="audit-user">User</label>
+            <select id="audit-user" name="user" class="select w-full">
+                <option value="">All users</option>
+                {% if actor and actor not in actors %}
+                    <option value="{{ actor }}" selected>{{ actor }}</option>
+                {% endif %}
+                {% for value in actors %}
+                    <option value="{{ value }}" {% if actor == value %}selected{% endif %}>{{ value[6:-1] if value.startswith('<User ') and value.endswith('>') else value }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="min-w-0 flex-1">
+            <label class="label" for="audit-event-type">Event type</label>
+            <select id="audit-event-type" name="event_type" class="select w-full">
+                <option value="">All event types</option>
+                {% if event_type and event_type not in event_types %}
+                    <option value="{{ event_type }}" selected>{{ event_type }}</option>
+                {% endif %}
+                {% for value in event_types %}
+                    <option value="{{ value }}" {% if event_type == value %}selected{% endif %}>{{ value }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </form>
+
+    <div class="overflow-x-auto mt-8">
+        <table class="table table-auto w-full">
+            <thead>
+                <tr><th>Time</th><th>User</th><th>Event</th></tr>
+            </thead>
+            <tbody>
+                {% for event in events %}
+                    <tr class="hover:bg-base-300">
+                        <td class="align-top">
+                            <time datetime="{{ event.record.occurred_at|datetime_iso }}" x-data x-text="formatDateTime($el.dateTime)">{{ event.record.occurred_at|format_datetime }}</time>
+                        </td>
+                        <td class="align-top whitespace-nowrap">{{ event.actor[6:-1] if event.actor.startswith('<User ') and event.actor.endswith('>') else event.actor }}</td>
+                        <td class="min-w-64 max-w-xl break-words">
+                            <details>
+                                <summary class="font-medium link cursor-pointer">{{ event.summary }}</summary>
+                                <pre class="mt-2 whitespace-pre-wrap break-all text-xs">{{ event.record.message }}</pre>
+                            </details>
+                            {% if event.target and event.target != 'None' %}
+                                <p class="support mt-1 break-all">{{ event.target }}</p>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr><td colspan="3" class="py-10 text-center text-base-content/60">No audit events match these filters.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="flex items-center justify-between gap-4 mt-8">
+        <div class="text-sm text-base-content/50">
+            {{ records.total }} {{ 'event' if records.total == 1 else 'events' }} · Page {{ records.page }} of {{ records.pages or 1 }}
+        </div>
+        <div class="join">
+            {% if records.has_prev %}
+                <a class="join-item btn btn-sm btn-ghost" href="{{ url_for('core.admin_audit_log', page=records.prev_num, user=actor, event_type=event_type) }}">Previous</a>
+            {% else %}
+                <button class="join-item btn btn-sm btn-ghost" disabled>Previous</button>
+            {% endif %}
+            {% if records.has_next %}
+                <a class="join-item btn btn-sm btn-ghost" href="{{ url_for('core.admin_audit_log', page=records.next_num, user=actor, event_type=event_type) }}">Next</a>
+            {% else %}
+                <button class="join-item btn btn-sm btn-ghost" disabled>Next</button>
+            {% endif %}
+        </div>
+    </div>
+{% endblock %}
