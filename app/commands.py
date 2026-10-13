@@ -1,4 +1,5 @@
 import json
+import secrets
 from dataclasses import dataclass
 import click
 from flask import current_app
@@ -237,7 +238,7 @@ def _run_doctor_checks(timeout: float) -> list[DoctorCheck]:
 @click.command(name='create_admin')
 @with_appcontext
 def create_admin():
-    """Creates the admin user from .env values."""
+    """Creates the admin user with a generated password."""
     from flask import current_app
     from . import db
     from .model_managers import UserManager
@@ -245,16 +246,16 @@ def create_admin():
 
     name = current_app.config.get('ADMIN_NAME')
     email = current_app.config.get('ADMIN_EMAIL')
-    password = current_app.config.get('ADMIN_PASSWORD')
 
-    if not all([name, email, password]):
-        click.echo('Admin credentials not found in your .env file.')
+    if not all([name, email]):
+        click.echo('Set ADMIN_NAME and ADMIN_EMAIL in your .env file.')
         return
 
     if User.query.filter_by(email=email).first():
         click.echo('Admin user with that email already exists.')
         return
 
+    password = secrets.token_urlsafe(12)
     user = UserManager.create_user(email=email, name=name, email_verified=True)
     user.set_password(password)
     user.set_permission('users.create', True)
@@ -266,6 +267,7 @@ def create_admin():
     user.set_setting('notifications.security_alerts_via_email', True)
     db.session.commit()
     click.echo('Admin user created.')
+    click.echo(f'Password: {password}')
 
 
 @click.command(name='update_users')

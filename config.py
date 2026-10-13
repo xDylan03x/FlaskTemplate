@@ -50,10 +50,9 @@ class Config:
             else:
                 self.TRUSTED_HOSTS = [item.strip() for item in trusted.split(",") if item.strip()]
 
-        # Admin credentials
+        # Admin identity
         self.ADMIN_NAME = os.environ.get('ADMIN_NAME', None)
         self.ADMIN_EMAIL = os.environ.get('ADMIN_EMAIL', None)
-        self.ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', None)
 
         # Database URI
         self.SQLALCHEMY_DATABASE_URI = os.environ.get("DATABASE_URL", None)
@@ -117,5 +116,5 @@ class Config:
             logging.fatal("Twilio configuration is incomplete.")
         if not self.FROM_EMAIL or not self.SENDGRID_API_KEY or not self.SENDGRID_EMAIL_TEMPLATE_ID:
             logging.fatal("Sendgrid configuration is incomplete.")
-        if not self.ADMIN_NAME or not self.ADMIN_EMAIL or not self.ADMIN_PASSWORD:
+        if not self.ADMIN_NAME or not self.ADMIN_EMAIL:
             logging.warning("Admin user configuration is incomplete. Set this up to enable default admin user creation.")

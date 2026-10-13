@@ -97,7 +97,7 @@ Environment and deployment settings remain in `config.py`.
    flask --app app create_admin
    ```
 
-   The application loads `.env` automatically. `update_app` initializes system settings, including self-service registration. `create_admin` creates the initial account from the `ADMIN_*` values and grants user-management permissions; it does not update an account that already exists. To synchronize defaults on existing users after adding registered settings or permissions, run `flask --app app update_users`.
+   The application loads `.env` automatically. `update_app` initializes system settings, including self-service registration. `create_admin` uses `ADMIN_NAME` and `ADMIN_EMAIL` to create the initial account and grants user-management permissions. It generates a secure random 16-character password and prints it to the terminal after saving the account; save this password for your first login. It does not update an account that already exists. To synchronize defaults on existing users after adding registered settings or permissions, run `flask --app app update_users`.
 
 4. Build the frontend assets:
 
@@ -147,7 +147,6 @@ The database and secret key are the foundation. SendGrid provides account emails
 | `SITE_THEME` | A configured DaisyUI theme, such as `light` or `dark`. |
 | `ADMIN_NAME` | The initial administrator's name. |
 | `ADMIN_EMAIL` | A real email address that can receive verification codes. |
-| `ADMIN_PASSWORD` | A unique password for the initial administrator; replace `replace_me`. |
 | `SECRET_KEY` | A random, persistent secret used to sign sessions and protect forms. |
 
 Generate a secret locally and paste the result into `SECRET_KEY`:
