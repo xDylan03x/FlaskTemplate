@@ -1,7 +1,10 @@
 import copy
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 from flask import g, has_request_context, current_app
+from sqlalchemy import inspect
+from sqlalchemy.orm.state import InstanceState
 from sqlalchemy.orm import sessionmaker
+from werkzeug.local import LocalProxy
 
 
 class AuditManager:
@@ -94,7 +97,7 @@ class AuditManager:
     def track(self, target: object, actor: object = None, message: str = None):
         """
         Track the target object as changes are made throughout it.
-        Safely handles __dict__, __slots__, and primitive types.
+        Snapshots ORM columns and relationship identifiers, or plain objects.
         Captures deep mutations (nested dicts/lists).
 
         Usage:
@@ -139,6 +142,30 @@ class AuditManager:
             self._record(self._create_audit_message(audit_record))
 
     def _get_state(self, target: object):
+        if isinstance(target, LocalProxy):
+            target = target._get_current_object()
+        state = inspect(target, raiseerr=False)
+        if isinstance(state, InstanceState):
+            # Loading relationships must not flush the changes being audited.
+            with state.session.no_autoflush if state.session is not None else nullcontext():
+                snapshot = {
+                    attr.key: copy.deepcopy(getattr(target, attr.key))
+                    for attr in state.mapper.column_attrs
+                    if attr.key not in ('password_hash', 'hashed_token')
+                }
+                for relationship in state.mapper.relationships:
+                    if relationship.lazy in ('dynamic', 'write_only'):
+                        continue
+                    if state.session is None and relationship.key in state.unloaded:
+                        continue
+                    related = getattr(target, relationship.key)
+                    if relationship.uselist:
+                        snapshot[relationship.key] = sorted(
+                            (self._related_state(item) for item in related), key=repr,
+                        )
+                    else:
+                        snapshot[relationship.key] = self._related_state(related) if related is not None else None
+                return snapshot
         if hasattr(target, '__dict__'):
             return copy.deepcopy(target.__dict__)
         elif hasattr(target, '__slots__'):
@@ -146,6 +173,15 @@ class AuditManager:
             return {slot: copy.deepcopy(getattr(target, slot)) for slot in slots if hasattr(target, slot)}
         else:
             return copy.deepcopy(target)
+
+    def _related_state(self, target):
+        state = inspect(target)
+        snapshot = {column.key: copy.deepcopy(getattr(target, column.key)) for column in state.mapper.primary_key}
+        # Include key/value definitions so edits to existing permissions are visible.
+        for key in ('key', 'value'):
+            if key in state.mapper.column_attrs:
+                snapshot[key] = copy.deepcopy(getattr(target, key))
+        return snapshot
 
     def _create_audit_message(self, record: dict) -> str:
         """
