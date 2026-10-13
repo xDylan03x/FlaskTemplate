@@ -15,9 +15,6 @@ class Config:
         self.FLASK_ENV = os.environ.get("FLASK_ENV", "development")
 
         # Site Basics
-        self.APP_NAME = os.environ.get("APP_NAME") or "Unnamed App"
-        self.APP_ABBR = os.environ.get("APP_ABBR") or "UA"
-        self.SITE_THEME = os.environ.get("SITE_THEME") or "light"
         self.ADMIN_PANEL = os.getenv("ADMIN_PANEL", 'False').lower() in ('true', '1', 't')
 
         self.MAIN_REPO_URL = None
@@ -50,16 +47,10 @@ class Config:
             else:
                 self.TRUSTED_HOSTS = [item.strip() for item in trusted.split(",") if item.strip()]
 
-        # Admin identity
-        self.ADMIN_NAME = os.environ.get('ADMIN_NAME', None)
-        self.ADMIN_EMAIL = os.environ.get('ADMIN_EMAIL', None)
-
         # Database URI
         self.SQLALCHEMY_DATABASE_URI = os.environ.get("DATABASE_URL", None)
         if not self.SQLALCHEMY_DATABASE_URI:
-            if self.FLASK_ENV == "production":
-                raise RuntimeError("DATABASE_URL must be configured in production.")
-            self.SQLALCHEMY_DATABASE_URI = f"postgresql://localhost/{self.APP_ABBR.lower()}_dev"
+            raise RuntimeError("DATABASE_URL must be configured.")
 
         # Secret Key
         self.SECRET_KEY = os.environ.get('SECRET_KEY', None)
@@ -116,5 +107,3 @@ class Config:
             logging.fatal("Twilio configuration is incomplete.")
         if not self.FROM_EMAIL or not self.SENDGRID_API_KEY or not self.SENDGRID_EMAIL_TEMPLATE_ID:
             logging.fatal("Sendgrid configuration is incomplete.")
-        if not self.ADMIN_NAME or not self.ADMIN_EMAIL:
-            logging.warning("Admin user configuration is incomplete. Set this up to enable default admin user creation.")

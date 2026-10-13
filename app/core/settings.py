@@ -6,6 +6,10 @@ settings = [
     SettingSpec(key="Security Alerts via Email", group="Notifications", description="Receive security alerts via email", default=True),
     SettingSpec(key="Security Alerts via Text", group="Notifications", description="Receive security alerts via text", default=False),
     SettingSpec(key="Theme", group="Preferences", description="Appearance of the application", default="light"),
+    SettingSpec(key="Name", group="Application", description="Application name shown in pages and messages.", default="Unnamed App", scope="system"),
+    SettingSpec(key="Abbreviation", group="Application", description="Short application name shown in page titles.", default="UA", scope="system"),
+    SettingSpec(key="Default Theme", group="Application", description="Default appearance when a user has not chosen a theme.", default="light", scope="system"),
+    SettingSpec(key="Admin Email", group="Application", description="Contact address shown in documentation and used for bug reports.", default="", scope="system"),
     SettingSpec(key="Allow Account Creation", group="Authentication", description="Allow users to create an account (does not affect account creation in the user management tab).", default=True, scope="system", storage_key="allow_account_creation"),
     SettingSpec(key="Strict Login", group="Authentication", description="Block users from signing in with suspicious user agents.", default=True, scope="system", storage_key="strict_login"),
 ]

@@ -1,7 +1,9 @@
 import json
+import os
 import secrets
 from dataclasses import dataclass
 import click
+from email_validator import validate_email, EmailNotValidError
 from flask import current_app
 from flask.cli import with_appcontext
 
@@ -239,17 +241,18 @@ def _run_doctor_checks(timeout: float) -> list[DoctorCheck]:
 @with_appcontext
 def create_admin():
     """Creates the admin user with a generated password."""
-    from flask import current_app
     from . import db
     from .model_managers import UserManager
     from .models import User
 
-    name = current_app.config.get('ADMIN_NAME')
-    email = current_app.config.get('ADMIN_EMAIL')
-
-    if not all([name, email]):
-        click.echo('Set ADMIN_NAME and ADMIN_EMAIL in your .env file.')
-        return
+    name = click.prompt('Admin name').strip()
+    if not name:
+        raise click.ClickException('Admin name cannot be blank.')
+    email = click.prompt('Admin email').strip()
+    try:
+        email = validate_email(email, check_deliverability=False).normalized.lower()
+    except EmailNotValidError:
+        raise click.ClickException('Enter a valid admin email address.')
 
     if User.query.filter_by(email=email).first():
         click.echo('Admin user with that email already exists.')
@@ -301,9 +304,18 @@ def update_app():
     from .model_managers import SystemManager
     from .models import SystemSetting
 
+    # Import former environment settings only when their database rows are absent.
+    legacy_variables = {
+        "application.name": "APP_NAME",
+        "application.abbreviation": "APP_ABBR",
+        "application.default_theme": "SITE_THEME",
+        "application.admin_email": "ADMIN_EMAIL",
+    }
     for setting in sm.all(scope="system"):
         if db.session.scalar(db.select(SystemSetting).where(SystemSetting.key == setting.database_key)) is None:
-            SystemManager.set_setting(setting.setting, setting.default)
+            variable = legacy_variables.get(setting.setting)
+            value = (os.environ.get(variable) if variable else None) or setting.default
+            SystemManager.set_setting(setting.setting, value)
 
     click.echo('Application settings updated.')
 

@@ -71,15 +71,15 @@ def create_app(cfg: Config = Config) -> Flask:
     # Context processors
     @app.context_processor
     def app_name():
-        return dict(app_name=app.config["APP_NAME"])
+        return dict(app_name=sm.system_setting("application.name"))
 
     @app.context_processor
     def app_abbr():
-        return dict(app_abbr=app.config["APP_ABBR"])
+        return dict(app_abbr=sm.system_setting("application.abbreviation"))
 
     @app.context_processor
     def site_theme():
-        return dict(site_theme=app.config["SITE_THEME"])
+        return dict(site_theme=sm.system_setting("application.default_theme"))
 
     # Register CLI commands
     app.cli.add_command(create_admin)

@@ -23,7 +23,7 @@ def _send_phone_verification(user):
     new_token_obj.verify_phone_number = True
     db.session.commit()
     verify_url = url_for('auth.login_with_token', raw_token=new_token, _external=True)
-    message = f'Click the following link to verify the phone number in your {current_app.config["APP_NAME"]} account: {verify_url}\n\nIf you did not request this link, please ignore this text.'
+    message = f'Click the following link to verify the phone number in your {sm.system_setting("application.name")} account: {verify_url}\n\nIf you did not request this link, please ignore this text.'
     send_sms(body=message, recipient=user.phone_number)
 
 
@@ -274,7 +274,7 @@ def enable_totp():
         new_factor = (
             twilio_client.verify.v2.services(sid)
             .entities(current_user.totp_entity)
-            .new_factors.create(friendly_name=current_app.config["APP_NAME"], factor_type="totp")
+            .new_factors.create(friendly_name=sm.system_setting('application.name'), factor_type="totp")
         )
         current_user.totp_factor = new_factor.sid
         db.session.commit()
@@ -625,11 +625,15 @@ def admin_sql_console():
 def bug_report():
     form = BugReportForm()
     if form.validate_on_submit():
-        subject = f"New Bug Report Submission for {current_app.config['APP_NAME']}"
+        admin_email = sm.system_setting('application.admin_email')
+        if not admin_email:
+            flash('Bug reports are unavailable until an admin email is configured in system settings.', 'error')
+            return render_template('bug-report.html', title="Bug Report", form=form)
+        subject = f"New Bug Report Submission for {sm.system_setting('application.name')}"
         body = (f"User: {current_user.name} ({current_user.email})\n\n"
                 f"Report Subject: {form.subject.data.strip()}\n"
                 f"Report Message:\n{form.message.data.strip()}\n")
-        send_email(subject, body, current_app.config["ADMIN_EMAIL"])
+        send_email(subject, body, admin_email)
         flash('Your report has been sent. You should hear from an administrator soon.', 'success')
         return redirect(url_for('core.bug_report'))
     return render_template('bug-report.html', title="Bug Report", form=form)

@@ -3,13 +3,13 @@ import requests
 from app.auth.helper import get_ip_from_request, twilio_verify_send, twilio_verify_check, hibp_password_check
 from app.models import NotificationCategory, RiskAction
 from app.model_managers import UserManager, LoginTokenManager, LoginRecordManager, UserDeviceManager, \
-    NotificationManager, SystemManager
+    NotificationManager
 from flask_login import login_user, logout_user
 from flask import flash, request, redirect, render_template, url_for, current_app, session
 from app.auth import auth
 from .forms import LoginForm, TwoFactorAuthSelectForm, TwoFactorAuthCodeForm, MagicLinkEmailForm, MagicLinkSelectForm, \
     ForgotPasswordEmailForm, ResetPasswordForm
-from app import db
+from app import db, sm
 from ..core.helper import send_email, send_sms, parse_user_agent, route_url
 
 LOGIN_RISK_SCORE_THRESHOLD = 50
@@ -55,7 +55,7 @@ def login():
     """The actual login form page"""
     next_url = request.args.get('next', None)
     form = LoginForm()
-    create_accounts = SystemManager.get_setting('authentication.allow_account_creation')
+    create_accounts = sm.system_setting('authentication.allow_account_creation')
     if form.validate_on_submit():
         user = UserManager.get_user_by_email(form.email.data.lower().strip())
 
@@ -115,7 +115,7 @@ def forgot_password(raw_token: str = None):
             _, raw_token = LoginTokenManager.create_login_token(user_id=user.id, next_url=request.args.get('next', None), reset_password=True, auth_source='forgot password')
             login_url = url_for('auth.forgot_password', raw_token=raw_token, _external=True)
             message = f'Click the following link to reset your password: {login_url}<br><br>If you did not request this link, please ignore this email.'
-            send_email(subject=f'Your {current_app.config["APP_NAME"]} Password Reset Link', body=message, recipient=user.email)
+            send_email(subject=f'Your {sm.system_setting("application.name")} Password Reset Link', body=message, recipient=user.email)
             flash('A login link has been sent to your email.', 'info')
             return redirect(url_for('auth.login', next=request.args.get('next', None)))
         return render_template('forgot_password_email.html', title='Forgot Password', form=form)
@@ -219,7 +219,7 @@ def magic_link(raw_token: str = None):
                 flash(CONTACT_ADMINISTRATOR_MESSAGE, 'error')
                 return redirect(url_for('auth.login'))
             message = f'Click the following link to log in to your account: {login_url}<br><br>If you did not request this link, please ignore this email.'
-            send_email(subject=f'Your {current_app.config["APP_NAME"]} Login Link', body=message, recipient=user.email)
+            send_email(subject=f'Your {sm.system_setting("application.name")} Login Link', body=message, recipient=user.email)
             flash('A login link has been sent to your email.', 'info')
             return redirect(url_for('auth.login'))
         if form.method.data == 'Text':
@@ -227,7 +227,7 @@ def magic_link(raw_token: str = None):
             if not user.phone_number_verified:
                 flash(CONTACT_ADMINISTRATOR_MESSAGE, 'error')
                 return redirect(url_for('auth.login'))
-            message = f'Click the following link to log in to your {current_app.config["APP_NAME"]} account: {login_url}\n\nIf you did not request this link, please ignore this text.'
+            message = f'Click the following link to log in to your {sm.system_setting("application.name")} account: {login_url}\n\nIf you did not request this link, please ignore this text.'
             send_sms(body=message, recipient=user.phone_number)
             flash('A login link has been sent to your phone via text.', 'info')
             return redirect(url_for('auth.login'))
@@ -468,7 +468,7 @@ def login_with_token(raw_token: str):
     user_agent = request.headers.get('User-Agent', '')
 
     # If suspicious user agents are not allowed to log in
-    if SystemManager.get_setting('authentication.strict_login') and parse_user_agent(user_agent)["is_bot"]:
+    if sm.system_setting('authentication.strict_login') and parse_user_agent(user_agent)["is_bot"]:
         flash(CONTACT_ADMINISTRATOR_MESSAGE, 'error')
         return redirect(url_for('auth.login'))
 
@@ -524,7 +524,7 @@ def login_with_token(raw_token: str):
         user.phone_number_verified = True
         db.session.commit()
         flash('Your phone number has been successfully verified.', 'success')
-        body = f'The phone number ({user.phone_number}) associated with your {current_app.config["APP_NAME"]} account has just been verified.\n\nIf you did not perform this action, please secure your account immediately.'
+        body = f'The phone number ({user.phone_number}) associated with your {sm.system_setting("application.name")} account has just been verified.\n\nIf you did not perform this action, please secure your account immediately.'
         NotificationManager.send_notification(user, 'Phone Number Verified', body, NotificationCategory.PHONE_NUMBER_CHANGE)
     # If the user cannot log in
     if not user.can_login():
@@ -534,7 +534,7 @@ def login_with_token(raw_token: str):
     else:
         LoginRecordManager.create_login_record(user.id, get_ip_from_request(request), user_agent, login_token)
         login_user(user, remember=login_token.remember_login)
-        session['theme'] = user.get_setting('preferences.theme') or 'light'
+        session['theme'] = user.get_setting('preferences.theme') or sm.system_setting('application.default_theme')
     # Invalidate the token if it's not to be used for account creation
     if not login_token.create_account:
         LoginTokenManager.invalidate_login_token(login_token)

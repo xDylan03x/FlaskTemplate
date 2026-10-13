@@ -7,9 +7,10 @@ order: -1
 ---
 
 # Welcome
-Welcome to {{ config['APP_NAME'] }}{% if current_user.is_authenticated %}, {{ current_user.name }}{% endif %}!
+Welcome to {{ app_name }}{% if current_user.is_authenticated %}, {{ current_user.name }}{% endif %}!
 Below, you can find some information to help you get started.  
-{% if current_user.is_authenticated %}If you have any questions, please reach out to [{{ config['ADMIN_EMAIL'] }}](mailto:{{ config['ADMIN_EMAIL'] }}).{% endif %}
+{% set admin_email = get_system_setting('application.admin_email') %}
+{% if current_user.is_authenticated and admin_email %}If you have any questions, please reach out to [{{ admin_email }}](mailto:{{ admin_email }}).{% endif %}
 
 ## Next Steps
 {% if get_system_setting('authentication.allow_account_creation') %}1. If you need an account, visit the [account creation page]({{ url_for("core.create_account") }}).{% else %}1. If you need an account, please contact an administrator.{% endif %}

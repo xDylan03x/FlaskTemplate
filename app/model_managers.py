@@ -1,7 +1,7 @@
 import hashlib
 import sqlalchemy as sa
 from sqlalchemy import orm as so
-from flask import current_app, url_for
+from flask import url_for
 from flask_sqlalchemy.pagination import Pagination
 from app.core.helper import send_email, send_sms
 from app.models import User, LoginToken, LoginRecord, UserNotification, NotificationCategory, UserDevice, File, \
@@ -77,8 +77,8 @@ class UserManager:
             _, raw_token = LoginTokenManager.create_login_token(expiration_minutes=86400, user_id=user.id, next_url=url_for('core.setup_account'), immediate_login=True, create_account=True, auth_source='welcome email')
             welcome_url = url_for('auth.login_with_token', raw_token=raw_token, _external=True)
             send_email(
-                f'Your {current_app.config["APP_NAME"]} Account Has Been Created',
-                f'Welcome to {current_app.config["APP_NAME"]}!\nTo set up your account, please vising the link below:\n{welcome_url}',
+                f'Your {sm.system_setting("application.name")} Account Has Been Created',
+                f'Welcome to {sm.system_setting("application.name")}!\nTo set up your account, please vising the link below:\n{welcome_url}',
                 user.email,
                 preheader='Follow the link within 60 days to setup your account.'
             )

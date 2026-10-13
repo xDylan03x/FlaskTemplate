@@ -97,7 +97,7 @@ Environment and deployment settings remain in `config.py`.
    flask --app app create_admin
    ```
 
-   The application loads `.env` automatically. `update_app` initializes system settings, including self-service registration. `create_admin` uses `ADMIN_NAME` and `ADMIN_EMAIL` to create the initial account and grants user-management permissions. It generates a secure random 16-character password and prints it to the terminal after saving the account; save this password for your first login. It does not update an account that already exists. To synchronize defaults on existing users after adding registered settings or permissions, run `flask --app app update_users`.
+   The application loads `.env` automatically. `update_app` initializes system settings, including application identity and self-service registration. `create_admin` prompts for the initial administrator's name and email and grants user-management permissions. It generates a secure random 16-character password and prints it to the terminal after saving the account; save this password for your first login. It does not update an account that already exists or change the application contact email. To synchronize defaults on existing users after adding registered settings or permissions, run `flask --app app update_users`.
 
 4. Build the frontend assets:
 
@@ -138,16 +138,23 @@ Use `.env.example` for local development. For a new production installation, cop
 
 The database and secret key are the foundation. SendGrid provides account emails and email notifications; Twilio Verify provides 2FA codes, including email codes. Twilio Messaging provides ordinary text messages, and S3-compatible storage provides file uploads. Google login and Sentry are optional integrations, although the login page displays the Google button even when its credentials are empty. Leaving a service blank does not automatically hide or disable its related UI.
 
-#### Application identity, administrator, and secret key
+#### Application settings and secret key
 
 | Variable | What to enter |
 |----------|---------------|
-| `APP_NAME` | The display name used in the UI and messages. |
-| `APP_ABBR` | A short application abbreviation, such as `FT`. It also determines the development database fallback name. |
-| `SITE_THEME` | A configured DaisyUI theme, such as `light` or `dark`. |
-| `ADMIN_NAME` | The initial administrator's name. |
-| `ADMIN_EMAIL` | A real email address that can receive verification codes. |
 | `SECRET_KEY` | A random, persistent secret used to sign sessions and protect forms. |
+
+Application identity is stored in the database and can be edited on the System
+Settings page: `application.name`, `application.abbreviation`,
+`application.default_theme`, and `application.admin_email`. The admin email
+receives bug reports and appears as the contact address in documentation; it is
+independent of the account email entered at the `create_admin` prompts.
+
+For an existing installation, run `flask --app app update_app` with your old
+environment values still present. Missing rows are initialized from `APP_NAME`,
+`APP_ABBR`, `SITE_THEME`, and `ADMIN_EMAIL`; existing database values are preserved.
+Afterward those variables can be removed from `.env`. The admin name is entered
+only when creating an account and has no application setting.
 
 Generate a secret locally and paste the result into `SECRET_KEY`:
 
@@ -174,7 +181,8 @@ DATABASE_URL="postgresql://flask_template:YOUR_URL_ENCODED_PASSWORD@localhost:54
 
 URL-encode special characters in the username or password. For a hosted database, use its connection details and required TLS options, such as `?sslmode=require`. The database must exist before you apply migrations; migrations create the application's tables.
 
-An empty `DATABASE_URL` in development uses `postgresql://localhost/<lowercase APP_ABBR>_dev` (`ft_dev` for `FT`). That fallback assumes your local PostgreSQL authentication and operating-system user are already configured. Production requires an explicit URL.
+Both development and production require an explicit `DATABASE_URL`; there is no
+fallback based on the application's abbreviation.
 
 See PostgreSQL's [createuser](https://www.postgresql.org/docs/current/app-createuser.html) and [createdb](https://www.postgresql.org/docs/current/app-createdb.html) documentation for administrator connection options.
 

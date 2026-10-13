@@ -6,7 +6,7 @@ import os
 import platform
 import sys
 from werkzeug.sansio.utils import host_is_trusted
-from app import sendgrid_client, twilio_client, db
+from app import sendgrid_client, twilio_client, db, sm
 from sendgrid.helpers.mail import Mail, From, ReplyTo
 from flask import current_app, url_for
 from device_detector import DeviceDetector
@@ -148,7 +148,7 @@ def send_email(
     if sender is None:
         sender = current_app.config["FROM_EMAIL"]
     if sender_name is None:
-        sender_name = current_app.config["APP_NAME"]
+        sender_name = sm.system_setting("application.name")
     if template_id is None:
         template_id = current_app.config["SENDGRID_EMAIL_TEMPLATE_ID"]
 
