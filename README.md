@@ -117,6 +117,50 @@ Environment and deployment settings remain in `config.py`.
 
 Run `make help` to see the available commands. `make update` also merges template changes and applies database migrations; review the Makefile before using it on an existing application.
 
+### Command-line administration
+
+Use `flask --app app tools --help` to explore the `settings`, `users`,
+`permissions`, and `groups` command families. Each group also displays help when
+run without a subcommand. These commands operate through your configured
+database connection; they do not require a web login.
+
+```sh
+flask --app app tools settings list
+flask --app app tools settings set application.name "My Application"
+flask --app app tools users list --include-deleted
+flask --app app tools users show person@example.com
+flask --app app tools users update person@example.com --name "Alex Smith"
+flask --app app tools users reset-password person@example.com
+flask --app app tools permissions list person@example.com
+flask --app app tools permissions set person@example.com users.create allow
+flask --app app tools groups list
+flask --app app tools groups update "Support Team" --description "Customer support"
+flask --app app tools groups permissions set "Support Team" users.create allow
+flask --app app tools groups members add "Support Team" person@example.com
+```
+
+Users accept a numeric ID or exact email; groups accept a numeric ID or an
+unambiguous exact name. IDs remain stable after email/password changes. Settings
+accept registered keys and existing storage aliases; listing shows canonical
+keys, effective values, and whether each value is saved or a default. Omitting a
+setting value prompts for it. User/group updates prompt for their fields when no
+options are supplied; otherwise they change only the supplied fields.
+
+Password resets generate and print a secure password, or accept a hidden,
+confirmed password with `--prompt`. `users verify` verifies email and any existing
+phone number without changing status. `users disable` preserves verification
+and permissions, and `users enable` makes a non-deleted account active. Email
+changes preserve verification. Email changes, password resets, disabling, and
+deletion invalidate existing sessions and outstanding login tokens.
+
+`users delete` soft-deletes an account. `users recover` restores it as disabled,
+retaining settings, permissions, and group memberships without reviving old
+access. Group permission values are `allow`, `deny`, or `unset`; they remain live
+inherited definitions. User permission output distinguishes direct, inherited,
+and effective values, including group conflicts. Membership `add`/`remove`
+commands leave other members unchanged and tolerate repeated operations.
+Changes are audited as CLI actions, and passwords are excluded from audit logs.
+
 ### Cloning The Repository
 To make things easier in the future, you can set up your application repository
 in a way that allows you to merge new updates from this template repository.
@@ -306,3 +350,11 @@ Common setup failures:
 - **Google reports a redirect mismatch:** Compare the full callback URL, including scheme, host, port, and path, with the OAuth client's registered URLs.
 - **Uploads fail in the browser:** Check CORS origins, bucket permissions, endpoint, and the signing region. A successful bucket check alone does not prove a browser upload can complete.
 - **The app rejects the hostname:** Add the actual hostname to `TRUSTED_HOSTS` and check reverse-proxy forwarding settings.
+
+---
+
+## AI Disclaimer
+Some of the code in this repository was generated with AI. This includes (non-comprehensively):
+- Some portions of this `README.md` file
+- Uppy uploader script (`uploader.js`)
+- Some portions of the `commands.py` file and supporting items

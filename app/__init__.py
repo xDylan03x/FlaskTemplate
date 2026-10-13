@@ -108,4 +108,7 @@ def create_app(cfg: Config = Config) -> Flask:
     from .errors import errors
     app.register_blueprint(errors)
 
+    from .cli import tools
+    app.cli.add_command(tools)
+
     return app
