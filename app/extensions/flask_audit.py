@@ -98,6 +98,7 @@ class AuditManager:
         """
         Track the target object as changes are made throughout it.
         Snapshots ORM columns and relationship identifiers, or plain objects.
+        Records only when the block succeeds; commit writes inside the block.
         Captures deep mutations (nested dicts/lists).
 
         Usage:
@@ -109,37 +110,35 @@ class AuditManager:
         """
         before_state = self._get_state(target)
 
-        try:
-            yield target
-        finally:
-            after_state = self._get_state(target)
-            differences = {}
+        yield target
+        after_state = self._get_state(target)
+        differences = {}
 
-            if isinstance(before_state, dict) and isinstance(after_state, dict):
-                # Handle objects (__dict__ or __slots__)
-                all_keys = set(before_state.keys()) | set(after_state.keys())
-                for k in all_keys:
-                    b_val = before_state.get(k)
-                    a_val = after_state.get(k)
-                    if b_val != a_val:
-                        differences[k] = {"before": b_val, "after": a_val}
-            else:
-                # Handle direct primitives/collections if they were mutated/reassigned
-                if before_state != after_state:
-                    differences["root_value"] = {"before": before_state, "after": after_state}
+        if isinstance(before_state, dict) and isinstance(after_state, dict):
+            # Handle objects (__dict__ or __slots__)
+            all_keys = set(before_state.keys()) | set(after_state.keys())
+            for k in all_keys:
+                b_val = before_state.get(k)
+                a_val = after_state.get(k)
+                if b_val != a_val:
+                    differences[k] = {"before": b_val, "after": a_val}
+        else:
+            # Handle direct primitives/collections if they were mutated/reassigned
+            if before_state != after_state:
+                differences["root_value"] = {"before": before_state, "after": after_state}
 
-            audit_record = {
-                "message": message,
-                "target_type": type(target).__name__,
-                "target_repr": str(target),
-                "actor": str(actor) if actor else "System",
-                "state_before": before_state,
-                "state_after": after_state,
-                "differences": differences,
-                "has_changes": len(differences) > 0
-            }
+        audit_record = {
+            "message": message,
+            "target_type": type(target).__name__,
+            "target_repr": str(target),
+            "actor": str(actor) if actor else "System",
+            "state_before": before_state,
+            "state_after": after_state,
+            "differences": differences,
+            "has_changes": len(differences) > 0
+        }
 
-            self._record(self._create_audit_message(audit_record))
+        self._record(self._create_audit_message(audit_record))
 
     def _get_state(self, target: object):
         if isinstance(target, LocalProxy):
@@ -154,6 +153,17 @@ class AuditManager:
                     if attr.key not in ('password_hash', 'hashed_token')
                 }
                 for relationship in state.mapper.relationships:
+                    if state.session is not None and relationship.lazy == 'dynamic' and relationship.key in ('settings', 'permissions'):
+                        related = list(getattr(target, relationship.key))
+                        # Setters can add definitions by foreign key without appending to the relationship.
+                        related.extend(item for item in state.session.new
+                                       if isinstance(item, relationship.mapper.class_)
+                                       and item.user_id == target.id and item not in related)
+                        snapshot[relationship.key] = sorted(
+                            (self._related_state(item) for item in related if item not in state.session.deleted),
+                            key=repr,
+                        )
+                        continue
                     if relationship.lazy in ('dynamic', 'write_only'):
                         continue
                     if state.session is None and relationship.key in state.unloaded:

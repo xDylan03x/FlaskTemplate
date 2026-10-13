@@ -2,7 +2,7 @@ from flask import request, jsonify, current_app, abort, redirect
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
 from ..core.helper import get_s3_client, route_url, datetime_iso
-from app import db
+from app import db, audit
 from app.api import apiv1
 from app.models import File
 from ..model_managers import NotificationManager, FileManager
@@ -94,6 +94,7 @@ def presign_upload():
         },
         ExpiresIn=300,
     )
+    audit.log("User requested file upload", target=uploaded_file, actor=current_user)
 
     return jsonify({
         'file_id': uploaded_file.uuid36,
@@ -141,7 +142,9 @@ def notifications(uuid36: str = None):
     elif request.method == 'PATCH':
         if not uuid36:
             return jsonify({"error": "Notification ID is required"}), 400
-        NotificationManager.mark_notification_as_read(uuid36)
+        notification = NotificationManager.mark_notification_as_read(uuid36)
+        if notification is not None:
+            audit.log("User marked notification as read", target=notification, actor=current_user)
         return jsonify({"status": "success", "message": "Notification marked as read"}), 200
 
     return jsonify({"error": "Method not allowed"}), 405

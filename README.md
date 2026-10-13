@@ -358,3 +358,5 @@ Some of the code in this repository was generated with AI. This includes (non-co
 - Some portions of this `README.md` file
 - Uppy uploader script (`uploader.js`)
 - Some portions of the `commands.py` file and supporting items
+- Large portions of the `flask_audit.py` extension
+- Some portions of the admin page

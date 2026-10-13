@@ -4,12 +4,12 @@ from app.auth.helper import get_ip_from_request, twilio_verify_send, twilio_veri
 from app.models import NotificationCategory, RiskAction
 from app.model_managers import UserManager, LoginTokenManager, LoginRecordManager, UserDeviceManager, \
     NotificationManager
-from flask_login import login_user, logout_user
+from flask_login import login_user, logout_user, current_user
 from flask import flash, request, redirect, render_template, url_for, current_app, session
 from app.auth import auth
 from .forms import LoginForm, TwoFactorAuthSelectForm, TwoFactorAuthCodeForm, MagicLinkEmailForm, MagicLinkSelectForm, \
     ForgotPasswordEmailForm, ResetPasswordForm
-from app import db, sm
+from app import db, sm, audit
 from ..core.helper import send_email, send_sms, parse_user_agent, route_url
 
 LOGIN_RISK_SCORE_THRESHOLD = 50
@@ -29,6 +29,7 @@ def _get_login_device(user, login_token):
         pass
     else:
         user_device = UserDeviceManager.create_user_device(user_id=user.id, user_agent=user_agent)
+        audit.log("User registered new login device", target=user_device, actor=user)
         # If this is an account creation token
         if login_token.create_account:
             user_device.device_trusted = True
@@ -48,6 +49,9 @@ def _complete_two_factor_auth(user, login_token, form, can_trust_device):
         user_device = _get_login_device(user, login_token)
         user_device.device_trusted = True
     db.session.commit()
+    audit.log("User completed two-factor authentication", target=user, actor=user)
+    if can_trust_device and form.trust_device.data:
+        audit.log("User trusted login device", target=user_device, actor=user)
 
 
 @auth.route('/login', methods=['GET', 'POST'])
@@ -61,16 +65,19 @@ def login():
 
         # If the user isn't found
         if not user:
+            audit.log("Login rejected: unknown account", actor="Anonymous")
             flash(WRONG_EMAIL_PASSWORD_MESSAGE, 'error')
             return render_template('login.html', title='Log In', form=form), 401
 
         # If the user cannot log in
         if not user.can_login():
+            audit.log("Login rejected: account cannot log in", target=user, actor="Anonymous")
             flash(CONTACT_ADMINISTRATOR_MESSAGE, 'error')
             return render_template('login.html', title='Log In', form=form), 401
 
         # If the password is incorrect
         if not user.check_password(form.password.data):
+            audit.log("Login rejected: incorrect password", target=user, actor="Anonymous")
             flash(WRONG_EMAIL_PASSWORD_MESSAGE, 'error')
             return render_template('login.html', title='Log In', form=form), 401
 
@@ -116,6 +123,7 @@ def forgot_password(raw_token: str = None):
             login_url = url_for('auth.forgot_password', raw_token=raw_token, _external=True)
             message = f'Click the following link to reset your password: {login_url}<br><br>If you did not request this link, please ignore this email.'
             send_email(subject=f'Your {sm.system_setting("application.name")} Password Reset Link', body=message, recipient=user.email)
+            audit.log("Password reset requested", target=user, actor="Anonymous")
             flash('A login link has been sent to your email.', 'info')
             return redirect(url_for('auth.login', next=request.args.get('next', None)))
         return render_template('forgot_password_email.html', title='Forgot Password', form=form)
@@ -152,6 +160,7 @@ def forgot_password(raw_token: str = None):
         db.session.commit()
         user.set_password(form.password.data)
         db.session.commit()
+        audit.log("User reset forgotten password", target=user, actor=user)
         flash('Your password has been reset. You can now log in with your new password.', 'success')
         return redirect(url_for('auth.login', next=login_token.next_url))
     return render_template('reset_password.html', title='Reset Password', form=form)
@@ -220,6 +229,7 @@ def magic_link(raw_token: str = None):
                 return redirect(url_for('auth.login'))
             message = f'Click the following link to log in to your account: {login_url}<br><br>If you did not request this link, please ignore this email.'
             send_email(subject=f'Your {sm.system_setting("application.name")} Login Link', body=message, recipient=user.email)
+            audit.log("Email login link requested", target=user, actor="Anonymous")
             flash('A login link has been sent to your email.', 'info')
             return redirect(url_for('auth.login'))
         if form.method.data == 'Text':
@@ -229,6 +239,7 @@ def magic_link(raw_token: str = None):
                 return redirect(url_for('auth.login'))
             message = f'Click the following link to log in to your {sm.system_setting("application.name")} account: {login_url}\n\nIf you did not request this link, please ignore this text.'
             send_sms(body=message, recipient=user.phone_number)
+            audit.log("Text login link requested", target=user, actor="Anonymous")
             flash('A login link has been sent to your phone via text.', 'info')
             return redirect(url_for('auth.login'))
 
@@ -270,11 +281,13 @@ def oauth_callback(provider: str):
 
     # If the provider isn't supported
     if provider_data is None:
+        audit.log("OAuth login rejected: unsupported provider", actor="Anonymous")
         flash(CONTACT_ADMINISTRATOR_MESSAGE, 'error')
         return redirect(url_for('auth.login'))
 
     # If there was an authentication error, flash the error messages and exit
     if 'error' in request.args:
+        audit.log("OAuth login rejected: provider reported an error", actor="Anonymous")
         for k, v in request.args.items():
             if k.startswith('error'):
                 flash(f'{k}: {v}', 'error')
@@ -282,11 +295,13 @@ def oauth_callback(provider: str):
 
     # Make sure that the state parameter matches the one we created in the authorization request
     if request.args['state'] != session.get('oauth2_state'):
+        audit.log("OAuth login rejected: state mismatch", actor="Anonymous")
         flash(CONTACT_ADMINISTRATOR_MESSAGE, 'error')
         return redirect(url_for('auth.login'))
 
     # Make sure that the authorization code is present
     if 'code' not in request.args:
+        audit.log("OAuth login rejected: missing authorization code", actor="Anonymous")
         flash(CONTACT_ADMINISTRATOR_MESSAGE, 'error')
         return redirect(url_for('auth.login'))
 
@@ -300,10 +315,12 @@ def oauth_callback(provider: str):
                                 _external=True),
     }, headers={'Accept': 'application/json'})
     if response.status_code != 200:
+        audit.log("OAuth login rejected: provider request failed", actor="Anonymous")
         flash(CONTACT_ADMINISTRATOR_MESSAGE, 'error')
         return redirect(url_for('auth.login'))
     oauth2_token = response.json().get('access_token')
     if not oauth2_token:
+        audit.log("OAuth login rejected: missing access token", actor="Anonymous")
         flash(CONTACT_ADMINISTRATOR_MESSAGE, 'error')
         return redirect(url_for('auth.login'))
 
@@ -313,12 +330,14 @@ def oauth_callback(provider: str):
         'Accept': 'application/json',
     })
     if response.status_code != 200:
+        audit.log("OAuth login rejected: provider request failed", actor="Anonymous")
         flash(CONTACT_ADMINISTRATOR_MESSAGE, 'error')
         return redirect(url_for('auth.login'))
     email = provider_data['userinfo']['email'](response.json())
 
     # Make sure the email is verified by the OAuth provider
     if response.json().get("email_verified", False) is not True:
+        audit.log("OAuth login rejected: unverified email address", actor="Anonymous")
         flash(CONTACT_ADMINISTRATOR_MESSAGE, 'error')
         flash("Provider does not support email verification. Use another form of authentication to log in.", 'info')
         return redirect(url_for('auth.login'))
@@ -326,12 +345,14 @@ def oauth_callback(provider: str):
     # Find the user in the database
     user = UserManager.get_user_by_email(email)
     if user is None:
+        audit.log("OAuth login rejected: account not found", actor="Anonymous")
         flash(CONTACT_ADMINISTRATOR_MESSAGE, 'error')
         return redirect(url_for('auth.login'))
 
     # Get the login token and make sure we can log the user in
     login_token = LoginTokenManager.get_login_token(session['oauth2_state'])
     if not login_token or not user.can_login():
+        audit.log("OAuth login rejected: account or login request unavailable", actor="Anonymous")
         flash(CONTACT_ADMINISTRATOR_MESSAGE, 'error')
         return redirect(url_for('auth.login'))
     login_token.user_id = user.id
@@ -415,6 +436,7 @@ def two_factor_auth(raw_token: str):
                 _complete_two_factor_auth(user, login_token, form, can_trust_device)
                 return redirect(url_for('auth.login_with_token', raw_token=raw_token))
             else:
+                audit.log("Two-factor authentication rejected: incorrect code", target=user, actor="Anonymous")
                 flash('The code you entered is incorrect. Please try again.', 'warning')
 
     # If the user chose SMS verification
@@ -429,6 +451,7 @@ def two_factor_auth(raw_token: str):
                 _complete_two_factor_auth(user, login_token, form, can_trust_device)
                 return redirect(url_for('auth.login_with_token', raw_token=raw_token))
             else:
+                audit.log("Two-factor authentication rejected: incorrect code", target=user, actor="Anonymous")
                 flash('The code you entered is incorrect. Please try again.', 'warning')
 
     # If the user chose call verification
@@ -443,6 +466,7 @@ def two_factor_auth(raw_token: str):
                 _complete_two_factor_auth(user, login_token, form, can_trust_device)
                 return redirect(url_for('auth.login_with_token', raw_token=raw_token))
             else:
+                audit.log("Two-factor authentication rejected: incorrect code", target=user, actor="Anonymous")
                 flash('The code you entered is incorrect. Please try again.', 'warning')
 
     # If the user chose to use an authenticator app
@@ -457,6 +481,7 @@ def two_factor_auth(raw_token: str):
                 _complete_two_factor_auth(user, login_token, form, can_trust_device)
                 return redirect(url_for('auth.login_with_token', raw_token=raw_token))
             else:
+                audit.log("Two-factor authentication rejected: incorrect code", target=user, actor="Anonymous")
                 flash('The code you entered is incorrect. Please try again.', 'warning')
     return render_template('2fa_enter_code.html', title='Two-Factor Authentication', raw_token=raw_token, method=verification_method, form=form, can_trust_device=can_trust_device)
 
@@ -469,26 +494,31 @@ def login_with_token(raw_token: str):
 
     # If suspicious user agents are not allowed to log in
     if sm.system_setting('authentication.strict_login') and parse_user_agent(user_agent)["is_bot"]:
+        audit.log("Login rejected: bot user agent", actor="Anonymous")
         flash(CONTACT_ADMINISTRATOR_MESSAGE, 'error')
         return redirect(url_for('auth.login'))
 
     # If the hashed token is not found
     if not login_token:
+        audit.log("Login rejected: unknown token", actor="Anonymous")
         flash(CONTACT_ADMINISTRATOR_MESSAGE, 'error')
         return redirect(url_for('auth.login'))
 
     # If the token was found, but not valid
     if not login_token.is_valid(raw_token):
+        audit.log("Login rejected: expired or invalid token", actor="Anonymous")
         flash(TOKEN_EXPIRED_MESSAGE, 'error')
         return redirect(url_for('auth.login'))
 
     # If the login token does not allow immediate login and is not for phone number verification
     if (not login_token.immediate_login) and (not login_token.verify_phone_number):
+        audit.log("Login rejected: token does not allow login", actor="Anonymous")
         flash(CONTACT_ADMINISTRATOR_MESSAGE, 'error')
         return redirect(url_for('auth.login'))
 
     # If the token is for password reset
     if login_token.reset_password:
+        audit.log("Login rejected: password reset token", actor="Anonymous")
         flash(CONTACT_ADMINISTRATOR_MESSAGE, 'error')
         return redirect(url_for('auth.login'))
 
@@ -496,6 +526,7 @@ def login_with_token(raw_token: str):
 
     # If the user does not exist
     if not user:
+        audit.log("Login rejected: account not found", actor="Anonymous")
         flash(CONTACT_ADMINISTRATOR_MESSAGE, 'error')
         return redirect(url_for('auth.login'))
 
@@ -508,6 +539,7 @@ def login_with_token(raw_token: str):
         if user and not user.email_verified:
             user.email_verified = True
             db.session.commit()
+            audit.log("User verified email address", target=user, actor=user)
 
     _get_login_device(user, login_token)
     db.session.commit()
@@ -523,11 +555,13 @@ def login_with_token(raw_token: str):
     if login_token.verify_phone_number:
         user.phone_number_verified = True
         db.session.commit()
+        audit.log("User verified phone number", target=user, actor=user)
         flash('Your phone number has been successfully verified.', 'success')
         body = f'The phone number ({user.phone_number}) associated with your {sm.system_setting("application.name")} account has just been verified.\n\nIf you did not perform this action, please secure your account immediately.'
         NotificationManager.send_notification(user, 'Phone Number Verified', body, NotificationCategory.PHONE_NUMBER_CHANGE)
     # If the user cannot log in
     if not user.can_login():
+        audit.log("Login rejected: account cannot log in", target=user, actor="Anonymous")
         flash(CONTACT_ADMINISTRATOR_MESSAGE, 'error')
         return redirect(url_for('auth.login'))
     # Otherwise, log the user in
@@ -538,6 +572,9 @@ def login_with_token(raw_token: str):
     # Invalidate the token if it's not to be used for account creation
     if not login_token.create_account:
         LoginTokenManager.invalidate_login_token(login_token)
+
+    actor = UserManager.get_user_by_uuid36(session['actual_user']) if session.get('actual_user') else user
+    audit.log(f"User logged in ({login_token.auth_source})", target=user, actor=actor or user)
 
     next_url = login_token.next_url
     if user.status == 'pending':
@@ -554,6 +591,9 @@ def logout():
     next_url = request.args.get('next')
     preserve_user = request.args.get('preserve_user', '').lower() in ('1', 'true', 'yes')
     actual_user = session.get('actual_user')
+
+    if current_user.is_authenticated:
+        audit.log("User logged out", target=current_user, actor=current_user)
 
     logout_user()
     # Clear the cookies (except the _remember cookie as it will keep a user signed in)

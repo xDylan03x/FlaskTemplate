@@ -31,7 +31,7 @@
         {% for error in form.status.errors %}
             <p class="form-error">{{ error }}</p>
         {% endfor %}
-        <p class="form-help">Disabling the user will not log them out but will prevent them from logging in.</p>
+        <p class="form-help">Disabling the user will not log them out, but will prevent them from logging in.</p>
 
         {{ form.password.label(class="label mt-4") }}
         {{ form.password(class="input mt-1 w-full", id="password", type="password", autocomplete="new-password") }}

@@ -241,7 +241,7 @@ def _run_doctor_checks(timeout: float) -> list[DoctorCheck]:
 @with_appcontext
 def create_admin():
     """Creates the admin user with a generated password."""
-    from . import db
+    from . import db, audit
     from .model_managers import UserManager
     from .models import User
 
@@ -271,12 +271,13 @@ def create_admin():
     db.session.commit()
     click.echo('Admin user created.')
     click.echo(f'Password: {password}')
+    audit.log("CLI created admin account", target=user, actor="CLI")
 
 
 @click.command(name='update_users')
 @with_appcontext
 def update_users():
-    from . import db
+    from . import db, audit
     from .model_managers import UserManager
     from .models import User
 
@@ -286,6 +287,7 @@ def update_users():
         user_count += 1
         UserManager.update_permissions(user)
         UserManager.update_settings(user)
+        audit.log("CLI synchronized user settings and permissions", target=user, actor="CLI")
         users_updated.append(user.email)
 
     updated_names = ", ".join(users_updated) if users_updated else "None"
@@ -300,7 +302,7 @@ def update_users():
 @click.command(name='update_app')
 @with_appcontext
 def update_app():
-    from . import db, sm
+    from . import db, sm, audit
     from .model_managers import SystemManager
     from .models import SystemSetting
 
@@ -316,6 +318,7 @@ def update_app():
             variable = legacy_variables.get(setting.setting)
             value = (os.environ.get(variable) if variable else None) or setting.default
             SystemManager.set_setting(setting.setting, value)
+            audit.log(f"CLI initialized system setting {setting.setting}", target=setting.setting, actor="CLI")
 
     click.echo('Application settings updated.')
 

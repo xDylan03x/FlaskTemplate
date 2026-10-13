@@ -75,7 +75,7 @@ def setup_account():
             current_user.set_password(form.password.data)
             current_user.status = 'active'
             current_user.set_setting('security.two_factor_auth', form.two_factor_auth.data)
-        db.session.commit()
+            db.session.commit()
         flash('Your account has been set up. You can now login using email and password or social logins.', 'success')
         LoginTokenManager.invalidate_create_account_token(current_user.id)
         return redirect(url_for('docs.articles', slug='core/getting-started'))
@@ -97,6 +97,7 @@ def create_account():
         user = _create_user_from_form(form)
         if user is None:
             return render_template('create-account.html', title="Create Account", form=form)
+        audit.log("User created an account", target=user, actor=user)
         if user.phone_number:
             _send_phone_verification(user)
             flash('A link has been sent to your phone via text. Please click this link to verify your phone number.', 'info')
@@ -136,7 +137,7 @@ def profile_settings():
                 if normalized_phone:
                     _send_phone_verification(current_user)
                     flash('A link has been sent to your phone via text. Please click this link to verify your phone number.', 'info')
-        db.session.commit()
+            db.session.commit()
         flash('Your profile settings have been updated.', 'success')
         return redirect(url_for('core.profile_settings'))
 
@@ -172,7 +173,7 @@ def application_settings():
         with audit.track(current_user, actor=current_user, message="User updating application settings"):
             current_user.set_setting('preferences.theme', form.theme.data)
             session['theme'] = form.theme.data
-        db.session.commit()
+            db.session.commit()
         flash('Your application settings have been updated.', 'success')
         return redirect(url_for('core.application_settings'))
     form.theme.data = current_user.get_setting('preferences.theme')
@@ -184,8 +185,8 @@ def application_settings():
 def send_phone_number_verification():
     if 'HX-Request' not in request.headers:
         return abort(404)
-    audit.log("User requested phone number verification", actor=current_user)
     _send_phone_verification(current_user)
+    audit.log("User requested phone number verification", target=current_user, actor=current_user)
     return '''<button type="button" class="btn btn-sm btn-neutral join-item" disabled>Link Sent</button>'''
 
 
@@ -197,7 +198,7 @@ def notification_settings():
         with audit.track(current_user, actor=current_user, message="User updating notification settings"):
             current_user.set_setting('notifications.security_alerts_via_email', form.security_alerts_email.data)
             current_user.set_setting('notifications.security_alerts_via_text', form.security_alerts_text.data)
-        db.session.commit()
+            db.session.commit()
         flash('Your notification settings have been updated.', 'success')
         return redirect(url_for('core.notification_settings'))
     form.security_alerts_email.data = current_user.get_setting('notifications.security_alerts_via_email')
@@ -219,6 +220,8 @@ def all_notifications():
 @login_required
 def mark_notification_read(uuid36):
     notification = NotificationManager.mark_notification_as_read(uuid36)
+    if notification is not None:
+        audit.log("User marked notification as read", target=notification, actor=current_user)
     template_string = """
     {% from 'account-settings/macros.html' import notification_row %}
     {{ notification_row(notification) }}
@@ -234,7 +237,7 @@ def security_settings():
         with audit.track(current_user, actor=current_user, message="User updating security settings"):
             current_user.set_setting('security.two_factor_auth', form.two_factor_auth.data)
             current_user.set_setting('security.password_breach_check', form.password_breach_check.data)
-        db.session.commit()
+            db.session.commit()
         flash('Your security settings have been updated.', 'success')
         return redirect(url_for('core.security_settings'))
     form.two_factor_auth.data = current_user.get_setting('security.two_factor_auth')
@@ -248,12 +251,13 @@ def change_password():
     form = ChangePasswordForm()
     if form.validate_on_submit():
         if not current_user.check_password(form.current_password.data):
+            audit.log("Password change rejected: incorrect current password", target=current_user, actor=current_user)
             flash('Current password is incorrect.', 'error')
             return render_template('account-settings/change-password.html', title="Change Password", form=form), 401
-        audit.log("User changed their password", actor=current_user)
         current_user.set_password(form.new_password.data)
         current_user.refresh_uuid36()
         db.session.commit()
+        audit.log("User changed their password", target=current_user, actor=current_user)
         message = 'You password has been changed. If you did not make this change, please take action to secure your account'
         NotificationManager.send_notification(current_user, 'Password Changed', message, NotificationCategory.PASSWORD_CHANGE)
         login_user(current_user)
@@ -278,6 +282,7 @@ def enable_totp():
         )
         current_user.totp_factor = new_factor.sid
         db.session.commit()
+        audit.log("User started TOTP setup", target=current_user, actor=current_user)
         return render_template('account-settings/enable-totp.html', title="Enable TOTP", binding_url=new_factor.binding['uri'])
     form = TOTPVerifyForm()
     if form.validate_on_submit():
@@ -288,12 +293,13 @@ def enable_totp():
             .update(form.code.data.strip())
         )
         if factor.status == 'verified':
-            audit.log("User enabled TOTP", actor=current_user)
             current_user.totp_verified = True
             db.session.commit()
+            audit.log("User enabled TOTP", target=current_user, actor=current_user)
             flash('TOTP has been enabled for your account.', 'success')
             return redirect(url_for('core.security_settings'))
         else:
+            audit.log("TOTP setup rejected: incorrect code", target=current_user, actor=current_user)
             flash('The code you entered is incorrect. Please try again.', 'error')
     return render_template('account-settings/verify-totp.html', title="Verify TOTP", form=form)
 
@@ -301,11 +307,11 @@ def enable_totp():
 @core.route('/account-settings/security/disable-totp')
 @login_required
 def disable_totp():
-    audit.log("User disabled TOTP", actor=current_user)
     current_user.totp_verified = False
     current_user.refresh_totp_entity()
     current_user.totp_factor = None
     db.session.commit()
+    audit.log("User disabled TOTP", target=current_user, actor=current_user)
     flash('Your TOTP method has been disabled.', 'info')
     return redirect(url_for('core.security_settings'))
 
@@ -332,7 +338,7 @@ def manage_device(uuid36):
     if form.validate_on_submit():
         with audit.track(device, actor=user, message="User managing new device"):
             device.device_trusted = form.device_trusted.data
-        db.session.commit()
+            db.session.commit()
         flash('Device trust status has been updated.', 'success')
         return redirect(url_for('core.login_history'))
     form.device_trusted.data = device.device_trusted
@@ -354,6 +360,7 @@ def lockdown(uuid36: str = None):
         if user is None:
             abort(404)
     UserManager.lockdown_user(user)
+    audit.log("User locked down account", target=user, actor=current_user)
     if uuid36 is None:
         flash('Your account has been locked down.', 'success')
         logout_user()
@@ -384,6 +391,7 @@ def new_user():
         user = _create_user_from_form(form, trust_phone=True)
         if user is None:
             return render_template('system-settings/new-user.html', title="New User", tab='users', form=form)
+        audit.log("User created another account", target=user, actor=current_user)
         flash('New user has been created and a welcome email has been sent.', 'success')
         return redirect(url_for('core.user_settings'))
     return render_template('system-settings/new-user.html', title="New User", tab='users', form=form)
@@ -416,7 +424,10 @@ def edit_user(uuid36):
                     if permission_key not in inherited_permissions:
                         user.set_permission(permission_key, field.data)
 
-        db.session.commit()
+            db.session.commit()
+
+        if form.password.data:
+            audit.log("User reset another user's password", target=user, actor=current_user)
 
         flash('Your changes have been saved.', 'success')
         return redirect(url_for('core.user_settings'))
@@ -440,6 +451,7 @@ def delete_user(uuid36):
     if not user:
         abort(404)
     UserManager.delete_user(user)
+    audit.log("User deleted account", target=user, actor=current_user)
     flash('User has been deleted.', 'success')
     return redirect(url_for('core.user_settings'))
 
@@ -456,7 +468,7 @@ def impersonate_user(uuid36: str = None):
             flash('Error ending session. You have been logged out.', 'error')
             return redirect(url_for('auth.logout'))
         # If the actual user was found, log them out and back in
-        audit.log("User stopped impersonating", actor=real_user)
+        audit.log("User stopped impersonating", target=current_user, actor=real_user)
         flash('Ended impersonation session.', 'success')
         next_url_after_logout = url_for('core.user_settings')
         _, raw_token = LoginTokenManager.create_login_token(immediate_login=True, next_url=next_url_after_logout, user_id=real_user.id, auth_source='restoring from impersonation session')
@@ -470,7 +482,7 @@ def impersonate_user(uuid36: str = None):
     if user is None:
         flash('User not found.', 'error')
         return redirect(url_for('core.user_settings'))
-    audit.log("User started impersonating", actor=current_user)
+    audit.log("User started impersonating", target=user, actor=current_user)
     NotificationManager.send_notification(user, "Impersonation Alert", f"Your account was accessed by {current_user.name}. No action is needed from you.", NotificationCategory.ACCOUNT_IMPERSONATION)
     # Save the actual user's ID in the session
     session['actual_user'] = current_user.uuid36
@@ -497,9 +509,11 @@ def new_group():
     form = GroupForm()
     if form.validate_on_submit():
         group = UserManager.create_user_group(form.title.data.strip(), (form.description.data or '').strip())
+        audit.log("User created group", target=group, actor=current_user)
         if manage_permissions:
-            _save_group_permissions(group, form)
-            db.session.commit()
+            with audit.track(group, actor=current_user, message="User set new group's permissions"):
+                _save_group_permissions(group, form)
+                db.session.commit()
         flash('New group has been created.', 'success')
         return redirect(url_for('core.group_settings'))
     return render_template('system-settings/new-group.html', title="New Group", tab='groups', form=form, permission_groups=pm.grouped(), manage_permissions=manage_permissions)
@@ -529,7 +543,7 @@ def edit_group(uuid36):
             if manage_permissions:
                 _save_group_permissions(group, form)
 
-        db.session.commit()
+            db.session.commit()
         _warn_group_permission_conflicts(group.users)
         flash('Your changes have been saved.', 'success')
         return redirect(url_for('core.group_settings'))
@@ -553,6 +567,7 @@ def delete_group(uuid36):
     if not group:
         abort(404)
     UserManager.delete_user_group(group)
+    audit.log("User deleted group", target=group, actor=current_user)
     flash('Group has been deleted.', 'success')
     return redirect(url_for('core.group_settings'))
 
@@ -563,9 +578,9 @@ def delete_group(uuid36):
 def system_settings():
     form = build_system_settings_form(sm)()
     if form.validate_on_submit():
-        audit.log("User updated system settings", actor=current_user)
         for field_name, key in form.setting_field_map.items():
             sm.set_system_setting(key, form[field_name].data)
+        audit.log("User updated system settings: " + ", ".join(form.setting_field_map.values()), actor=current_user)
         flash('Your changes have been saved.', 'success')
     if request.method == 'GET':
         for field_name, key in form.setting_field_map.items():
@@ -634,6 +649,7 @@ def bug_report():
                 f"Report Subject: {form.subject.data.strip()}\n"
                 f"Report Message:\n{form.message.data.strip()}\n")
         send_email(subject, body, admin_email)
+        audit.log("User submitted bug report", actor=current_user)
         flash('Your report has been sent. You should hear from an administrator soon.', 'success')
         return redirect(url_for('core.bug_report'))
     return render_template('bug-report.html', title="Bug Report", form=form)
