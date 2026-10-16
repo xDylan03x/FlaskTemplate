@@ -199,6 +199,65 @@
         </div>
     </details>
 
+    <details class="collapse collapse-arrow bg-base-100 border border-base-300 mt-4" name="test-email-accordion" {% if email_form.submit.data %}open{% endif %}>
+        <summary class="collapse-title font-semibold">Test Email</summary>
+        <div class="collapse-content">
+            <form action="" method="post" autocomplete="off">
+                {{ email_form.csrf_token }}
+                {% for error in email_form.errors.get('csrf_token', []) %}
+                    <p class="form-error">{{ error }}</p>
+                {% endfor %}
+
+                {{ email_form.email.label(class="label mt-4") }}
+                {{ email_form.email(class="input mt-1 w-full validator", type="email") }}
+                {% for error in email_form.email.errors %}
+                    <p class="form-error">{{ error }}</p>
+                {% endfor %}
+
+                {{ email_form.subject.label(class="label mt-4") }}
+                {{ email_form.subject(class="input mt-1 w-full", type="text") }}
+                {% for error in email_form.subject.errors %}
+                    <p class="form-error">{{ error }}</p>
+                {% endfor %}
+
+                {{ email_form.message.label(class="label mt-4") }}
+                {{ email_form.message(class="textarea mt-1 w-full", rows=4) }}
+                {% for error in email_form.message.errors %}
+                    <p class="form-error">{{ error }}</p>
+                {% endfor %}
+
+                {{ email_form.submit(class='btn btn-primary text-neutral-content mt-8 w-full') }}
+            </form>
+        </div>
+    </details>
+
+    <details class="collapse collapse-arrow bg-base-100 border border-base-300 mt-4" name="test-sms-accordion" {% if sms_form.submit.data %}open{% endif %}>
+        <summary class="collapse-title font-semibold">Test SMS</summary>
+        <div class="collapse-content">
+            <form action="" method="post" autocomplete="off">
+                {{ sms_form.csrf_token }}
+                {% for error in sms_form.errors.get('csrf_token', []) %}
+                    <p class="form-error">{{ error }}</p>
+                {% endfor %}
+
+                {{ sms_form.phone_number.label(class="label mt-4") }}
+                {{ sms_form.phone_number(class="input mt-1 w-full", type="tel") }}
+                {% for error in sms_form.phone_number.errors %}
+                    <p class="form-error">{{ error }}</p>
+                {% endfor %}
+                <p class="form-help">Include the country code for numbers outside the US (e.g. +442079460018).</p>
+
+                {{ sms_form.body.label(class="label mt-4") }}
+                {{ sms_form.body(class="textarea mt-1 w-full", rows=4) }}
+                {% for error in sms_form.body.errors %}
+                    <p class="form-error">{{ error }}</p>
+                {% endfor %}
+
+                {{ sms_form.submit(class='btn btn-primary text-neutral-content mt-8 w-full') }}
+            </form>
+        </div>
+    </details>
+
     <details class="collapse collapse-arrow bg-base-100 border border-base-300 mt-4" name="db-accordion">
         <summary class="collapse-title font-semibold">Database Query</summary>
 

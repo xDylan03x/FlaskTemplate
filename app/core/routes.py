@@ -7,11 +7,12 @@ from app.core import core
 from app import db, twilio_client, audit, sm
 from .forms import ChangePasswordForm, ProfileSettingsForm, NotificationSettingsForm, SecuritySettingsForm, \
     SetupAccountForm, NewUserForm, TOTPVerifyForm, CreateAccountForm, DeviceManagerForm, \
-    build_edit_user_form, ApplicationSettingsForm, build_system_settings_form, BugReportForm, build_group_form
+    build_edit_user_form, ApplicationSettingsForm, build_system_settings_form, BugReportForm, build_group_form, \
+    TestEmailForm, TestSMSForm
 import phonenumbers
 from app.model_managers import UserManager, UserDeviceManager, FileManager, NotificationManager, SystemManager
 from .helper import send_sms, parse_user_agent, get_routes, get_blueprints, get_extensions, get_update_status, \
-    get_platform_info, is_safe_read_query, modify_query, send_email, normalize_external_url
+    get_platform_info, is_safe_read_query, modify_query, send_email, normalize_external_url, get_messaging_error
 from ..model_managers import LoginTokenManager
 from ..extensions.flask_permissions import require_permission
 from app import pm
@@ -588,13 +589,57 @@ def system_settings():
     return render_template('system-settings/system.html', title="System Settings", tab='system', form=form)
 
 
-@core.route('/system-settings/admin')
+@core.route('/system-settings/admin', methods=['GET', 'POST'])
 @login_required
 @require_permission('system.admin')
 def admin():
     if not current_app.config.get('ADMIN_PANEL', False):
         flash('Admin panel is disabled.', 'error')
         abort(403)
+    email_form = TestEmailForm(prefix='email')
+    sms_form = TestSMSForm(prefix='sms')
+    if request.method == 'POST' and not (email_form.submit.data or sms_form.submit.data):
+        abort(400)
+
+    if email_form.submit.data and email_form.validate_on_submit():
+        error = 'SendGrid did not return a message ID. Check the SendGrid email activity for delivery details.'
+        try:
+            missing = [key for key in ('SENDGRID_API_KEY', 'SENDGRID_EMAIL_TEMPLATE_ID', 'FROM_EMAIL') if not current_app.config.get(key)]
+            if missing:
+                raise ValueError('Missing configuration: ' + ', '.join(missing))
+            message_id = send_email(subject=email_form.subject.data, body=email_form.message.data, recipient=email_form.email.data, raise_errors=True)
+        except Exception as exception:
+            error = get_messaging_error(exception)
+            message_id = None
+        if message_id:
+            audit.log("User sent admin test email", actor=current_user)
+            flash('Test email submitted for delivery.', 'success')
+            return redirect(url_for('core.admin'))
+        audit.log("Admin test email failed", actor=current_user)
+        current_app.logger.warning('Admin test email failed: %s', error)
+        flash(f'Unable to send test email. {error}', 'error')
+
+    elif sms_form.submit.data and sms_form.validate_on_submit():
+        error = 'Twilio did not return a message ID. Check the Twilio messaging logs for delivery details.'
+        try:
+            missing = [key for key in ('TWILIO_ACCOUNT_SID', 'TWILIO_AUTH_TOKEN', 'FROM_PHONE_NUMBER') if not current_app.config.get(key)]
+            if missing:
+                raise ValueError('Missing configuration: ' + ', '.join(missing))
+            message_id = send_sms(body=sms_form.body.data, recipient=sms_form.phone_number.data)
+        except Exception as exception:
+            error = get_messaging_error(exception)
+            message_id = None
+        if message_id:
+            audit.log("User sent admin test sms", actor=current_user)
+            flash('Test sms submitted for delivery.', 'success')
+            return redirect(url_for('core.admin'))
+        audit.log("Admin test sms failed", actor=current_user)
+        current_app.logger.warning('Admin test sms failed: %s', error)
+        flash(f'Unable to send test sms. {error}', 'error')
+
+    if request.method == 'GET':
+        email_form.email.data = current_user.email
+        sms_form.phone_number.data = current_user.phone_number
     audit.log("User accessed admin page", actor=current_user)
     num_users = db.session.query(User).count()
     platform = get_platform_info()
@@ -603,7 +648,7 @@ def admin():
     blueprints = get_blueprints()
     extensions = get_extensions()
     update_status = get_update_status()
-    return render_template('system-settings/admin.html', title="Admin", tab='system', num_users=num_users, platform=platform, config=config, routes=routes, blueprints=blueprints, extensions=extensions, update_status=update_status)
+    return render_template('system-settings/admin.html', title="Admin", tab='system', num_users=num_users, platform=platform, config=config, routes=routes, blueprints=blueprints, extensions=extensions, update_status=update_status, email_form=email_form, sms_form=sms_form)
 
 
 @core.route('/system-settings/admin/audit-log')

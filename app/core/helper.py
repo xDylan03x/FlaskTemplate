@@ -1,3 +1,4 @@
+import json
 import re
 from device_detector.enums import DeviceType
 from sentry_sdk.client import BaseClient
@@ -135,6 +136,25 @@ def route_url(url: str) -> str:
     return "/"
 
 
+def get_messaging_error(exception: Exception) -> str:
+    detail = getattr(exception, 'msg', None) or getattr(exception, 'reason', None) or str(exception) or type(exception).__name__
+    try:
+        response = json.loads(getattr(exception, 'body', None) or '{}')
+        messages = [error['message'] for error in response.get('errors', []) if error.get('message')]
+        if messages:
+            detail = '; '.join(messages)
+    except (ValueError, TypeError, AttributeError, KeyError):
+        pass
+
+    status = getattr(exception, 'status_code', None) or getattr(exception, 'status', None)
+    code = getattr(exception, 'code', None)
+    if status:
+        detail = f'HTTP {status}: {detail}'
+    if code:
+        detail = f'{detail} (code {code})'
+    return ' '.join(detail.split())[:1000]
+
+
 def send_email(
         subject: str,
         body: str,
@@ -143,7 +163,8 @@ def send_email(
         sender=None,
         sender_name=None,
         template_id=None,
-        reply_to=None) -> str:
+        reply_to=None,
+        raise_errors=False) -> str:
     """Send an email directly using SendGrid. Use NotificationManager.send_notification() for most cases."""
     if sender is None:
         sender = current_app.config["FROM_EMAIL"]
@@ -167,6 +188,8 @@ def send_email(
         message_id = response.headers.get('X-Message-Id') or response.headers.get('X-Message-ID')
         return message_id
     except Exception:
+        if raise_errors:
+            raise
         return None
 
 

@@ -1,7 +1,7 @@
 from flask_wtf import FlaskForm
 from wtforms import SubmitField, PasswordField, StringField, SelectField, BooleanField, EmailField, SelectMultipleField
 from wtforms.fields.simple import TelField, HiddenField, TextAreaField
-from wtforms.validators import DataRequired, EqualTo, Optional, Length, ValidationError
+from wtforms.validators import DataRequired, Email, EqualTo, Optional, Length, ValidationError
 import phonenumbers
 from app import db
 from app.models import User
@@ -168,6 +168,29 @@ class TOTPVerifyForm(FlaskForm):
 
 class SystemSettingsForm(FlaskForm):
     submit = SubmitField('Save')
+
+
+class TestEmailForm(FlaskForm):
+    email = EmailField('Email', validators=[DataRequired()])
+    subject = StringField('Subject', validators=[DataRequired()])
+    message = TextAreaField('Message', validators=[DataRequired()])
+    submit = SubmitField('Send Test Email')
+
+    def validate_email(self, field):
+        field.data = field.data.strip()
+        Email()(self, field)
+
+
+class TestSMSForm(FlaskForm):
+    phone_number = TelField('Phone Number', validators=[DataRequired()])
+    body = TextAreaField('Body', validators=[DataRequired()])
+    submit = SubmitField('Send Test SMS')
+
+    def validate_phone_number(self, field):
+        try:
+            field.data = normalize_phone_number(field.data.strip())
+        except (phonenumbers.NumberParseException, ValueError):
+            raise ValidationError('Phone number is not valid')
 
 
 def build_system_settings_form(settings_manager):

@@ -54,7 +54,11 @@ def create_app(cfg: Config = Config) -> Flask:
     login.login_view = 'auth.login'
     twilio_client.username = app.config.get('TWILIO_ACCOUNT_SID')
     twilio_client.password = app.config.get('TWILIO_AUTH_TOKEN')
+    twilio_client.account_sid = twilio_client.username
+    twilio_client.auth = (twilio_client.username, twilio_client.password)
     sendgrid_client.api_key = app.config.get('SENDGRID_API_KEY')
+    sendgrid_client.auth = f'Bearer {sendgrid_client.api_key}'
+    sendgrid_client.reset_request_headers()
     qr.init_app(app)
     compress.init_app(app)
     pm.init_app(app)
