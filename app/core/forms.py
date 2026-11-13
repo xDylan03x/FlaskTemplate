@@ -64,11 +64,6 @@ THEME_CHOICES = {
         ("abyss", "Abyss"),
         ("silk", "Silk"),
     ],
-    "Custom Themes": [
-        ("compactlight", "Compact Light"),
-        ("compactdark", "Compact Dark"),
-        ("bluepastel", "Blue Pastel"),
-    ]
 }
 
 
