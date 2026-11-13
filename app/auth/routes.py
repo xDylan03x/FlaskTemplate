@@ -576,7 +576,7 @@ def login_with_token(raw_token: str):
         login_user(user, remember=login_token.remember_login)
         session['theme'] = user.get_setting('preferences.theme') or sm.system_setting('application.default_theme')
         if current_app.config.get('BYPASS_AUTHENTICATION', False):
-            flash('Password and two-factor authentication are bypassed in development mode.', 'warning')
+            flash('Password and two-factor authentication are bypassed.', 'info')
     # Invalidate the token if it's not to be used for account creation
     if not login_token.create_account:
         LoginTokenManager.invalidate_login_token(login_token)
