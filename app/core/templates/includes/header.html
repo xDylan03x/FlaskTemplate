@@ -108,7 +108,7 @@
                                     <div class="support text-base-content min-w-0">
                                         <p class="line-clamp-3" x-text="notif.body"></p>
                                         <template x-if="notif.link">
-                                            <a :href="notif.link" class="support text-base-content link">View</a>
+                                            <a :href="notif.link" @click.prevent="viewNotification(notif)" class="support text-base-content link">View</a>
                                         </template>
                                     </div>
 

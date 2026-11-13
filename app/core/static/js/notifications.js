@@ -26,6 +26,11 @@ document.addEventListener('alpine:init', () => {
             }
         },
 
+        async viewNotification(notification) {
+            await this.markAsRead(notification.id);
+            window.location.href = notification.link;
+        },
+
         async markAsRead(id) {
             // Optimistic UI Update: Remove it immediately for a snappy feel
             const previousState = [...this.notifications];
