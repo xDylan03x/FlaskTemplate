@@ -13,6 +13,7 @@ class Config:
 
         # Environment
         self.FLASK_ENV = os.environ.get("FLASK_ENV", "development")
+        self.BYPASS_AUTHENTICATION = self.FLASK_ENV == "development" and os.getenv("BYPASS_AUTHENTICATION", 'False').lower() in ('true', '1', 't')
 
         # Site Basics
         self.ADMIN_PANEL = os.getenv("ADMIN_PANEL", 'False').lower() in ('true', '1', 't')

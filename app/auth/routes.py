@@ -59,6 +59,10 @@ def login():
     """The actual login form page"""
     next_url = request.args.get('next', None)
     form = LoginForm()
+    bypass_authentication = current_app.config.get('BYPASS_AUTHENTICATION', False)
+    if bypass_authentication:
+        form.password.validators = []
+        form.password.flags.required = False
     create_accounts = sm.system_setting('authentication.allow_account_creation')
     context = dict(title='Log In', form=form, next_url=next_url, create_accounts=create_accounts,
                    oauth_providers=get_oauth_providers())
@@ -78,24 +82,24 @@ def login():
             return render_template('login.html', **context), 401
 
         # If the password is incorrect
-        if not user.check_password(form.password.data):
+        if not bypass_authentication and not user.check_password(form.password.data):
             audit.log("Login rejected: incorrect password", target=user, actor="Anonymous")
             flash(WRONG_EMAIL_PASSWORD_MESSAGE, 'error')
             return render_template('login.html', **context), 401
 
         # If the user has enabled password breach checking
-        if user.get_setting('security.password_breach_check'):
+        if not bypass_authentication and user.get_setting('security.password_breach_check'):
             # If their password has been found in a data breach, alert them and require 2FA
             if hibp_password_check(form.password.data):
                 flash('Your password has been found in a data breach, consider changing it immediately.', 'warning')
 
         # If the user has 2FA enabled
-        if user.get_setting('security.two_factor_auth'):
+        if not bypass_authentication and user.get_setting('security.two_factor_auth'):
             flash(REQUIRES_2FA_MESSAGE, 'info')
             _, raw_token = LoginTokenManager.create_login_token(next_url=next_url, remember_login=form.remember_me.data, user_id=user.id, auth_source='traditional login needing 2fa')
             return redirect(url_for('auth.two_factor_auth', raw_token=raw_token))
 
-        _, raw_token = LoginTokenManager.create_login_token(immediate_login=True, next_url=next_url, remember_login=form.remember_me.data, user_id=user.id, auth_source='traditional login')
+        _, raw_token = LoginTokenManager.create_login_token(immediate_login=True, next_url=next_url, remember_login=form.remember_me.data, user_id=user.id, auth_source='development bypass' if bypass_authentication else 'traditional login')
         return redirect(url_for('auth.login_with_token', raw_token=raw_token))
     return render_template('login.html', **context)
 
@@ -547,7 +551,7 @@ def login_with_token(raw_token: str):
     db.session.commit()
 
     # If the token was found and valid
-    if login_token.risk_score < LOGIN_RISK_SCORE_THRESHOLD:
+    if login_token.risk_score < LOGIN_RISK_SCORE_THRESHOLD and not current_app.config.get('BYPASS_AUTHENTICATION', False):
         login_token.immediate_login = False
         db.session.commit()
         flash(REQUIRES_2FA_MESSAGE, 'info')
@@ -571,6 +575,8 @@ def login_with_token(raw_token: str):
         LoginRecordManager.create_login_record(user.id, get_ip_from_request(request), user_agent, login_token)
         login_user(user, remember=login_token.remember_login)
         session['theme'] = user.get_setting('preferences.theme') or sm.system_setting('application.default_theme')
+        if current_app.config.get('BYPASS_AUTHENTICATION', False):
+            flash('Password and two-factor authentication are bypassed in development mode.', 'warning')
     # Invalidate the token if it's not to be used for account creation
     if not login_token.create_account:
         LoginTokenManager.invalidate_login_token(login_token)

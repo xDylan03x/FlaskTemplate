@@ -329,6 +329,7 @@ Create a Python/Flask project in Sentry and copy its project DSN into `SENTRY_DS
 | Variable | Purpose and setup |
 |----------|-------------------|
 | `FLASK_ENV` | Use `development` locally and `production` in production. This controls application configuration; use `--debug` separately for Flask's development server. |
+| `BYPASS_AUTHENTICATION` | Set `true` to log in with an eligible account's email and leave the password blank. Only works when `FLASK_ENV=development`; skips password checks and 2FA and flashes a warning after login. Defaults to `false`. |
 | `ADMIN_PANEL` | Enables the diagnostic/admin panel when `true`; the production example uses `false`. Access also requires the relevant user permission. |
 | `TRUSTED_HOSTS` | Comma-separated accepted hostnames, without schemes or paths, such as `localhost:8080,127.0.0.1:8080` or `app.example.com`. Keep this aligned with the URLs people use. |
 | `BEHIND_PROXY` | Set `true` only when the app is behind one trusted reverse proxy that supplies forwarding headers. The app applies ProxyFix for one proxy hop. Use `false` for direct local access. |
