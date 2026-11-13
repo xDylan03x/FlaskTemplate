@@ -62,4 +62,12 @@
     .menu {
         @apply gap-0.5;
     }
+
+    .sidebar-menu :where(li > a, li > details > summary):not(.menu-active) {
+        @apply text-base-content/80;
+    }
+
+    .sidebar-menu :where(li > a, li > details > summary):not(.menu-active):is(:hover, :focus-visible) {
+        @apply text-base-content;
+    }
 }

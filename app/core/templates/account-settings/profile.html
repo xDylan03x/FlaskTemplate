@@ -36,24 +36,31 @@
                     <p class="form-error">{{ error }}</p>
                 {% endfor %}
 
-                <div class="flex flex-col sm:flex-row items-center mt-1 p-2 bg-base-200 rounded sm:rounded-l-full sm:rounded-r-md">
+                <div class="grid grid-cols-[auto_minmax(0,1fr)] lg:grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-4 gap-y-3 mt-2 p-4 bg-base-200 border border-base-300 rounded-xl">
                     <div class="avatar shrink-0">
-                        <div class="w-12 h-12 rounded-full ring ring-base-300 ring-offset-base-100 ring-offset-2 overflow-hidden">
+                        <div class="w-14 h-14 rounded-full border-2 border-base-100 bg-neutral/10 text-base-content overflow-hidden">
                             <template x-if="profile_picture_url">
-                                <img alt="profile picture" :src="profile_picture_url" class="object-cover w-full h-full" />
+                                <img alt="{{ current_user.name }} profile picture" :src="profile_picture_url" class="object-cover w-full h-full" />
                             </template>
                             <template x-if="!profile_picture_url">
-                                <div class="skeleton w-full h-full rounded-full"></div>
+                                <div class="flex items-center justify-center w-full h-full text-lg font-semibold">
+                                    {% set name_parts = (current_user.name or '').split() %}
+                                    {{ name_parts[0][0] if name_parts else '?' }}{{ name_parts[-1][0] if name_parts|length > 1 else '' }}
+                                </div>
                             </template>
                         </div>
                     </div>
 
-                    <div class="flex flex-row gap-2 flex-1 pt-4 sm:pt-0 px-4">
-                        <button type="button" class="btn btn-sm btn-soft btn-secondary w-1/2" onclick="upload_modal.showModal()">
+                    <div class="min-w-0">
+                        <p class="form-help">A photo makes your account easy to recognize.</p>
+                    </div>
+
+                    <div class="col-span-2 lg:col-span-1 flex flex-wrap items-center gap-2">
+                        <button type="button" class="btn btn-sm btn-soft btn-primary" onclick="upload_modal.showModal()">
                             Upload Image
                         </button>
-                        <button type="button" class="btn btn-sm btn-soft btn-error w-1/2" @click="profile_picture_url = ''" :disabled="!profile_picture_url">
-                            Remove Image
+                        <button type="button" class="btn btn-sm btn-ghost text-error" @click="profile_picture_url = ''" :disabled="!profile_picture_url">
+                            Remove
                         </button>
                     </div>
 
