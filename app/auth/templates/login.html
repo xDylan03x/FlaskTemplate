@@ -3,60 +3,64 @@
 {% block content %}
 
     <div class="centered-container">
-        <div class="card bg-base-300 w-xl max-w-xl">
-            <div class="card-body">
-                <h3 class="h3 text-base-content text-center">Log in to {{ app_name }}</h3>
-                <p class="support text-base-content/80 text-center">Log in with a magic link{% if oauth_providers %}, an auth provider,{% endif %} or email and password.
-                    {% if not create_accounts %}
-                        <br>Please contact an administrator if you need an account.
-                    {% endif %}
-                </p>
+        <div class="card bg-base-200 border border-base-300 shadow-sm w-full max-w-lg">
+            <div class="card-body gap-0 p-6 sm:p-8">
+                <div class="text-center">
+                    <h1 class="text-2xl font-bold text-base-content">Log in to {{ app_name }}</h1>
+                    <p class="text-sm text-base-content/80 mt-2">Welcome back. Choose a log in method.</p>
+                </div>
                 <div class="mt-6 space-y-3">
-                    {% if create_accounts %}
-                        <a href="{{ url_for('core.create_account', next=next_url) }}" class="btn btn-sm btn-outline btn-primary w-full">Create an Account</a>
+                    <a href="{{ url_for('auth.magic_link', next=next_url) }}" class="btn w-full btn-neutral">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" class="size-4">
+                            <path fill-rule="evenodd" d="M8.914 6.025a.75.75 0 0 1 1.06 0 3.5 3.5 0 0 1 0 4.95l-2 2a3.5 3.5 0 0 1-5.396-4.402.75.75 0 0 1 1.251.827 2 2 0 0 0 3.085 2.514l2-2a2 2 0 0 0 0-2.828.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" />
+                            <path fill-rule="evenodd" d="M7.086 9.975a.75.75 0 0 1-1.06 0 3.5 3.5 0 0 1 0-4.95l2-2a3.5 3.5 0 0 1 5.396 4.402.75.75 0 0 1-1.251-.827 2 2 0 0 0-3.085-2.514l-2 2a2 2 0 0 0 0 2.828.75.75 0 0 1 0 1.06Z" clip-rule="evenodd" />
+                        </svg>
+                        Log in with a magic link
+                    </a>
+                    {% if oauth_providers %}
+                        <div class="grid grid-cols-1 {% if oauth_providers|length > 1 %}sm:grid-cols-2{% endif %} gap-3">
+                            {% for provider in oauth_providers %}
+                                {{ oauth_button(provider, next_url) }}
+                            {% endfor %}
+                        </div>
                     {% endif %}
-
-                    <div class="grid grid-cols-1 {% if oauth_providers %}md:grid-cols-2{% endif %} gap-4">
-                        <a href="{{ url_for('auth.magic_link', next=next_url) }}" class="btn btn-sm w-full btn-neutral {% if oauth_providers|length > 1 %}md:col-span-2{% endif %}">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" class="size-4">
-                                <path fill-rule="evenodd" d="M8.914 6.025a.75.75 0 0 1 1.06 0 3.5 3.5 0 0 1 0 4.95l-2 2a3.5 3.5 0 0 1-5.396-4.402.75.75 0 0 1 1.251.827 2 2 0 0 0 3.085 2.514l2-2a2 2 0 0 0 0-2.828.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" />
-                                <path fill-rule="evenodd" d="M7.086 9.975a.75.75 0 0 1-1.06 0 3.5 3.5 0 0 1 0-4.95l2-2a3.5 3.5 0 0 1 5.396 4.402.75.75 0 0 1-1.251-.827 2 2 0 0 0-3.085-2.514l-2 2a2 2 0 0 0 0 2.828.75.75 0 0 1 0 1.06Z" clip-rule="evenodd" />
-                            </svg>
-                            Login with Magic Link
-                        </a>
-                        {% for provider in oauth_providers %}
-                            {{ oauth_button(provider, next_url) }}
-                        {% endfor %}
-                    </div>
                 </div>
 
-                <div class="divider mt-6 mb-4">or</div>
+                <div class="divider text-xs text-base-content/60 my-6">or use your password</div>
 
                 <form action="" method="post">
                     {{ form.csrf_token }}
 
-                    {{ form.email.label(class="label") }}
+                    {{ form.email.label(class="label text-sm font-medium text-base-content") }}
                     {{ form.email(class="input mt-1 w-full validator", id="email", type="email", autocomplete="username") }}
                     {% for error in form.email.errors %}
                         <p class="form-error">{{ error }}</p>
                     {% endfor %}
 
-                    {{ form.password.label(class="label mt-4") }}
+                    {{ form.password.label(class="label text-sm font-medium text-base-content mt-4") }}
                     {{ form.password(class="input mt-1 w-full", id="password", type="password", autocomplete="current-password") }}
                     {% for error in form.password.errors %}
                         <p class="form-error">{{ error }}</p>
                     {% endfor %}
 
-                    <div class="flex justify-between mt-4">
-                        <div>
-                            {{ form.remember_me(class="checkbox", id="remember_me", type="checkbox") }}
-                            {{ form.remember_me.label(class="label") }}
+                    <div class="flex flex-wrap items-center justify-between gap-3 mt-4">
+                        <div class="flex items-center gap-2">
+                            {{ form.remember_me(class="checkbox checkbox-sm", id="remember_me", type="checkbox") }}
+                            {{ form.remember_me.label(class="label text-sm text-base-content/80") }}
                         </div>
-                        <a href="{{ url_for('auth.forgot_password', next=next_url) }}" class="link link-neutral label justify-end">Forgot Password</a>
+                        <a href="{{ url_for('auth.forgot_password', next=next_url) }}" class="link link-hover text-sm text-base-content/80">Forgot password?</a>
                     </div>
 
-                    {{ form.submit(class='btn btn-primary text-neutral-content mt-8 w-full') }}
+                    {{ form.submit(class='btn btn-primary text-primary-content mt-6 w-full') }}
                 </form>
+
+                <div class="border-t border-base-300 mt-6 pt-5 text-center text-sm text-base-content/80">
+                    {% if create_accounts %}
+                        <p>Need an account? <a href="{{ url_for('core.create_account', next=next_url) }}" class="link link-hover font-medium text-base-content">Create one here</a></p>
+                    {% else %}
+                        <p>Need an account? Contact an administrator.</p>
+                    {% endif %}
+                </div>
             </div>
         </div>
     </div>

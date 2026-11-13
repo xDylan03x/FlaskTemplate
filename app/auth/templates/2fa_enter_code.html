@@ -2,10 +2,10 @@
 {% block content %}
 
     <div class="centered-container">
-        <div class="card bg-base-300 w-xl max-w-xl">
-            <div class="card-body">
-                <h3 class="h3 text-base-content text-center">Two-Factor Authentication</h3>
-                <p class="support text-base-content/80 text-center">
+        <div class="card bg-base-200 border border-base-300 shadow-sm w-full max-w-lg">
+            <div class="card-body gap-0 p-6 sm:p-8">
+                <h1 class="text-2xl font-bold text-base-content text-center">Two-Factor Authentication</h1>
+                <p class="text-sm text-base-content/80 text-center mt-2">
                     {% if method == 'email' %}
                     Please enter the authentication code sent to your email.
                     {% elif method == 'text' %}
@@ -19,10 +19,10 @@
                     {% endif %}
                 </p>
 
-                <form action="" method="post" autocomplete="off">
+                <form class="mt-6" action="" method="post" autocomplete="off">
                     {{ form.csrf_token }}
 
-                    {{ form.code.label(class="label mt-8") }}
+                    {{ form.code.label(class="label text-sm font-medium text-base-content") }}
                     {{ form.code(class="input mt-1 w-full", id="code", type="text", inputmode="numeric", autocomplete="one-time-code", pattern="[0-9]{6}", maxlength="6") }}
                     {% for error in form.code.errors %}
                         <p class="form-error">{{ error }}</p>
@@ -30,19 +30,19 @@
 
                     {% if can_trust_device %}
                         <div class="mt-4">
-                            {{ form.trust_device(class="checkbox", id="trust_device", type="checkbox") }}
-                            {{ form.trust_device.label(class="label") }}
+                            <div class="flex items-center gap-2">
+                                {{ form.trust_device(class="checkbox checkbox-sm", id="trust_device", type="checkbox") }}
+                                {{ form.trust_device.label(class="label text-sm text-base-content/80") }}
+                            </div>
                             <p class="form-help">Only trust this device if it belongs to you and is not shared.</p>
                         </div>
                     {% endif %}
 
-                    {{ form.submit(class='btn btn-primary text-neutral-content mt-8 w-full') }}
+                    {{ form.submit(class='btn btn-primary text-primary-content mt-6 w-full') }}
                 </form>
 
-                <div class="divider mt-6 mb-4"></div>
-
-                <div class="flex justify-between">
-                    <a href="{{ url_for('auth.two_factor_auth', raw_token=raw_token) }}" class="standard link link-neutral label justify-end">Try another way</a>
+                <div class="border-t border-base-300 mt-6 pt-5 text-center">
+                    <a href="{{ url_for('auth.two_factor_auth', raw_token=raw_token) }}" class="link link-hover text-sm text-base-content/80">Try another way</a>
                 </div>
             </div>
         </div>

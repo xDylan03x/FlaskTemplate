@@ -2,40 +2,41 @@
 {% block content %}
 
     <div class="centered-container">
-        <div class="card bg-base-300 w-xl max-w-xl">
-            <div class="card-body">
-                <h3 class="h3 text-base-content text-center">Welcome To Your New Account</h3>
-                <p class="support text-base-content/80 text-center">To get started, just fill out a few questions and you'll be ready to use your account.</p>
+        <div class="card bg-base-200 border border-base-300 shadow-sm w-full max-w-lg">
+            <div class="card-body gap-0 p-6 sm:p-8">
+                <h1 class="text-2xl font-bold text-base-content text-center">Welcome To Your New Account</h1>
+                <p class="text-sm text-base-content/80 text-center mt-2">To get started, just fill out a few questions and you'll be ready to use your account.</p>
 
-
-                <form action="" method="post" autocomplete="off">
+                <form class="mt-6" action="" method="post" autocomplete="off">
                 {{ form.csrf_token }}
 
-                {{ form.name.label(class="label mt-8") }}
+                {{ form.name.label(class="label text-sm font-medium text-base-content") }}
                 {{ form.name(class="input mt-1 w-full", id="name", type="text", autocomplete="name") }}
                 {% for error in form.name.errors %}
                     <p class="form-error">{{ error }}</p>
                 {% endfor %}
 
-                {{ form.password.label(class="label mt-4") }}
+                {{ form.password.label(class="label text-sm font-medium text-base-content mt-4") }}
                 {{ form.password(class="input mt-1 w-full", id="password", type="password", autocomplete="new-password") }}
                 {% for error in form.password.errors %}
                     <p class="form-error">{{ error }}</p>
                 {% endfor %}
 
-                {{ form.confirm_password.label(class="label mt-4") }}
+                {{ form.confirm_password.label(class="label text-sm font-medium text-base-content mt-4") }}
                 {{ form.confirm_password(class="input mt-1 w-full", id="confirm_password", type="password", autocomplete="new-password") }}
                 {% for error in form.confirm_password.errors %}
                     <p class="form-error">{{ error }}</p>
                 {% endfor %}
 
                 <div class="mt-4">
-                    {{ form.two_factor_auth(class="checkbox", id="two_factor_auth", type="checkbox") }}
-                    {{ form.two_factor_auth.label(class="label") }}
+                    <div class="flex items-center gap-2">
+                        {{ form.two_factor_auth(class="checkbox checkbox-sm", id="two_factor_auth", type="checkbox") }}
+                        {{ form.two_factor_auth.label(class="label text-sm text-base-content/80") }}
+                    </div>
                     <p class="form-help">When logging in with a password, also require another form of authentication.</p>
                 </div>
 
-                {{ form.submit(class='btn btn-primary text-neutral-content mt-8 w-full') }}
+                {{ form.submit(class='btn btn-primary text-primary-content mt-6 w-full') }}
 
                 </form>
 
