@@ -700,6 +700,8 @@ def admin_sql_console():
 @core.route('/bug-report', methods=["GET", "POST"])
 @login_required
 def bug_report():
+    if not sm.system_setting('application.enable_bug_reports'):
+        abort(404)
     form = BugReportForm()
     if form.validate_on_submit():
         admin_email = sm.system_setting('application.admin_email')
