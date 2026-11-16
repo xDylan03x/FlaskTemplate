@@ -137,9 +137,18 @@ class NotificationSettingsForm(FlaskForm):
 
 
 class SecuritySettingsForm(FlaskForm):
-    two_factor_auth = BooleanField('Two-Factor Authentication')
-    password_breach_check = BooleanField('Password Breach Checking')
+    two_factor_auth = BooleanField('Two-Factor Authentication', description='Require another form of authentication for every password login.')
+    unknown_device_requires_2fa = BooleanField('Unknown Device Requires Two-Factor Authentication', description='Require 2FA on untrusted devices, regardless of login method or your other 2FA settings.')
+    two_factor_alternative_logins = BooleanField('Two-Factor Authentication Applies to Alternative Login Methods', description='Also apply your two-factor authentication setting to magic-link and OAuth logins.')
+    password_breach_check = BooleanField('Password Breach Checking', description='When logging in with a password, check whether it has appeared in a known data breach.')
     submit = SubmitField('Save')
+
+    authentication_settings = {
+        'two_factor_auth': ('security.two_factor_auth', 'authentication_policies.2fa_required'),
+        'unknown_device_requires_2fa': ('security.unknown_device_requires_2fa', 'authentication_policies.unknown_device_requires_2fa'),
+        'two_factor_alternative_logins': ('security.2fa_applies_to_alternative_login_methods', 'authentication_policies.2fa_applies_to_alternative_login_methods'),
+        'password_breach_check': ('security.password_breach_check', 'authentication_policies.password_breach_checking'),
+    }
 
 
 class NewUserForm(PhoneNumberForm):
@@ -253,27 +262,32 @@ def build_edit_user_form(permission_manager):
     return DynamicEditUserForm
 
 
-def build_group_form(permission_manager, editing=False, manage_permissions=True):
+def build_group_form(permission_manager, editing=False, manage_permissions=True, manage_policies=False):
     fields = {}
     permission_field_map = {}
+    editable_permission_keys = set()
     for permission in permission_manager.all():
+        can_edit = manage_policies if permission.is_authentication_policy else manage_permissions
+        if can_edit:
+            editable_permission_keys.add(permission.permission)
         field_name = permission.permission_field_name
         fields[field_name] = SelectField(
             label=permission.label,
             description=permission.description,
-            choices=[('', 'Not defined'), ('allow', 'Allow'), ('deny', 'Deny')],
+            choices=[('', 'Not defined'), ('allow', 'Enabled' if permission.is_authentication_policy else 'Allow'), ('deny', 'Disabled' if permission.is_authentication_policy else 'Deny')],
             default='',
         )
         permission_field_map[field_name] = permission.permission
 
     class GroupForm(EditGroupForm if editing else NewGroupForm):
         def validate(self, extra_validators=None):
-            if not manage_permissions:
-                # Ignore submitted definitions, including invalid values, for membership managers.
-                for field_name in self.permission_field_map:
+            # Ignore unauthorized definitions, including invalid submitted values.
+            for field_name, permission_key in self.permission_field_map.items():
+                if permission_key not in editable_permission_keys:
                     self[field_name].data = ''
             return super().validate(extra_validators=extra_validators)
 
     DynamicGroupForm = type('DynamicGroupForm', (GroupForm,), fields)
     DynamicGroupForm.permission_field_map = permission_field_map
+    DynamicGroupForm.editable_permission_keys = editable_permission_keys
     return DynamicGroupForm

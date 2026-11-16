@@ -2,6 +2,8 @@ from ..extensions.flask_settings import SettingSpec
 
 settings = [
     SettingSpec(key="Two Factor Auth", group="Security", description="Enable two factor authentication", default=False),
+    SettingSpec(key="Unknown Device Requires 2FA", group="Security", description="Require two-factor authentication on untrusted devices", default=False),
+    SettingSpec(key="2FA Applies to Alternative Login Methods", group="Security", description="Apply two-factor authentication to magic-link and OAuth logins", default=False),
     SettingSpec(key="Password Breach Check", group="Security", description="Check for password breaches", default=True),
     SettingSpec(key="Security Alerts via Email", group="Notifications", description="Receive security alerts via email", default=True),
     SettingSpec(key="Security Alerts via Text", group="Notifications", description="Receive security alerts via text", default=False),

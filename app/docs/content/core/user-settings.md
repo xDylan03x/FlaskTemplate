@@ -50,10 +50,26 @@ via email and/or text message as well.
 3. Click on the "Save" button.
 
 From this page you can change your two-factor authentication preference, password breach alert preference, and perform other actions.  
-Enabling two-factor authentication requires you to enter a verification code from your email, phone call, text message, or
-TOTP app (depending on what you've enabled) when you log in via password.  
-When logging in via an external authentication provider, you will not be prompted for two-factor authentication, even if you have it enabled,
-unless the system detects that it is a suspicious attempt.  
+Enabling two-factor authentication requires a verification code from your email, phone call,
+text message, or TOTP app (depending on what you have enabled) when you log in via password.
+The **Unknown Device Requires Two-Factor Authentication** preference independently
+requires 2FA on untrusted devices for password, magic-link, and OAuth logins.
+**Two-Factor Authentication Applies to Alternative Login Methods** extends your main
+2FA setting to magic-link and OAuth logins. It appears when your main 2FA setting is
+enabled or the alternative-login policy requires it. Its saved value is retained when
+hidden. Both new preferences default to off.
+
+Your authentication policies may require 2FA for every password login, extend the same
+rule to magic-link and OAuth logins, or require 2FA on any untrusted device regardless
+of login method. Enabled policies check and lock their matching security settings, including Password
+Breach Checking. Disabled policies leave personal choice available. Your saved preferences
+apply again when the policy requirements are removed.
+
+For magic-link logins, the channel delivering the link cannot also verify 2FA: Email is
+excluded for email links, and both Text and Call are excluded for text links. If no eligible
+second factor is available, that delivery option is unavailable. Use another login method
+or contact an administrator. Eligibility is checked again when the link is used.
+
 If password breach checking is enabled, you will receive an alert if your password has been found in a data breach when logging in with a password.
 This does not prevent you from logging in and will only appear when logging in with a password.
 

@@ -222,19 +222,6 @@ class UserGroup(db.Model):
         return '<UserGroup {}>'.format(self.title)
 
 
-class RiskAction(enum.Enum):
-    # Authentication methods
-    PASSWORD_LOGIN = ("password authentication", 0)
-    TWO_FACTOR_AUTH = ("two-factor authentication", 50)
-    MAGIC_LINK_LOGIN = ("magic link login", 50)
-    SOCIAL_LOGIN = ("social login", 0)
-    ACCOUNT_IMPERSONATION = ("account impersonation", 50)
-
-    # Devices and characteristics
-    EXISTING_DEVICE = ("existing device identified", 10)
-    NEW_DEVICE = ("new device identified", -10)
-
-
 class LoginToken(db.Model):
     """
     Model representing a login token for user authentication.
@@ -252,8 +239,8 @@ class LoginToken(db.Model):
         for_impersonation: Whether the token is for account impersonation
         verify_phone_number: Whether the token is for phone number verification
         create_account: Whether the token is used for account creation
-        risk_score: Risk score associated with the token
-        risk_assessment: Risk assessment associated with the token in plain text
+        two_factor_verified: Whether 2FA was completed for this token
+        magic_link_channel: Delivery channel for an issued magic link
         used: Whether the token has been used
         auth_source: Source of authentication (traditional username/password, magic link, social, etc.)
 
@@ -273,8 +260,8 @@ class LoginToken(db.Model):
     for_impersonation: so.Mapped[Optional[bool]] = so.mapped_column(sa.Boolean, default=False)
     verify_phone_number: so.Mapped[Optional[bool]] = so.mapped_column(sa.Boolean, default=False)
     create_account: so.Mapped[Optional[bool]] = so.mapped_column(sa.Boolean, default=False)
-    risk_score: so.Mapped[int] = so.mapped_column(sa.Numeric, index=True, default=40, nullable=False)
-    risk_assessment: so.Mapped[str] = so.mapped_column(sa.String(512), default="", nullable=False)
+    two_factor_verified: so.Mapped[bool] = so.mapped_column(sa.Boolean, default=False, nullable=False)
+    magic_link_channel: so.Mapped[Optional[str]] = so.mapped_column(sa.String(16))
     used: so.Mapped[bool] = so.mapped_column(sa.Boolean, default=False, nullable=False)
     used_at: so.Mapped[Optional[datetime]] = so.mapped_column(sa.DateTime)
     auth_source: so.Mapped[Optional[str]] = so.mapped_column(sa.String(128))
@@ -308,10 +295,6 @@ class LoginToken(db.Model):
         if hashed_token != self.hashed_token:
             return False
         return True
-
-    def update_risk_score(self, risk_action: RiskAction) -> None:
-        self.risk_score += int(risk_action.value[1])
-        self.risk_assessment += f"| {datetime.now(tz=timezone.utc)}: {risk_action.value[0]}"
 
 
 class UserDevice(db.Model):

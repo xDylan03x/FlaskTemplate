@@ -16,6 +16,7 @@ order: 21
 | Groups - Update            | Modify group details and membership              |
 | Groups - Delete            | Delete groups                                    |
 | Users - Update Permissions | Change permission definitions on users or groups |
+| Users - Update Authentication Policies | Change authentication policies on users or groups |
 
 # Instructions
 Open **Group Management** from the system settings menu to view groups, their member counts, and their permission counts.
@@ -52,3 +53,24 @@ Broad permission checks also use inherited definitions. For example, access to t
 2. Click **Delete Group** and confirm.
 
 Deleting a group removes its memberships and permission definitions. Users keep their individual permissions and definitions inherited from other groups. Group deletion cannot be undone.
+
+
+## Authentication Policies
+The **Authentication Policies** section uses the same inheritance rules as permissions,
+with **Enabled** and **Disabled** in place of Allow and Deny. **Not defined** falls back
+to the user's individual value; Enabled wins when groups disagree. Members' inherited
+controls are locked and list the source groups. Removing a group definition or membership
+restores the underlying individual value when no remaining group defines it.
+
+Only **Users - Update Authentication Policies** allows editing these definitions.
+**Users - Update Permissions** controls ordinary permissions separately; group details
+and membership can still be managed with the existing group permissions.
+
+The policies are **2FA Required**, **Unknown Device Requires 2FA**, and **2FA Applies to
+Alternative Login Methods**, and **Password Breach Checking**. All default to disabled. See [User Management]({{ doc_link_article("core/users") }})
+for their behavior. Saving group definitions or membership that causes conflicting policies
+shows a warning; Enabled wins. Changes apply to subsequent login completion, including
+pending attempts, without terminating existing sessions.
+
+An Enabled policy locks the corresponding personal security setting on. Disabled
+removes the requirement and allows personal choice; it does not force the setting off.

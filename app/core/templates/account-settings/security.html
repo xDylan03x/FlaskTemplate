@@ -1,20 +1,20 @@
 {% extends 'account-settings/base.html' %}
 {% block settings_content %}
 
-    <form action="" method="post">
+    <form action="" method="post" x-data='{ "twoFactor": {{ form.two_factor_auth.data | tojson }} }'>
         {{ form.csrf_token }}
 
-        <div>
-            {{ form.two_factor_auth(class="checkbox", id="two_factor_auth", type="checkbox") }}
-            {{ form.two_factor_auth.label(class="label") }}
-            <p class="form-help">When logging in with a password, also require another form of authentication.</p>
-        </div>
-
-        <div class="mt-4">
-            {{ form.password_breach_check(class="checkbox", id="password_breach_check", type="checkbox") }}
-            {{ form.password_breach_check.label(class="label") }}
-            <p class="form-help">When logging in, check to determine if your password has been found in a data breach.</p>
-        </div>
+        {% for field_name, definition in form.authentication_settings.items() %}
+            {% set field = form[field_name] %}
+            <div class="{{ 'mt-4' if not loop.first else '' }}"{% if field_name == 'two_factor_alternative_logins' %} x-cloak x-show="twoFactor || {{ (locked_settings[field_name] and field.data) | tojson }}"{% endif %}>
+                {{ field(class="checkbox", id=field_name, disabled=locked_settings[field_name], **({'x-model': 'twoFactor'} if field_name == 'two_factor_auth' else {})) }}
+                {{ field.label(class="label") }}
+                <p class="form-help">{{ field.description }}</p>
+                {% if locked_settings[field_name] %}
+                    <p class="form-help">Required by your authentication policies.</p>
+                {% endif %}
+            </div>
+        {% endfor %}
 
         <div class="mt-4 flex flex-wrap gap-2">
             <a class="btn btn-sm btn-soft" href="{{ url_for('core.change_password') }}">Change Password</a>

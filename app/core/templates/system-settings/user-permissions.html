@@ -1,0 +1,56 @@
+{% for policies in [false, true] %}
+    {% set section_title = 'Authentication Policies' if policies else 'Permissions' %}
+    {% set management_permission = 'users.update_authentication_policies' if policies else 'users.update_permissions' %}
+    {% set enabled_label = 'Enabled' if policies else 'Allow' %}
+    {% set disabled_label = 'Disabled' if policies else 'Deny' %}
+    <details class="collapse collapse-arrow bg-base-100 border border-base-300 mt-4" name="{{ 'authentication-policies' if policies else 'permissions' }}-accordion">
+        <summary class="collapse-title font-semibold">{{ section_title }}</summary>
+        <div class="collapse-content">
+            <div class="divide-y divide-base-300">
+                {% if not current_user.can(management_permission) %}
+                    <p class="support text-base-content/80">You do not have permission to manage {{ section_title | lower }}.</p>
+                {% endif %}
+                {% for group, permissions in permission_groups.items() if (group == 'Authentication Policies') == policies %}
+                    <div class="py-4">
+                        {% if not policies %}<h6 class="h6 text-base-content">{{ group }}</h6>{% endif %}
+                        {% for permission in permissions %}
+                            {% set field_name = permission.permission_field_name %}
+                            {% set field = form[field_name] %}
+
+                            <div class="mt-4">
+                                {% set inherited = inherited_permissions.get(permission.permission) %}
+                                {{ field(class="checkbox", id=field_name, type="checkbox", disabled=inherited is not none or not current_user.can(management_permission)) }}
+                                <label class="label" for="{{ field_name }}">{{ permission.action if policies else permission.label }}</label>
+
+                                {% if inherited %}
+                                    <div class="mt-2 flex flex-wrap gap-2">
+                                        <span class="badge badge-sm badge-ghost">Inherited: {{ enabled_label if inherited.value else disabled_label }}</span>
+                                        {% for source_group in inherited.allow_groups %}
+                                            <span class="badge badge-sm badge-success">{{ source_group.title }}: {{ enabled_label }}</span>
+                                        {% endfor %}
+                                        {% for source_group in inherited.deny_groups %}
+                                            <span class="badge badge-sm badge-error">{{ source_group.title }}: {{ disabled_label }}</span>
+                                        {% endfor %}
+                                    </div>
+                                    {% if inherited.conflict %}
+                                        <p class="form-help text-warning">Groups disagree. {{ enabled_label }} wins over {{ disabled_label }}.</p>
+                                    {% endif %}
+                                {% endif %}
+
+                                {% if permission.description %}
+                                    <p class="form-help">{{ permission.description }}</p>
+                                {% endif %}
+
+                                {% for error in field.errors %}
+                                    <p class="form-error">{{ error }}</p>
+                                {% endfor %}
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endfor %}
+
+            </div>
+        </div>
+    </details>
+
+{% endfor %}

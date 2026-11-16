@@ -117,6 +117,65 @@ Environment and deployment settings remain in `config.py`.
 
 Run `make help` to see the available commands. `make update` also merges template changes and applies database migrations; review the Makefile before using it on an existing application.
 
+### Authentication policies
+
+Users and groups have a separate **Authentication Policies** section in their editors.
+Changing it requires **Users – Update Authentication Policies**, in addition to access
+to the editor. All four policies default to disabled:
+
+- **2FA Required** (`authentication_policies.2fa_required`): require a second factor on
+  every password login. When disabled, the user's existing 2FA preference applies.
+- **Unknown Device Requires 2FA** (`authentication_policies.unknown_device_requires_2fa`):
+  require a second factor on untrusted devices for password, magic-link, and OAuth logins.
+- **2FA Applies to Alternative Login Methods**
+  (`authentication_policies.2fa_applies_to_alternative_login_methods`): extend Required
+  or the personal 2FA preference to magic-link and OAuth logins.
+- **Password Breach Checking** (`authentication_policies.password_breach_checking`):
+  require the existing password breach check on password logins. It warns about
+  compromised passwords without blocking login.
+
+Group policies use **Not defined**, **Enabled**, and **Disabled**. Group definitions
+supersede individual policy values; Enabled wins between groups. A disabled policy
+removes the requirement and lets the user choose their personal setting. Inherited user controls
+are locked and show their source groups. Required locks the personal 2FA checkbox
+without overwriting the saved preference. Policies are preserved during account
+lockdown and apply at subsequent login completion, including pending attempts;
+existing authenticated sessions are not terminated.
+
+Security settings include independent preferences for unknown-device 2FA and applying
+2FA to alternative login methods. Both default to off. The alternative-login control
+appears when 2FA is enabled or the alternative-login policy requires it; hiding it
+preserves its saved value. Each enabled policy checks and locks its matching setting,
+without overwriting the personal preference. Password breach checking keeps its
+existing personal default of on. Run `update_users` to initialize missing settings
+and the new policy; these additions need no further schema changes.
+
+Magic links sent by email exclude Email as a second factor. Links sent by text
+exclude both Text and Call. Delivery choices that cannot satisfy required 2FA are
+removed before sending; eligibility is checked again when the link is used.
+Welcome links, phone verification, password resets, impersonation, and development
+bypass retain their special handling.
+
+**Upgrading:** create and apply your database migration before running the updated
+application. On `login_token`, add `two_factor_verified` as a non-null Boolean,
+backfilling existing rows to false, and nullable `magic_link_channel` as `VARCHAR(16)`.
+Remove `risk_score`, its index, and `risk_assessment`; risk-score logic has been removed.
+Legacy issued magic links without a delivery channel are rejected; request new links.
+No migration is supplied or run by this feature.
+
+Run `flask --app app update_users` to initialize missing policy and permission defaults.
+Existing administrators are not granted policy management automatically. Grant it explicitly:
+
+```sh
+flask --app app tools permissions set admin@example.com users.update_authentication_policies allow
+```
+
+New initial administrators created with `create_admin` receive this permission.
+Existing CLI permission commands also inspect and edit policy keys, including group
+`allow`, `deny`, and `unset` definitions. Run the focused tests with
+`.venv/bin/python -m unittest discover -s tests -v`; they use a temporary SQLite database
+and mocked messaging/verification services.
+
 ### Command-line administration
 
 Use `flask --app app tools --help` to explore the `settings`, `users`,

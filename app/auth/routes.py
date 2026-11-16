@@ -1,7 +1,7 @@
 from urllib.parse import urlencode
 import requests
 from app.auth.helper import get_ip_from_request, twilio_verify_send, twilio_verify_check, hibp_password_check, get_oauth_providers
-from app.models import NotificationCategory, RiskAction
+from app.models import NotificationCategory
 from app.model_managers import UserManager, LoginTokenManager, LoginRecordManager, UserDeviceManager, \
     NotificationManager
 from flask_login import login_user, logout_user, current_user
@@ -12,39 +12,59 @@ from .forms import LoginForm, TwoFactorAuthSelectForm, TwoFactorAuthCodeForm, Ma
 from app import db, sm, audit
 from ..core.helper import send_email, send_sms, parse_user_agent, route_url
 
-LOGIN_RISK_SCORE_THRESHOLD = 50
 CONTACT_ADMINISTRATOR_MESSAGE = 'There was an error logging you in. Please contact an administrator.'
 TOKEN_EXPIRED_MESSAGE = 'The link or token you used has expired. Please try again.'
 REQUIRES_2FA_MESSAGE = 'For security, please complete the two-factor authentication process to log in.'
 WRONG_EMAIL_PASSWORD_MESSAGE = 'Incorrect email or password.'
+NO_2FA_METHOD_MESSAGE = 'No eligible two-factor authentication method is available. Please use another login method or contact an administrator.'
 
 
 def _get_login_device(user, login_token):
     user_agent = request.headers.get('User-Agent', '')
     # Determine if the user is using a new device
     user_device = UserDeviceManager.find_device(user.id, user_agent)
-    if user_device and user_device.device_trusted:
-        login_token.update_risk_score(RiskAction.EXISTING_DEVICE)
-    elif user_device and not user_device.device_trusted:
-        pass
-    else:
+    if not user_device:
         user_device = UserDeviceManager.create_user_device(user_id=user.id, user_agent=user_agent)
         audit.log("User registered new login device", target=user_device, actor=user)
-        # If this is an account creation token
         if login_token.create_account:
             user_device.device_trusted = True
-            login_token.update_risk_score(RiskAction.EXISTING_DEVICE)
-        else:
-            login_token.update_risk_score(RiskAction.NEW_DEVICE)
         manage_url = url_for('core.manage_device', uuid36=user_device.uuid36, _external=True)
         NotificationManager.send_notification(user, "New Device Login", "A new device has logged in to your account. Please use the link below to manage it.", NotificationCategory.NEW_DEVICE_LOGIN, link=manage_url)
 
     return user_device
 
 
+def _requires_two_factor_auth(user, login_token, user_device):
+    if current_app.config.get('BYPASS_AUTHENTICATION', False):
+        return False
+    untrusted_device = not user_device or not user_device.device_trusted
+    if login_token.create_account or login_token.for_impersonation or login_token.reset_password:
+        return False
+    # Preserve verification and session-restoration behavior outside normal logins.
+    if login_token.verify_phone_number or login_token.auth_source == 'restoring from impersonation session':
+        return untrusted_device
+    if login_token.auth_source not in ('traditional login', 'traditional login needing 2fa', 'magic link', 'oauth authorization state'):
+        return False
+    if untrusted_device and (user.can('authentication_policies.unknown_device_requires_2fa') or user.get_setting('security.unknown_device_requires_2fa')):
+        return True
+    password_rules_apply = login_token.auth_source in ('traditional login', 'traditional login needing 2fa') or user.can('authentication_policies.2fa_applies_to_alternative_login_methods') or user.get_setting('security.2fa_applies_to_alternative_login_methods')
+    return password_rules_apply and (user.can('authentication_policies.2fa_required') or user.get_setting('security.two_factor_auth'))
+
+
+def _two_factor_methods(user, magic_link_channel=None):
+    methods = []
+    if user.email_verified and magic_link_channel != 'email':
+        methods.append('Email')
+    if user.phone_number_verified and magic_link_channel != 'text':
+        methods.extend(['Text', 'Call'])
+    if user.totp_verified:
+        methods.append('Authenticator App')
+    return methods
+
+
 def _complete_two_factor_auth(user, login_token, form, can_trust_device):
     login_token.immediate_login = True
-    login_token.update_risk_score(RiskAction.TWO_FACTOR_AUTH)
+    login_token.two_factor_verified = True
     if can_trust_device and form.trust_device.data:
         user_device = _get_login_device(user, login_token)
         user_device.device_trusted = True
@@ -88,16 +108,10 @@ def login():
             return render_template('login.html', **context), 401
 
         # If the user has enabled password breach checking
-        if not bypass_authentication and user.get_setting('security.password_breach_check'):
-            # If their password has been found in a data breach, alert them and require 2FA
+        if not bypass_authentication and (user.can('authentication_policies.password_breach_checking') or user.get_setting('security.password_breach_check')):
+            # If their password has been found in a data breach, alert them
             if hibp_password_check(form.password.data):
                 flash('Your password has been found in a data breach, consider changing it immediately.', 'warning')
-
-        # If the user has 2FA enabled
-        if not bypass_authentication and user.get_setting('security.two_factor_auth'):
-            flash(REQUIRES_2FA_MESSAGE, 'info')
-            _, raw_token = LoginTokenManager.create_login_token(next_url=next_url, remember_login=form.remember_me.data, user_id=user.id, auth_source='traditional login needing 2fa')
-            return redirect(url_for('auth.two_factor_auth', raw_token=raw_token))
 
         _, raw_token = LoginTokenManager.create_login_token(immediate_login=True, next_url=next_url, remember_login=form.remember_me.data, user_id=user.id, auth_source='development bypass' if bypass_authentication else 'traditional login')
         return redirect(url_for('auth.login_with_token', raw_token=raw_token))
@@ -214,18 +228,27 @@ def magic_link(raw_token: str = None):
         flash(CONTACT_ADMINISTRATOR_MESSAGE, 'error')
         return redirect(url_for('auth.login'))
 
+    if login_token.auth_source != 'magic link' or login_token.immediate_login or login_token.magic_link_channel:
+        flash(CONTACT_ADMINISTRATOR_MESSAGE, 'error')
+        return redirect(url_for('auth.login'))
+
     form = MagicLinkSelectForm()
     form.method.choices = []
-    if user.email_verified:
+    user_device = UserDeviceManager.find_device(user.id, request.headers.get('User-Agent', ''))
+    requires_2fa = _requires_two_factor_auth(user, login_token, user_device)
+    if user.email_verified and (not requires_2fa or _two_factor_methods(user, 'email')):
         form.method.choices.append('Email')
-    if user.phone_number_verified:
+    if user.phone_number_verified and (not requires_2fa or _two_factor_methods(user, 'text')):
         form.method.choices.append('Text')
+    if not form.method.choices:
+        flash(NO_2FA_METHOD_MESSAGE, 'error')
+        return redirect(url_for('auth.login'))
 
     # Send the login link when submitting
     if form.validate_on_submit():
         new_token_obj, new_token = LoginTokenManager.create_login_token_from_existing(login_token)
         new_token_obj.immediate_login = True
-        new_token_obj.update_risk_score(RiskAction.MAGIC_LINK_LOGIN)
+        new_token_obj.magic_link_channel = form.method.data.lower()
         db.session.commit()
         login_url = url_for('auth.login_with_token', raw_token=new_token, _external=True)
         if form.method.data == 'Email':
@@ -390,17 +413,24 @@ def two_factor_auth(raw_token: str):
         flash(CONTACT_ADMINISTRATOR_MESSAGE, 'error')
         return redirect(url_for('auth.login'))
 
+    if (login_token.reset_password or
+            (not login_token.immediate_login and not login_token.verify_phone_number) or
+            (login_token.auth_source == 'magic link' and login_token.magic_link_channel not in ('email', 'text'))):
+        flash(CONTACT_ADMINISTRATOR_MESSAGE, 'error')
+        return redirect(url_for('auth.login'))
+
+    methods = _two_factor_methods(user, login_token.magic_link_channel)
+    if not methods:
+        flash(NO_2FA_METHOD_MESSAGE, 'error')
+        return redirect(url_for('auth.login'))
+    if code_sent and verification_method not in [method.lower().replace(' ', '_') for method in methods]:
+        flash(CONTACT_ADMINISTRATOR_MESSAGE, 'error')
+        return redirect(url_for('auth.login'))
+
     # If no verification method has been sent, show the selection page
     if not code_sent:
         form = TwoFactorAuthSelectForm()
-        form.method.choices = []
-        if user.email_verified:
-            form.method.choices.append('Email')
-        if user.phone_number_verified:
-            form.method.choices.append('Text')
-            form.method.choices.append('Call')
-        if user.totp_verified:
-            form.method.choices.append('Authenticator App')
+        form.method.choices = methods
 
         if form.validate_on_submit():
             # If the user chose email verification
@@ -536,9 +566,9 @@ def login_with_token(raw_token: str):
         flash(CONTACT_ADMINISTRATOR_MESSAGE, 'error')
         return redirect(url_for('auth.login'))
 
-    # If impersonating another user
-    if login_token.for_impersonation:
-        login_token.update_risk_score(RiskAction.ACCOUNT_IMPERSONATION)
+    if login_token.auth_source == 'magic link' and login_token.magic_link_channel not in ('email', 'text'):
+        flash('Please request a new magic link to log in.', 'error')
+        return redirect(url_for('auth.login'))
 
     # For create-account tokens
     if login_token.create_account:
@@ -547,13 +577,13 @@ def login_with_token(raw_token: str):
             db.session.commit()
             audit.log("User verified email address", target=user, actor=user)
 
-    _get_login_device(user, login_token)
+    user_device = _get_login_device(user, login_token)
     db.session.commit()
 
-    # If the token was found and valid
-    if login_token.risk_score < LOGIN_RISK_SCORE_THRESHOLD and not current_app.config.get('BYPASS_AUTHENTICATION', False):
-        login_token.immediate_login = False
-        db.session.commit()
+    if not login_token.two_factor_verified and _requires_two_factor_auth(user, login_token, user_device):
+        if not _two_factor_methods(user, login_token.magic_link_channel):
+            flash(NO_2FA_METHOD_MESSAGE, 'error')
+            return redirect(url_for('auth.login'))
         flash(REQUIRES_2FA_MESSAGE, 'info')
         return redirect(url_for('auth.two_factor_auth', raw_token=raw_token))
 

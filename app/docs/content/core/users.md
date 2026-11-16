@@ -16,6 +16,7 @@ order: 20
 | Users - Update             | Able to modify user information, their permissions, and lockdown the user |
 | Users - Delete             | Able to delete users                                                      |
 | Users - Update Permissions | Able to change individual and group permission definitions                 |
+| Users - Update Authentication Policies | Able to change individual and group authentication policies |
 | Users - Impersonate        | Able to impersonate other users for troubleshooting                       |
 
 # Instructions
@@ -71,3 +72,29 @@ To end the session, click the "End Session" button in the banner at the top of t
 
 ## User Groups
 To learn about managing user groups and assign users to them, [click here]({{ doc_link_article("core/groups") }}).
+
+## Authentication Policies
+Open a user's editor and expand **Authentication Policies**. Editing requires both
+**Users - Update** access to the editor and
+**Users - Update Authentication Policies**. Ordinary permission management is separate.
+All policies default to disabled:
+
+- **2FA Required** requires 2FA for every password login. When disabled, users choose
+  through their personal security setting.
+- **Unknown Device Requires 2FA** requires 2FA on untrusted devices for password,
+  magic-link, and OAuth logins, regardless of personal preference.
+- **2FA Applies to Alternative Login Methods** extends Required or the personal 2FA
+  preference to magic-link and OAuth logins.
+- **Password Breach Checking** requires checks for known password breaches on password
+  logins. It displays a warning without blocking login.
+
+Group definitions override individual policy values. Enabled wins between conflicting groups.
+Disabled removes the requirement and lets the user choose the corresponding personal
+setting. Enabled policies check and lock that setting, preserving the saved preference.
+Inherited controls are locked and list their source groups; the underlying individual
+value remains stored. See [Group Management]({{ doc_link_article("core/groups") }}).
+
+Policy changes apply when a login completes, including attempts already in progress.
+They do not terminate existing sessions. Account lockdown preserves these policies.
+Welcome links, phone verification, password resets, and administrator impersonation
+retain their special handling.

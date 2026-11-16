@@ -46,7 +46,8 @@ def _create_user_from_form(form, trust_phone=False):
 def _save_group_permissions(group, form):
     values = {'': None, 'allow': True, 'deny': False}
     for field_name, permission_key in form.permission_field_map.items():
-        group.set_permission(permission_key, values[form[field_name].data])
+        if permission_key in form.editable_permission_keys:
+            group.set_permission(permission_key, values[form[field_name].data])
 
 
 def _warn_group_permission_conflicts(users):
@@ -56,7 +57,7 @@ def _warn_group_permission_conflicts(users):
         if keys:
             conflicts.append(f'{user.name} ({", ".join(sorted(keys))})')
     if conflicts:
-        flash('Conflicting group permissions affect ' + '; '.join(conflicts) + '. Allow wins when groups disagree, even if another group denies the permission.', 'warning')
+        flash('Conflicting group permissions affect ' + '; '.join(conflicts) + '. Allow (Enabled for authentication policies) wins when groups disagree.', 'warning')
 
 
 @core.route('/')
@@ -75,13 +76,14 @@ def setup_account():
             current_user.name = form.name.data.strip()
             current_user.set_password(form.password.data)
             current_user.status = 'active'
-            current_user.set_setting('security.two_factor_auth', form.two_factor_auth.data)
+            if not current_user.can('authentication_policies.2fa_required'):
+                current_user.set_setting('security.two_factor_auth', form.two_factor_auth.data)
             db.session.commit()
         flash('Your account has been set up. You can now login using email and password or social logins.', 'success')
         LoginTokenManager.invalidate_create_account_token(current_user.id)
         return redirect(url_for('docs.articles', slug='core/getting-started'))
     form.name.data = current_user.name
-    form.two_factor_auth.data = current_user.get_setting('security.two_factor_auth')
+    form.two_factor_auth.data = current_user.can('authentication_policies.2fa_required') or current_user.get_setting('security.two_factor_auth')
     return render_template('setup-account.html', title="Setup Account", form=form)
 
 
@@ -234,16 +236,23 @@ def mark_notification_read(uuid36):
 @login_required
 def security_settings():
     form = SecuritySettingsForm()
+    locked_settings = {field_name: current_user.can(policy) for field_name, (_, policy) in form.authentication_settings.items()}
     if form.validate_on_submit():
         with audit.track(current_user, actor=current_user, message="User updating security settings"):
-            current_user.set_setting('security.two_factor_auth', form.two_factor_auth.data)
-            current_user.set_setting('security.password_breach_check', form.password_breach_check.data)
+            two_factor_enabled = locked_settings['two_factor_auth'] or form.two_factor_auth.data
+            for field_name, (setting, _) in form.authentication_settings.items():
+                if locked_settings[field_name]:
+                    continue
+                # Preserve the alternative-login preference while its control is hidden.
+                if field_name == 'two_factor_alternative_logins' and not two_factor_enabled:
+                    continue
+                current_user.set_setting(setting, form[field_name].data)
             db.session.commit()
         flash('Your security settings have been updated.', 'success')
         return redirect(url_for('core.security_settings'))
-    form.two_factor_auth.data = current_user.get_setting('security.two_factor_auth')
-    form.password_breach_check.data = current_user.get_setting('security.password_breach_check')
-    return render_template('account-settings/security.html', title="Security Settings", tab='security', form=form)
+    for field_name, (setting, _) in form.authentication_settings.items():
+        form[field_name].data = bool(locked_settings[field_name] or current_user.get_setting(setting))
+    return render_template('account-settings/security.html', title="Security Settings", tab='security', form=form, locked_settings=locked_settings)
 
 
 @core.route('/account-settings/security/change-password', methods=['GET', 'POST'])
@@ -409,6 +418,7 @@ def edit_user(uuid36):
     EditUserForm = build_edit_user_form(pm)
     form = EditUserForm()
     inherited_permissions = user.inherited_permissions()
+    editable_permission_keys = {spec.permission for spec in pm.all() if current_user.can(spec.management_permission)}
 
     if form.validate_on_submit():
         with audit.track(user, actor=current_user, message="User updating other user's settings"):
@@ -419,11 +429,10 @@ def edit_user(uuid36):
                 user.set_password(form.password.data)
                 user.refresh_uuid36()
 
-            if current_user.can('users.update_permissions'):
-                for field_name, permission_key in form.permission_field_map.items():
-                    field = getattr(form, field_name)
-                    if permission_key not in inherited_permissions:
-                        user.set_permission(permission_key, field.data)
+            for field_name, permission_key in form.permission_field_map.items():
+                field = getattr(form, field_name)
+                if permission_key in editable_permission_keys and permission_key not in inherited_permissions:
+                    user.set_permission(permission_key, field.data)
 
             db.session.commit()
 
@@ -506,13 +515,13 @@ def group_settings():
 @require_permission('groups.create')
 def new_group():
     manage_permissions = current_user.can('users.update_permissions')
-    GroupForm = build_group_form(pm, manage_permissions=manage_permissions)
+    GroupForm = build_group_form(pm, manage_permissions=manage_permissions, manage_policies=current_user.can('users.update_authentication_policies'))
     form = GroupForm()
     if form.validate_on_submit():
         group = UserManager.create_user_group(form.title.data.strip(), (form.description.data or '').strip())
         audit.log("User created group", target=group, actor=current_user)
-        if manage_permissions:
-            with audit.track(group, actor=current_user, message="User set new group's permissions"):
+        if form.editable_permission_keys:
+            with audit.track(group, actor=current_user, message="User set new group's permissions and authentication policies"):
                 _save_group_permissions(group, form)
                 db.session.commit()
         flash('New group has been created.', 'success')
@@ -529,7 +538,7 @@ def edit_group(uuid36):
         abort(404)
 
     manage_permissions = current_user.can('users.update_permissions')
-    GroupForm = build_group_form(pm, editing=True, manage_permissions=manage_permissions)
+    GroupForm = build_group_form(pm, editing=True, manage_permissions=manage_permissions, manage_policies=current_user.can('users.update_authentication_policies'))
     form = GroupForm()
 
     users = UserManager.get_all_users(paginate=False)
@@ -541,8 +550,7 @@ def edit_group(uuid36):
             group.description = (form.description.data or '').strip()
             selected_user_ids = set(form.users.data)
             group.users = [user for user in users if user.id in selected_user_ids]
-            if manage_permissions:
-                _save_group_permissions(group, form)
+            _save_group_permissions(group, form)
 
             db.session.commit()
         _warn_group_permission_conflicts(group.users)

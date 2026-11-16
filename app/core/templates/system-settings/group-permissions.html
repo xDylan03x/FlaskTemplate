@@ -1,29 +1,35 @@
-<details class="collapse collapse-arrow bg-base-100 border border-base-300 mt-8" name="permissions-accordion">
-    <summary class="collapse-title font-semibold">Permissions</summary>
-    <div class="collapse-content">
-        <p class="form-help">Members inherit Allow and Deny definitions. Not defined uses the member's individual permission. Allow wins when groups disagree.</p>
-        {% if not manage_permissions %}
-            <p class="support text-base-content/80">You do not have permission to change group permissions. You can still manage group membership.</p>
-        {% endif %}
-        <div class="divide-y divide-base-300">
-            {% for group_title, permissions in permission_groups.items() %}
-                <div class="py-4">
-                    <h6 class="h6 text-base-content">{{ group_title }}</h6>
-                    {% for permission in permissions %}
-                        {% set field = form[permission.permission_field_name] %}
-                        <div class="mt-4">
-                            {{ field.label(class="label") }}
-                            {{ field(class="select mt-1 w-full", disabled=not manage_permissions) }}
-                            {% if permission.description %}
-                                <p class="form-help">{{ permission.description }}</p>
-                            {% endif %}
-                            {% for error in field.errors %}
-                                <p class="form-error">{{ error }}</p>
-                            {% endfor %}
-                        </div>
-                    {% endfor %}
-                </div>
-            {% endfor %}
+{% for policies in [false, true] %}
+    {% set section_title = 'Authentication Policies' if policies else 'Permissions' %}
+    {% set management_permission = 'users.update_authentication_policies' if policies else 'users.update_permissions' %}
+    {% set enabled_label = 'Enabled' if policies else 'Allow' %}
+    {% set disabled_label = 'Disabled' if policies else 'Deny' %}
+    <details class="collapse collapse-arrow bg-base-100 border border-base-300 mt-8" name="{{ 'authentication-policies' if policies else 'permissions' }}-accordion">
+        <summary class="collapse-title font-semibold">{{ section_title }}</summary>
+        <div class="collapse-content">
+            <p class="form-help">Members inherit {{ enabled_label }} and {{ disabled_label }} definitions. Not defined uses the member's individual value. {{ enabled_label }} wins when groups disagree.</p>
+            {% if not current_user.can(management_permission) %}
+                <p class="support text-base-content/80">You do not have permission to change group {{ section_title | lower }}. You can still manage group membership.</p>
+            {% endif %}
+            <div class="divide-y divide-base-300">
+                {% for group_title, permissions in permission_groups.items() if (group_title == 'Authentication Policies') == policies %}
+                    <div class="py-4">
+                        {% if not policies %}<h6 class="h6 text-base-content">{{ group_title }}</h6>{% endif %}
+                        {% for permission in permissions %}
+                            {% set field = form[permission.permission_field_name] %}
+                            <div class="mt-4">
+                                <label class="label" for="{{ field.id }}">{{ permission.action if policies else permission.label }}</label>
+                                {{ field(class="select mt-1 w-full", disabled=not current_user.can(management_permission)) }}
+                                {% if permission.description %}
+                                    <p class="form-help">{{ permission.description }}</p>
+                                {% endif %}
+                                {% for error in field.errors %}
+                                    <p class="form-error">{{ error }}</p>
+                                {% endfor %}
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endfor %}
+            </div>
         </div>
-    </div>
-</details>
+    </details>
+{% endfor %}

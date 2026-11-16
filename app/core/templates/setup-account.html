@@ -30,10 +30,14 @@
 
                 <div class="mt-4">
                     <div class="flex items-center gap-2">
-                        {{ form.two_factor_auth(class="checkbox checkbox-sm", id="two_factor_auth", type="checkbox") }}
+                        {{ form.two_factor_auth(class="checkbox checkbox-sm", id="two_factor_auth", type="checkbox", disabled=current_user.can('authentication_policies.2fa_required')) }}
                         {{ form.two_factor_auth.label(class="label text-sm text-base-content/80") }}
                     </div>
-                    <p class="form-help">When logging in with a password, also require another form of authentication.</p>
+                    {% if current_user.can('authentication_policies.2fa_required') %}
+                        <p class="form-help">Two-factor authentication is required by your authentication policies.</p>
+                    {% else %}
+                        <p class="form-help">Require another form of authentication for password logins, and alternative login methods when covered by your authentication policies.</p>
+                    {% endif %}
                 </div>
 
                 {{ form.submit(class='btn btn-primary text-primary-content mt-6 w-full') }}

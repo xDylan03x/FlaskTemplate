@@ -164,7 +164,8 @@ class UserManager:
         user.status = 'disabled'
         user.phone_number_verified = False
         for perm in pm.all():
-            user.set_permission(perm.permission, False)
+            if not perm.is_authentication_policy:
+                user.set_permission(perm.permission, False)
         db.session.commit()
         NotificationManager.send_notification(user, "Account Locked", "Your account has been locked down for security purposes. Please contact an admin to regain access.", NotificationCategory.ACCOUNT_LOCKDOWN)
 
@@ -204,7 +205,6 @@ class LoginTokenManager:
                            remember_login: bool = False,
                            reset_password: bool = False,
                            create_account: bool = False,
-                           risk_score: int = 40,
                            auth_source: str = None,
                            for_impersonation: bool = False,
                            user_id: int = None) -> (LoginToken, str):
@@ -217,7 +217,6 @@ class LoginTokenManager:
         :param remember_login: Whether the login session should be persistent
         :param reset_password: Whether this token is for password reset
         :param create_account: Whether this token is for account creation
-        :param risk_score: How risky the login attempt is, lower is less risky
         :param auth_source: Source of authentication
         :param user_id
         :returns LoginToken, str: The login token record and raw token string
@@ -231,7 +230,6 @@ class LoginTokenManager:
             remember_login=remember_login,
             reset_password=reset_password,
             create_account=create_account,
-            risk_score=risk_score,
             auth_source=auth_source,
             for_impersonation=for_impersonation,
             user_id=user_id
@@ -249,11 +247,10 @@ class LoginTokenManager:
             next_url=existing_token.next_url,
             remember_login=existing_token.remember_login,
             reset_password=existing_token.reset_password,
-            risk_score=existing_token.risk_score,
             user_id=existing_token.user_id,
             auth_source=existing_token.auth_source
         )
-        token.risk_assessment = existing_token.risk_assessment
+        token.magic_link_channel = existing_token.magic_link_channel
         db.session.commit()
         return token, raw_token
 

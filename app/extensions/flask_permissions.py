@@ -31,6 +31,14 @@ class PermissionSpec:
     def permission_field_name(self) -> str:
         return "perm__" + self.permission.replace(".", "__")
 
+    @property
+    def is_authentication_policy(self) -> bool:
+        return self.permission.startswith('authentication_policies.')
+
+    @property
+    def management_permission(self) -> str:
+        return 'users.update_authentication_policies' if self.is_authentication_policy else 'users.update_permissions'
+
 
 class PermissionManager:
     def __init__(self, app=None):
