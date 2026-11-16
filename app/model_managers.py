@@ -162,6 +162,7 @@ class UserManager:
         """
         user.refresh_uuid36()
         user.status = 'disabled'
+        LoginTokenManager.invalidate_user_tokens(user.id)
         user.phone_number_verified = False
         for perm in pm.all():
             if not perm.is_authentication_policy:
@@ -270,6 +271,24 @@ class LoginTokenManager:
         login_token.used = True
         login_token.used_at = datetime.now(tz=timezone.utc)
         db.session.commit()
+
+    @staticmethod
+    def claim_login_token(login_token: LoginToken) -> bool:
+        """Claim a valid token once - the caller needs to commit the transactions"""
+        now = datetime.now(timezone.utc)
+        result = db.session.execute(sa.update(LoginToken).where(
+            LoginToken.id == login_token.id,
+            LoginToken.used.is_(False),
+            LoginToken.expiration > now,
+        ).values(used=True, used_at=now).execution_options(synchronize_session=False))
+        return result.rowcount == 1
+
+    @staticmethod
+    def invalidate_user_tokens(user_id: int) -> None:
+        """Revoke outstanding tokens in the caller's credential-change transaction."""
+        db.session.execute(sa.update(LoginToken).where(
+            LoginToken.user_id == user_id, LoginToken.used.is_(False),
+        ).values(used=True, used_at=datetime.now(timezone.utc)).execution_options(synchronize_session=False))
 
     @staticmethod
     def invalidate_create_account_token(user_id: int):

@@ -75,10 +75,13 @@ def setup_account():
         with audit.track(current_user, actor=current_user, message="User setting up account"):
             current_user.name = form.name.data.strip()
             current_user.set_password(form.password.data)
+            current_user.refresh_uuid36()
+            LoginTokenManager.invalidate_user_tokens(current_user.id)
             current_user.status = 'active'
             if not current_user.can('authentication_policies.2fa_required'):
                 current_user.set_setting('security.two_factor_auth', form.two_factor_auth.data)
             db.session.commit()
+        login_user(current_user._get_current_object())
         flash('Your account has been set up. You can now login using email and password or social logins.', 'success')
         LoginTokenManager.invalidate_create_account_token(current_user.id)
         return redirect(url_for('docs.articles', slug='core/getting-started'))
@@ -266,11 +269,12 @@ def change_password():
             return render_template('account-settings/change-password.html', title="Change Password", form=form), 401
         current_user.set_password(form.new_password.data)
         current_user.refresh_uuid36()
+        LoginTokenManager.invalidate_user_tokens(current_user.id)
         db.session.commit()
         audit.log("User changed their password", target=current_user, actor=current_user)
         message = 'You password has been changed. If you did not make this change, please take action to secure your account'
         NotificationManager.send_notification(current_user, 'Password Changed', message, NotificationCategory.PASSWORD_CHANGE)
-        login_user(current_user)
+        login_user(current_user._get_current_object())
         flash('Your password has been updated.', 'success')
         return redirect(url_for('core.security_settings'))
     return render_template('account-settings/change-password.html', title="Change Password", tab="security", form=form)
@@ -428,6 +432,7 @@ def edit_user(uuid36):
             if form.password.data:
                 user.set_password(form.password.data)
                 user.refresh_uuid36()
+                LoginTokenManager.invalidate_user_tokens(user.id)
 
             for field_name, permission_key in form.permission_field_map.items():
                 field = getattr(form, field_name)

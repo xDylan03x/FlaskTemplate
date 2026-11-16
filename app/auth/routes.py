@@ -101,6 +101,7 @@ def login():
             flash(CONTACT_ADMINISTRATOR_MESSAGE, 'error')
             return render_template('login.html', **context), 401
 
+        authenticated_user_id = user.get_id()
         # If the password is incorrect
         if not bypass_authentication and not user.check_password(form.password.data):
             audit.log("Login rejected: incorrect password", target=user, actor="Anonymous")
@@ -114,6 +115,10 @@ def login():
                 flash('Your password has been found in a data breach, consider changing it immediately.', 'warning')
 
         _, raw_token = LoginTokenManager.create_login_token(immediate_login=True, next_url=next_url, remember_login=form.remember_me.data, user_id=user.id, auth_source='development bypass' if bypass_authentication else 'traditional login')
+        if user.get_id() != authenticated_user_id:
+            LoginTokenManager.invalidate_login_token(LoginTokenManager.get_login_token(raw_token))
+            flash(TOKEN_EXPIRED_MESSAGE, 'error')
+            return redirect(url_for('auth.login'))
         return redirect(url_for('auth.login_with_token', raw_token=raw_token))
     return render_template('login.html', **context)
 
@@ -173,13 +178,16 @@ def forgot_password(raw_token: str = None):
 
     form = ResetPasswordForm()
     if form.validate_on_submit():
+        if not LoginTokenManager.claim_login_token(login_token):
+            db.session.rollback()
+            flash(TOKEN_EXPIRED_MESSAGE, 'error')
+            return redirect(url_for('auth.login'))
+        user.refresh_uuid36()
+        user.set_password(form.password.data)
+        LoginTokenManager.invalidate_user_tokens(user.id)
+        db.session.commit()
         message = 'You password has been reset. If you did not make this change, please take action to secure your account'
         NotificationManager.send_notification(user, 'Password Reset', message, NotificationCategory.PASSWORD_RESET)
-        LoginTokenManager.invalidate_login_token(login_token)
-        user.refresh_uuid36()
-        db.session.commit()
-        user.set_password(form.password.data)
-        db.session.commit()
         audit.log("User reset forgotten password", target=user, actor=user)
         flash('Your password has been reset. You can now log in with your new password.', 'success')
         return redirect(url_for('auth.login', next=login_token.next_url))
@@ -323,7 +331,8 @@ def oauth_callback(provider: str):
         return redirect(url_for('auth.login'))
 
     # Make sure that the state parameter matches the one we created in the authorization request
-    if request.args['state'] != session.get('oauth2_state'):
+    raw_state = request.args.get('state')
+    if not raw_state or raw_state != session.get('oauth2_state'):
         audit.log("OAuth login rejected: state mismatch", actor="Anonymous")
         flash(CONTACT_ADMINISTRATOR_MESSAGE, 'error')
         return redirect(url_for('auth.login'))
@@ -333,6 +342,17 @@ def oauth_callback(provider: str):
         audit.log("OAuth login rejected: missing authorization code", actor="Anonymous")
         flash(CONTACT_ADMINISTRATOR_MESSAGE, 'error')
         return redirect(url_for('auth.login'))
+
+    # Authorization state is single-use and never becomes the account's login token.
+    state_token = LoginTokenManager.get_login_token(raw_state)
+    if (not state_token or not state_token.is_valid(raw_state) or
+            state_token.auth_source != 'oauth authorization state' or state_token.user_id is not None or
+            not LoginTokenManager.claim_login_token(state_token)):
+        db.session.rollback()
+        flash(TOKEN_EXPIRED_MESSAGE, 'error')
+        return redirect(url_for('auth.login'))
+    db.session.commit()
+    session.pop('oauth2_state', None)
 
     # Exchange the authorization code for an access token
     response = requests.post(provider_data['token_url'], data={
@@ -378,16 +398,14 @@ def oauth_callback(provider: str):
         flash(CONTACT_ADMINISTRATOR_MESSAGE, 'error')
         return redirect(url_for('auth.login'))
 
-    # Get the login token and make sure we can log the user in
-    login_token = LoginTokenManager.get_login_token(session['oauth2_state'])
-    if not login_token or not user.can_login():
+    if not user.can_login():
         audit.log("OAuth login rejected: account or login request unavailable", actor="Anonymous")
         flash(CONTACT_ADMINISTRATOR_MESSAGE, 'error')
         return redirect(url_for('auth.login'))
-    login_token.user_id = user.id
-    login_token.immediate_login = True
-    db.session.commit()
-    return redirect(url_for('auth.login_with_token', raw_token=session['oauth2_state']))
+    _, raw_token = LoginTokenManager.create_login_token(
+        user_id=user.id, immediate_login=True, next_url=state_token.next_url,
+        auth_source='oauth authorization state')
+    return redirect(url_for('auth.login_with_token', raw_token=raw_token))
 
 
 @auth.route('/2fa/<string:raw_token>', methods=['GET', 'POST'])
@@ -566,6 +584,7 @@ def login_with_token(raw_token: str):
         flash(CONTACT_ADMINISTRATOR_MESSAGE, 'error')
         return redirect(url_for('auth.login'))
 
+    authenticated_user_id = user.get_id()
     if login_token.auth_source == 'magic link' and login_token.magic_link_channel not in ('email', 'text'):
         flash('Please request a new magic link to log in.', 'error')
         return redirect(url_for('auth.login'))
@@ -587,6 +606,18 @@ def login_with_token(raw_token: str):
         flash(REQUIRES_2FA_MESSAGE, 'info')
         return redirect(url_for('auth.two_factor_auth', raw_token=raw_token))
 
+    if not user.can_login():
+        audit.log("Login rejected: account cannot log in", target=user, actor="Anonymous")
+        flash(CONTACT_ADMINISTRATOR_MESSAGE, 'error')
+        return redirect(url_for('auth.login'))
+    # Welcome links remain usable during account setup; all other logins are single-use.
+    if not login_token.create_account:
+        if not LoginTokenManager.claim_login_token(login_token):
+            db.session.rollback()
+            flash(TOKEN_EXPIRED_MESSAGE, 'error')
+            return redirect(url_for('auth.login'))
+        db.session.commit()
+
     # If the token is to be used to verify a phone number, mark it as verified
     if login_token.verify_phone_number:
         user.phone_number_verified = True
@@ -595,21 +626,15 @@ def login_with_token(raw_token: str):
         flash('Your phone number has been successfully verified.', 'success')
         body = f'The phone number ({user.phone_number}) associated with your {sm.system_setting("application.name")} account has just been verified.\n\nIf you did not perform this action, please secure your account immediately.'
         NotificationManager.send_notification(user, 'Phone Number Verified', body, NotificationCategory.PHONE_NUMBER_CHANGE)
-    # If the user cannot log in
-    if not user.can_login():
-        audit.log("Login rejected: account cannot log in", target=user, actor="Anonymous")
-        flash(CONTACT_ADMINISTRATOR_MESSAGE, 'error')
+    LoginRecordManager.create_login_record(user.id, get_ip_from_request(request), user_agent, login_token)
+    # A credential change during redemption must not grant a session with the new identity.
+    if user.get_id() != authenticated_user_id or not user.can_login():
+        flash(TOKEN_EXPIRED_MESSAGE, 'error')
         return redirect(url_for('auth.login'))
-    # Otherwise, log the user in
-    else:
-        LoginRecordManager.create_login_record(user.id, get_ip_from_request(request), user_agent, login_token)
-        login_user(user, remember=login_token.remember_login)
-        session['theme'] = user.get_setting('preferences.theme') or sm.system_setting('application.default_theme')
-        if current_app.config.get('BYPASS_AUTHENTICATION', False):
-            flash('Password and two-factor authentication are bypassed.', 'info')
-    # Invalidate the token if it's not to be used for account creation
-    if not login_token.create_account:
-        LoginTokenManager.invalidate_login_token(login_token)
+    login_user(user, remember=login_token.remember_login)
+    session['theme'] = user.get_setting('preferences.theme') or sm.system_setting('application.default_theme')
+    if current_app.config.get('BYPASS_AUTHENTICATION', False):
+        flash('Password and two-factor authentication are bypassed.', 'info')
 
     actor = UserManager.get_user_by_uuid36(session['actual_user']) if session.get('actual_user') else user
     audit.log(f"User logged in ({login_token.auth_source})", target=user, actor=actor or user)
