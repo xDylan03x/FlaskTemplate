@@ -22,7 +22,7 @@
             {% if current_user.totp_verified %}
                 <button type="button" class="btn btn-sm btn-outline btn-error" onclick="totp_modal.showModal()">Disable TOTP</button>
             {% else %}
-                <a class="btn btn-sm btn-soft" href="{{ url_for('core.enable_totp') }}">Enable TOTP</a>
+                <button type="submit" class="btn btn-sm btn-soft" formaction="{{ url_for('core.enable_totp') }}" formmethod="post">Enable TOTP</button>
             {% endif %}
             <button type="button" class="btn btn-sm btn-soft btn-error" onclick="lockdown_modal.showModal()">Lockdown Account</button>
         </div>
@@ -38,7 +38,12 @@
                 <form method="dialog">
                     <button class="btn btn-sm">Cancel</button>
                 </form>
-                <a class="btn btn-sm btn-error" href="{{ url_for('core.disable_totp') }}">Disable TOTP</a>
+                <form action="{{ url_for('core.disable_totp') }}" method="post">
+                    {% if form.csrf_token is defined %}
+                        {{ form.csrf_token(id='disable_totp_csrf_token') }}
+                    {% endif %}
+                    <button type="submit" class="btn btn-sm btn-error">Disable TOTP</button>
+                </form>
             </div>
         </div>
     </dialog>
@@ -51,7 +56,12 @@
                 <form method="dialog">
                     <button class="btn btn-sm">Cancel</button>
                 </form>
-                <a class="btn btn-sm btn-error" href="{{ url_for('core.lockdown') }}">Lockdown</a>
+                <form action="{{ url_for('core.lockdown') }}" method="post">
+                    {% if form.csrf_token is defined %}
+                        {{ form.csrf_token(id='lockdown_csrf_token') }}
+                    {% endif %}
+                    <button type="submit" class="btn btn-sm btn-error">Lockdown</button>
+                </form>
             </div>
         </div>
     </dialog>

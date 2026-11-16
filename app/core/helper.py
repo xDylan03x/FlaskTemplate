@@ -7,9 +7,10 @@ import os
 import platform
 import sys
 from werkzeug.sansio.utils import host_is_trusted
-from app import sendgrid_client, twilio_client, db, sm
+from app import sendgrid_client, twilio_client, db, sm, audit
 from sendgrid.helpers.mail import Mail, From, ReplyTo
-from flask import current_app, url_for
+from flask import current_app, url_for, session
+from flask_login import current_user, logout_user
 from device_detector import DeviceDetector
 import boto3
 import phonenumbers
@@ -116,6 +117,18 @@ def normalize_external_url(value: str):
         return None
 
     return value
+
+
+def logout_session(preserve_user=False):
+    """Clear login and remember cookies, optionally retaining the impersonation actor."""
+    actual_user = session.get('actual_user') if preserve_user else None
+    if current_user.is_authenticated:
+        audit.log("User logged out", target=current_user, actor=current_user)
+    logout_user()
+    session.clear()
+    session['_remember'] = 'clear'
+    if actual_user is not None:
+        session['actual_user'] = actual_user
 
 
 def route_url(url: str) -> str:

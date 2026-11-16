@@ -4,13 +4,14 @@ from app.auth.helper import get_ip_from_request, twilio_verify_send, twilio_veri
 from app.models import NotificationCategory
 from app.model_managers import UserManager, LoginTokenManager, LoginRecordManager, UserDeviceManager, \
     NotificationManager
-from flask_login import login_user, logout_user, current_user
-from flask import flash, request, redirect, render_template, url_for, current_app, session
+from flask_login import login_user
+from flask import flash, request, redirect, render_template, url_for, current_app, session, abort
 from app.auth import auth
 from .forms import LoginForm, TwoFactorAuthSelectForm, TwoFactorAuthCodeForm, MagicLinkEmailForm, MagicLinkSelectForm, \
     ForgotPasswordEmailForm, ResetPasswordForm
 from app import db, sm, audit
-from ..core.helper import send_email, send_sms, parse_user_agent, route_url
+from ..core.helper import send_email, send_sms, parse_user_agent, route_url, logout_session
+from ..core.forms import ConfirmActionForm
 
 CONTACT_ADMINISTRATOR_MESSAGE = 'There was an error logging you in. Please contact an administrator.'
 TOKEN_EXPIRED_MESSAGE = 'The link or token you used has expired. Please try again.'
@@ -648,24 +649,13 @@ def login_with_token(raw_token: str):
     return redirect(route_url(next_url))
 
 
-@auth.route('/logout')
+@auth.route('/logout', methods=['POST'])
 def logout():
     """Page to log the user out"""
+    if not ConfirmActionForm().validate_on_submit():
+        abort(400)
     next_url = request.args.get('next')
-    preserve_user = request.args.get('preserve_user', '').lower() in ('1', 'true', 'yes')
-    actual_user = session.get('actual_user')
-
-    if current_user.is_authenticated:
-        audit.log("User logged out", target=current_user, actor=current_user)
-
-    logout_user()
-    # Clear the cookies (except the _remember cookie as it will keep a user signed in)
-    session.clear()
-    session['_remember'] = 'clear'
-
-    # If preserving the user (for an impersonation session)
-    if preserve_user and actual_user is not None:
-        session['actual_user'] = actual_user
+    logout_session()
 
     if next_url:
         return redirect(route_url(next_url))

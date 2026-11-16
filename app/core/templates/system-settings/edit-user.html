@@ -83,7 +83,12 @@
                 <form method="dialog">
                     <button class="btn btn-sm">Cancel</button>
                 </form>
-                <a class="btn btn-sm btn-primary" href="{{ url_for('core.impersonate_user', uuid36=user.uuid36) }}">Continue</a>
+                <form action="{{ url_for('core.impersonate_user', uuid36=user.uuid36) }}" method="post">
+                    {% if form.csrf_token is defined %}
+                        {{ form.csrf_token(id='impersonate_csrf_token') }}
+                    {% endif %}
+                    <button type="submit" class="btn btn-sm btn-primary">Continue</button>
+                </form>
             </div>
         </div>
     </dialog>
@@ -96,7 +101,12 @@
                 <form method="dialog">
                     <button class="btn btn-sm">Cancel</button>
                 </form>
-                <a class="btn btn-sm btn-error" href="{{ url_for('core.delete_user', uuid36=user.uuid36) }}">Delete User</a>
+                <form action="{{ url_for('core.delete_user', uuid36=user.uuid36) }}" method="post">
+                    {% if form.csrf_token is defined %}
+                        {{ form.csrf_token(id='delete_user_csrf_token') }}
+                    {% endif %}
+                    <button type="submit" class="btn btn-sm btn-error">Delete User</button>
+                </form>
             </div>
         </div>
     </dialog>
@@ -109,7 +119,12 @@
                 <form method="dialog">
                     <button class="btn btn-sm">Cancel</button>
                 </form>
-                <a class="btn btn-sm btn-error" href="{{ url_for('core.lockdown', uuid36=user.uuid36) }}">Lockdown User</a>
+                <form action="{{ url_for('core.lockdown', uuid36=user.uuid36) }}" method="post">
+                    {% if form.csrf_token is defined %}
+                        {{ form.csrf_token(id='lockdown_user_csrf_token') }}
+                    {% endif %}
+                    <button type="submit" class="btn btn-sm btn-error">Lockdown User</button>
+                </form>
             </div>
         </div>
     </dialog>

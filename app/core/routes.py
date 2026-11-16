@@ -1,6 +1,6 @@
 from flask import render_template, request, flash, redirect, url_for, current_app, abort, session, \
     render_template_string
-from flask_login import login_required, current_user, login_user, logout_user
+from flask_login import login_required, current_user, login_user
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 from app.core import core
@@ -8,15 +8,20 @@ from app import db, twilio_client, audit, sm
 from .forms import ChangePasswordForm, ProfileSettingsForm, NotificationSettingsForm, SecuritySettingsForm, \
     SetupAccountForm, NewUserForm, TOTPVerifyForm, CreateAccountForm, DeviceManagerForm, \
     build_edit_user_form, ApplicationSettingsForm, build_system_settings_form, BugReportForm, build_group_form, \
-    TestEmailForm, TestSMSForm
+    TestEmailForm, TestSMSForm, ConfirmActionForm
 import phonenumbers
 from app.model_managers import UserManager, UserDeviceManager, FileManager, NotificationManager, SystemManager
 from .helper import send_sms, parse_user_agent, get_routes, get_blueprints, get_extensions, get_update_status, \
-    get_platform_info, is_safe_read_query, modify_query, send_email, normalize_external_url, get_messaging_error
+    get_platform_info, is_safe_read_query, modify_query, send_email, normalize_external_url, get_messaging_error, logout_session
 from ..model_managers import LoginTokenManager
 from ..extensions.flask_permissions import require_permission
 from app import pm
 from ..models import NotificationCategory, User
+
+
+@core.app_context_processor
+def action_forms():
+    return dict(action_form=ConfirmActionForm())
 
 
 def _send_phone_verification(user):
@@ -289,6 +294,11 @@ def enable_totp():
     verify = request.args.get('verify', False)
     sid = current_app.config["TWILIO_SERVICE_SID"]
     if not verify:
+        form = ConfirmActionForm()
+        if request.method != 'POST':
+            return render_template('account-settings/enable-totp.html', title='Enable TOTP', form=form, binding_url=None)
+        if not form.validate_on_submit():
+            abort(400)
         new_factor = (
             twilio_client.verify.v2.services(sid)
             .entities(current_user.totp_entity)
@@ -297,7 +307,9 @@ def enable_totp():
         current_user.totp_factor = new_factor.sid
         db.session.commit()
         audit.log("User started TOTP setup", target=current_user, actor=current_user)
-        return render_template('account-settings/enable-totp.html', title="Enable TOTP", binding_url=new_factor.binding['uri'])
+        return render_template('account-settings/enable-totp.html', title="Enable TOTP", binding_url=new_factor.binding['uri'], form=form)
+    if not current_user.totp_factor:
+        return redirect(url_for('core.enable_totp'))
     form = TOTPVerifyForm()
     if form.validate_on_submit():
         factor = (
@@ -318,9 +330,11 @@ def enable_totp():
     return render_template('account-settings/verify-totp.html', title="Verify TOTP", form=form)
 
 
-@core.route('/account-settings/security/disable-totp')
+@core.route('/account-settings/security/disable-totp', methods=['POST'])
 @login_required
 def disable_totp():
+    if not ConfirmActionForm().validate_on_submit():
+        abort(400)
     current_user.totp_verified = False
     current_user.refresh_totp_entity()
     current_user.totp_factor = None
@@ -360,10 +374,12 @@ def manage_device(uuid36):
     return render_template('account-settings/manage-device.html', title="Manage Device", tab="security", device=device, parsed_device=parsed_device, user_ip=request.remote_addr, form=form)
 
 
-@core.route('/account-settings/security/lockdown/<string:uuid36>')
-@core.route('/account-settings/security/lockdown')
+@core.route('/account-settings/security/lockdown/<string:uuid36>', methods=['POST'])
+@core.route('/account-settings/security/lockdown', methods=['POST'])
 @login_required
 def lockdown(uuid36: str = None):
+    if not ConfirmActionForm().validate_on_submit():
+        abort(400)
     # If the user is locking down another account, make sure they have permission
     if uuid36 is None:
         user = current_user
@@ -376,9 +392,8 @@ def lockdown(uuid36: str = None):
     UserManager.lockdown_user(user)
     audit.log("User locked down account", target=user, actor=current_user)
     if uuid36 is None:
+        logout_session()
         flash('Your account has been locked down.', 'success')
-        logout_user()
-        session.clear()
         return redirect(url_for('auth.login'))
     flash('User has been locked down.', 'success')
     return redirect(url_for('core.user_settings'))
@@ -458,10 +473,12 @@ def edit_user(uuid36):
     return render_template('system-settings/edit-user.html', title="Edit User", tab="users", form=form, user=user, permission_groups=pm.grouped(), inherited_permissions=inherited_permissions)
 
 
-@core.route('/system-settings/users/delete/<string:uuid36>')
+@core.route('/system-settings/users/delete/<string:uuid36>', methods=['POST'])
 @login_required
 @require_permission('users.delete')
 def delete_user(uuid36):
+    if not ConfirmActionForm().validate_on_submit():
+        abort(400)
     user = UserManager.get_user_by_uuid36(uuid36)
     if not user:
         abort(404)
@@ -471,24 +488,28 @@ def delete_user(uuid36):
     return redirect(url_for('core.user_settings'))
 
 
-@core.route('/system-settings/users/impersonate')
-@core.route('/system-settings/users/impersonate/<string:uuid36>')
+@core.route('/system-settings/users/impersonate', methods=['POST'])
+@core.route('/system-settings/users/impersonate/<string:uuid36>', methods=['POST'])
 @login_required
 def impersonate_user(uuid36: str = None):
+    if not ConfirmActionForm().validate_on_submit():
+        abort(400)
     # If ending the session
     if uuid36 is None:
         real_user = UserManager.get_user_by_uuid36(session.get('actual_user', None))
         # If the actual user was not found, error out
         if real_user is None:
+            logout_session()
             flash('Error ending session. You have been logged out.', 'error')
-            return redirect(url_for('auth.logout'))
+            return redirect(url_for('auth.login'))
         # If the actual user was found, log them out and back in
         audit.log("User stopped impersonating", target=current_user, actor=real_user)
-        flash('Ended impersonation session.', 'success')
         next_url_after_logout = url_for('core.user_settings')
         _, raw_token = LoginTokenManager.create_login_token(immediate_login=True, next_url=next_url_after_logout, user_id=real_user.id, auth_source='restoring from impersonation session')
         next_url = url_for('auth.login_with_token', raw_token=raw_token)
-        return redirect(url_for('auth.logout', next=next_url))
+        logout_session()
+        flash('Ended impersonation session.', 'success')
+        return redirect(next_url)
 
     if not current_user.can('users.impersonate'):
         abort(403)
@@ -503,7 +524,8 @@ def impersonate_user(uuid36: str = None):
     session['actual_user'] = current_user.uuid36
     _, raw_token = LoginTokenManager.create_login_token(immediate_login=True, for_impersonation=True, user_id=user.id, auth_source='starting impersonation session')
     next_url = url_for('auth.login_with_token', raw_token=raw_token)
-    return redirect(url_for('auth.logout', next=next_url, preserve_user=True))
+    logout_session(preserve_user=True)
+    return redirect(next_url)
 
 
 @core.route('/system-settings/groups')
@@ -573,10 +595,12 @@ def edit_group(uuid36):
     return render_template('system-settings/edit-group.html', title="Edit Group", tab="groups", form=form, group=group, permission_groups=pm.grouped(), manage_permissions=manage_permissions)
 
 
-@core.route('/system-settings/groups/delete/<string:uuid36>')
+@core.route('/system-settings/groups/delete/<string:uuid36>', methods=['POST'])
 @login_required
 @require_permission('groups.delete')
 def delete_group(uuid36):
+    if not ConfirmActionForm().validate_on_submit():
+        abort(400)
     group = UserManager.get_user_group_by_uuid36(uuid36)
     if not group:
         abort(404)

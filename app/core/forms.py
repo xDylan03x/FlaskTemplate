@@ -170,6 +170,10 @@ class TOTPVerifyForm(FlaskForm):
     submit = SubmitField('Submit')
 
 
+class ConfirmActionForm(FlaskForm):
+    submit = SubmitField('Confirm')
+
+
 class SystemSettingsForm(FlaskForm):
     submit = SubmitField('Save')
 

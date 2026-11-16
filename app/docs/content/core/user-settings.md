@@ -108,7 +108,7 @@ This is a more secure method of authentication than a password, and is recommend
 **Enabling TOTP**
 
 1. From the user settings page, click on the "Enable TOPT" button.
-2. Scan the QR code with your TOTP app and click "Next".
+2. If prompted, click "Start Setup", then scan the QR code with your TOTP app and click "Next".
 3. Enter the code from your TOTP app and click the "Submit" button
 
 **Disabling TOTP**
