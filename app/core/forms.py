@@ -138,15 +138,15 @@ class NotificationSettingsForm(FlaskForm):
 
 class SecuritySettingsForm(FlaskForm):
     two_factor_auth = BooleanField('Two-Factor Authentication', description='Require another form of authentication for every password login.')
-    unknown_device_requires_2fa = BooleanField('Unknown Device Requires Two-Factor Authentication', description='Require 2FA on untrusted devices, regardless of login method or your other 2FA settings.')
     two_factor_alternative_logins = BooleanField('Two-Factor Authentication Applies to Alternative Login Methods', description='Also apply your two-factor authentication setting to magic-link and OAuth logins.')
+    unknown_device_requires_2fa = BooleanField('Unknown Device Requires Two-Factor Authentication', description='Require 2FA on untrusted devices, regardless of login method or your other 2FA settings.')
     password_breach_check = BooleanField('Password Breach Checking', description='When logging in with a password, check whether it has appeared in a known data breach.')
     submit = SubmitField('Save')
 
     authentication_settings = {
         'two_factor_auth': ('security.two_factor_auth', 'authentication_policies.2fa_required'),
-        'unknown_device_requires_2fa': ('security.unknown_device_requires_2fa', 'authentication_policies.unknown_device_requires_2fa'),
         'two_factor_alternative_logins': ('security.2fa_applies_to_alternative_login_methods', 'authentication_policies.2fa_applies_to_alternative_login_methods'),
+        'unknown_device_requires_2fa': ('security.unknown_device_requires_2fa', 'authentication_policies.unknown_device_requires_2fa'),
         'password_breach_check': ('security.password_breach_check', 'authentication_policies.password_breach_checking'),
     }
 
