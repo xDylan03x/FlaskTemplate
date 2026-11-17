@@ -233,7 +233,12 @@ class EditGroupForm(FlaskForm):
 
 
 class BugReportForm(FlaskForm):
-    subject = StringField('Subject', validators=[DataRequired()])
+    subject = SelectField(
+        'Subject',
+        choices=['Issue/Bug', 'Feature Request', 'Account/Access', 'Other'],
+        default='Issue/Bug',
+        validators=[DataRequired()],
+    )
     message = TextAreaField('Message', validators=[DataRequired()])
     submit = SubmitField('Submit Report')
 

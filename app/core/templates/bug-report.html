@@ -15,7 +15,7 @@
                     {{ form.csrf_token }}
 
                     {{ form.subject.label(class="label mt-8") }}
-                    {{ form.subject(class="input mt-1 w-full", id="subject", type="text") }}
+                    {{ form.subject(class="select mt-1 w-full", id="subject") }}
                     {% for error in form.subject.errors %}
                         <p class="form-error">{{ error }}</p>
                     {% endfor %}
