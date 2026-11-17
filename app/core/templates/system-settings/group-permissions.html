@@ -3,7 +3,7 @@
     {% set management_permission = 'users.update_authentication_policies' if policies else 'users.update_permissions' %}
     {% set enabled_label = 'Enabled' if policies else 'Allow' %}
     {% set disabled_label = 'Disabled' if policies else 'Deny' %}
-    <details class="collapse collapse-arrow bg-base-100 border border-base-300 mt-8" name="{{ 'authentication-policies' if policies else 'permissions' }}-accordion">
+    <details class="collapse collapse-arrow bg-base-100 border border-base-300 {{ 'mt-8' if loop.first else 'mt-4' }}" name="{{ 'authentication-policies' if policies else 'permissions' }}-accordion">
         <summary class="collapse-title font-semibold">{{ section_title }}</summary>
         <div class="collapse-content">
             <p class="form-help">Members inherit {{ enabled_label }} and {{ disabled_label }} definitions. Not defined uses the member's individual value. {{ enabled_label }} wins when groups disagree.</p>
