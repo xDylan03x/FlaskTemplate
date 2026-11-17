@@ -33,7 +33,7 @@
             {% if current_user.is_authenticated %}
 
                 {# When adding other options/roles to this dropdown, make sure to add it as an or condition here as well #}
-                {% if current_user.can('users') or current_user.can('system') or current_user.can('api_keys.manage') %}
+                {% if current_user.can('users') or current_user.can('groups') or current_user.can('system') or current_user.can('api_keys.manage') %}
                     <div class="dropdown dropdown-end">
                         <div tabindex="0" role="button" class="btn btn-sm btn-ghost btn-circle avatar text-neutral-content">
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
