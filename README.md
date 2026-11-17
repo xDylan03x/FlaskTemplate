@@ -290,7 +290,7 @@ an expired key. Revoked keys cannot be renewed.
 ```sh
 flask --app app tools permissions list --scope api
 flask --app app tools api-keys create --name "Partner app"
-flask --app app tools api-keys create --name "Reader" --permission widgets.read --expires 2027-12-31
+flask --app app tools api-keys create --name "Reader" --permission users.read --expires 2027-12-31
 flask --app app tools api-keys create --name "Integration" --preset full-control
 flask --app app tools api-keys list
 flask --app app tools api-keys show 1
@@ -332,6 +332,21 @@ the route template, method, response status, source IP, and known key identity;
 headers, query strings, bodies, full keys, and key digests are excluded. Last-used
 time records valid authentication, including subsequent permission denial.
 Audit persistence retains the existing best-effort error handling.
+
+### Service API
+
+Bearer-authenticated routes under `/api/v1` support key introspection, selected
+application settings, user lookup/provisioning and account lifecycle, preferences,
+effective user permissions, group management/membership, and notifications.
+Each action has its own API permission. Existing keys need explicit grants for
+these routes; user permissions and browser sessions do not provide access.
+
+The route catalog, JSON fields, and security behavior are documented in
+[Service API](app/docs/content/core/service-api.md), also available in-app under
+**Core → Service API**. User and group routes use numeric IDs and paginated lists.
+Profile updates cannot write passwords, verification flags, or permissions.
+Membership changes apply existing inherited permissions and authentication policies.
+Notifications use the recipient's existing delivery preferences.
 
 ### Cloning The Repository
 To make things easier in the future, you can set up your application repository

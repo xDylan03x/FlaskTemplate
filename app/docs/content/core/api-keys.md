@@ -30,6 +30,9 @@ you can adjust individual checkboxes at any time. Grants are saved explicitly, s
 existing keys automatically. If no API permissions are registered, keys receive
 no grants. User permissions and group membership do not apply to API keys.
 
+See [Service API]({{ doc_link_article('core/service-api') }}) for the built-in
+routes and their individual permission requirements.
+
 # Rotation, expiration, and revocation
 
 **Rotate Key** generates a new credential and shows it once. The immediately
