@@ -9,7 +9,7 @@
     </details>
 </li>
 {% endset %}
-<div class="bg-neutral shadow text-neutral-content print:hidden">
+<div class="relative z-30 bg-neutral shadow text-neutral-content print:hidden">
     <div class="navbar max-w-6xl px-6 mx-auto">
         <div class="navbar-start">
             <div class="dropdown">
@@ -188,9 +188,10 @@
 
 {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
-        <div class="toast toast-top toast-end top-20 z-50 w-96 max-w-[calc(100vw-2rem)] pointer-events-none print:hidden"
+        <div class="toast toast-top toast-end top-20 z-20 w-96 max-w-[calc(100vw-2rem)] pointer-events-none print:hidden"
              x-data="{ top: 80 }"
              x-init="top = Math.max(0, $el.previousElementSibling.getBoundingClientRect().bottom) + 16"
+             @scroll.window.passive="top = Math.max(0, $el.previousElementSibling.getBoundingClientRect().bottom) + 16"
              @resize.window="top = Math.max(0, $el.previousElementSibling.getBoundingClientRect().bottom) + 16"
              :style="{ top: top + 'px' }">
             {% for category, message in messages %}
