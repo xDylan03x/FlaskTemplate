@@ -114,6 +114,10 @@ class User(db.Model, UserMixin):
 
     def refresh_uuid36(self) -> None:
         self.uuid36 = str(uuid.uuid4())
+        if self.id is not None:
+            db.session.execute(sa.update(UserDevice).where(UserDevice.user_id == self.id).values(
+                device_trusted=False, secret_hash=None, credential_expires_at=None,
+            ).execution_options(synchronize_session=False))
 
     def refresh_totp_entity(self) -> None:
         self.totp_entity = str(uuid.uuid4())
@@ -307,11 +311,15 @@ class UserDevice(db.Model):
         updated_at
         user_agent: User agent string of the client
         last_authenticated: Last time the device was authenticated
-        device_trusted: Whether the user trusts the device (verified by a link)
+        device_trusted: Whether the user trusts this browser
+        secret_hash: SHA-256 hash of the browser credential's random secret
+        credential_expires_at: Server-side expiration of the browser credential
 
         logins: One-to-many relationship with LoginRecord model
         user_id: Foreign key to the User model
     """
+
+    CREDENTIAL_LIFETIME = timedelta(days=30)
 
     id: so.Mapped[int] = so.mapped_column(primary_key=True)
     uuid36: so.Mapped[str] = so.mapped_column(sa.String(36), unique=True, index=True, nullable=False, default=lambda: str(uuid.uuid4()))
@@ -321,12 +329,29 @@ class UserDevice(db.Model):
     user_agent: so.Mapped[Optional[str]] = so.mapped_column(sa.String(256))
     last_authenticated: so.Mapped[datetime] = so.mapped_column(sa.DateTime(timezone=True), nullable=False, default=lambda: datetime.now(tz=timezone.utc))
     device_trusted: so.Mapped[bool] = so.mapped_column(sa.Boolean, default=False, nullable=False)
+    secret_hash: so.Mapped[Optional[str]] = so.mapped_column(sa.String(64))
+    credential_expires_at: so.Mapped[Optional[datetime]] = so.mapped_column(sa.DateTime(timezone=True))
 
     logins: so.Mapped[list["LoginRecord"]] = so.relationship('LoginRecord', backref='user_device', lazy='dynamic')
     user_id: so.Mapped[int] = so.mapped_column(sa.Integer, sa.ForeignKey('user.id'))
 
     def __repr__(self):
         return '<UserDevice {}>'.format(self.id)
+
+    def set_secret(self) -> str:
+        secret = secrets.token_urlsafe(32)
+        self.secret_hash = hashlib.sha256(secret.encode()).hexdigest()
+        self.credential_expires_at = datetime.now(timezone.utc) + self.CREDENTIAL_LIFETIME
+        return secret
+
+    @property
+    def has_active_credential(self) -> bool:
+        if not self.secret_hash or self.credential_expires_at is None:
+            return False
+        expiration = self.credential_expires_at
+        if expiration.tzinfo is None:
+            expiration = expiration.replace(tzinfo=timezone.utc)
+        return expiration > datetime.now(timezone.utc)
 
 
 class UserSetting(db.Model):

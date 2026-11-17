@@ -176,6 +176,48 @@ Existing CLI permission commands also inspect and edit policy keys, including gr
 `.venv/bin/python -m unittest discover -s tests -v`; they use a temporary SQLite database
 and mocked messaging/verification services.
 
+### Remembered browsers
+
+Device recognition uses the existing UUIDv4 `UserDevice.uuid36` as a public selector,
+paired with a separate random 32-byte secret in a browser cookie. Only the secret's
+SHA-256 hash is saved on the server. Device lookup checks the account, selector,
+server-side expiry, and secret hash; User-Agent is descriptive metadata rather than
+proof of device identity. The existing strict-login bot check still uses User-Agent.
+
+Cookies are account-specific (`device_<user_id>`), HttpOnly, host-only, SameSite=Lax,
+and scoped to `/`. HTTPS and non-development environments use Secure cookies with
+an `__Host-` prefix. Plain HTTP development uses the unprefixed cookie without Secure
+so local testing works. Browser credentials expire after 30 days and are not silently
+extended by ordinary logins. Expiry affects recognition at the next login; it does
+not terminate an already authenticated session. Account switching and impersonation retain independent
+credentials for each account.
+
+A newly registered browser is untrusted until the user trusts it after successful 2FA
+or through the existing device-management settings. The existing welcome-link
+onboarding exception is preserved. Trust only affects unknown-device checks; the
+Required policy and enabled every-login preference still require 2FA. Ordinary logout
+clears the login/remember cookie while retaining browser recognition. Rotating the
+user's login identity (password change/reset, account setup, lockdown, deletion, or
+applicable CLI changes) clears all saved device hashes, expirations, and trust flags.
+Expired/inactive device records cannot be reactivated in the management page; the
+browser must register again. Historical records remain available.
+
+**Migration required before running this update:** add these nullable columns to
+`user_device` using your own migration:
+
+- `secret_hash`: `VARCHAR(64)`, nullable.
+- `credential_expires_at`: timezone-aware timestamp, nullable.
+
+The UUID column already exists and needs no replacement. Leave both new fields NULL
+on existing rows: legacy User-Agent-only records must not inherit credential-based
+trust. On their next login, browsers register a fresh credential and complete 2FA if
+their effective policies/settings require it. Do not backfill secrets from UUIDs or
+User-Agent strings. No migration is created or run by this change.
+
+The cookie proves possession of a browser credential, not physical hardware identity.
+A copied full cookie can be replayed until expiry or revocation; knowing a UUID or
+reading the stored hash alone is insufficient.
+
 ### Command-line administration
 
 Use `flask --app app tools --help` to explore the `settings`, `users`,

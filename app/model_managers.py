@@ -1,7 +1,9 @@
 import hashlib
+import secrets
+import uuid
 import sqlalchemy as sa
 from sqlalchemy import orm as so
-from flask import url_for
+from flask import url_for, request, current_app
 from flask_sqlalchemy.pagination import Pagination
 from app.core.helper import send_email, send_sms
 from app.models import User, LoginToken, LoginRecord, UserNotification, NotificationCategory, UserDevice, File, \
@@ -311,33 +313,39 @@ class LoginTokenManager:
 
 class LoginRecordManager:
     @staticmethod
-    def create_login_record(user_id: int, ip_address: str, user_agent: str, login_token: LoginToken) -> LoginRecord:
+    def create_login_record(user_id: int, ip_address: str, user_agent: str, login_token: LoginToken, device_record: UserDevice = None) -> LoginRecord:
         login_record = LoginRecord(
             user_id=user_id,
             ip_address=ip_address,
             login_token_id=login_token.id
         )
         db.session.add(login_record)
-        device_record = UserDeviceManager.find_device(user_id, user_agent)
-        if device_record:
+        if device_record and device_record.user_id == user_id:
             device_record.logins.append(login_record)
-            device_record.last_login = datetime.now(tz=timezone.utc)
+            device_record.last_authenticated = datetime.now(tz=timezone.utc)
         db.session.commit()
         return login_record
 
 
 class UserDeviceManager:
     @staticmethod
+    def secure_cookie() -> bool:
+        return request.is_secure or current_app.config.get('FLASK_ENV', 'development') != 'development'
+
+    @staticmethod
+    def cookie_name(user_id: int) -> str:
+        prefix = '__Host-' if UserDeviceManager.secure_cookie() else ''
+        return f'{prefix}device_{user_id}'
+
+    @staticmethod
     def create_user_device(user_id: int, user_agent: str) -> UserDevice:
         """
         Creates a device for the user for login tracking.
 
-        Returns:
-            device: The created device record
-            device_identifier: The device identifier for the device to be stored in a cookie
+        Returns the device record. Browser credential issuance is handled by authentication.
         """
         device = UserDevice(
-            user_agent=user_agent,
+            user_agent=user_agent[:256],
             user_id=user_id
         )
         db.session.add(device)
@@ -345,9 +353,25 @@ class UserDeviceManager:
         return device
 
     @staticmethod
-    def find_device(user_id: int, user_agent: str) -> UserDevice | None:
-        device = db.session.scalar(sa.select(UserDevice).where(UserDevice.user_id == user_id, UserDevice.user_agent == user_agent))
-        return device
+    def find_device(user_id: int) -> UserDevice | None:
+        cookie = request.cookies.get(UserDeviceManager.cookie_name(user_id), '')
+        if len(cookie) != 80 or cookie.count('.') != 1:
+            return None
+        identifier, secret = cookie.split('.', 1)
+        try:
+            parsed = uuid.UUID(identifier)
+        except ValueError:
+            return None
+        if parsed.version != 4 or str(parsed) != identifier:
+            return None
+        device = db.session.scalar(sa.select(UserDevice).where(
+            UserDevice.user_id == user_id, UserDevice.uuid36 == identifier,
+            UserDevice.credential_expires_at > datetime.now(timezone.utc),
+        ))
+        if not device or not device.secret_hash:
+            return None
+        digest = hashlib.sha256(secret.encode()).hexdigest()
+        return device if secrets.compare_digest(device.secret_hash, digest) else None
 
     @staticmethod
     def get_device_by_uuid36(uuid36: str) -> UserDevice | None:

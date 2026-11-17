@@ -201,7 +201,7 @@ class AuditManager:
                 snapshot = {
                     attr.key: copy.deepcopy(getattr(target, attr.key))
                     for attr in state.mapper.column_attrs
-                    if attr.key not in ('password_hash', 'hashed_token')
+                    if attr.key not in ('password_hash', 'hashed_token', 'secret_hash')
                 }
                 for relationship in state.mapper.relationships:
                     if state.session is not None and relationship.lazy == 'dynamic' and relationship.key in ('settings', 'permissions'):

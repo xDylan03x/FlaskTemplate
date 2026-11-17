@@ -41,9 +41,12 @@
         {{ form.csrf_token }}
 
         <div class="mt-8">
-            {{ form.device_trusted(class="checkbox", id="device_trusted", type="checkbox") }}
+            {{ form.device_trusted(class="checkbox", id="device_trusted", type="checkbox", disabled=not device.has_active_credential) }}
             {{ form.device_trusted.label(class="label") }}
             <p class="form-help">Reduce the need for two-factor authentication when logging in on this device.</p>
+            {% if not device.has_active_credential %}
+                <p class="form-help">This browser credential is expired or inactive. Sign in from that browser to register it again.</p>
+            {% endif %}
         </div>
 
         {{ form.submit(class='btn btn-primary text-neutral-content mt-8 w-full') }}

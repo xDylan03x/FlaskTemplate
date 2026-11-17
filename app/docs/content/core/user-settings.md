@@ -91,6 +91,18 @@ By clicking on the device button, you can view more information about the device
 You can also manage the device's trust status by clicking the "Trust This Device" field and clicking the "Save" button.  
 When logging in from an untrusted device, you can also select **Trust This Device** while submitting your two-factor authentication code. The device is trusted only after the code is verified. Leaving it unchecked keeps the device untrusted. Trusting a device does not disable two-factor authentication if you have enabled it in your security settings.
 
+Browser recognition uses an account-specific cookie with a random secret, rather than
+the browser's User-Agent. Clearing cookies or using another browser profile makes it
+unknown again; a normal browser update does not. Browser credentials expire after
+30 days. Expiry affects the next login rather than ending an existing session.
+Password changes/resets and account lockdown revoke remembered browsers.
+Logout keeps browser recognition while ending the authenticated session. The Required
+policy and your every-login preference still apply even on trusted browsers.
+
+Expired or inactive devices cannot be reactivated from their management page. Sign in
+from that browser to register it again; previous login history remains available.
+
+
 Each login has an authorization source which describes how the login was attepmted. These include:
 
 - traditional login: login with email and password

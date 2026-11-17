@@ -365,11 +365,11 @@ def manage_device(uuid36):
     form = DeviceManagerForm()
     if form.validate_on_submit():
         with audit.track(device, actor=user, message="User managing new device"):
-            device.device_trusted = form.device_trusted.data
+            device.device_trusted = form.device_trusted.data and device.has_active_credential
             db.session.commit()
         flash('Device trust status has been updated.', 'success')
         return redirect(url_for('core.login_history'))
-    form.device_trusted.data = device.device_trusted
+    form.device_trusted.data = device.device_trusted and device.has_active_credential
     parsed_device = parse_user_agent(device.user_agent)
     return render_template('account-settings/manage-device.html', title="Manage Device", tab="security", device=device, parsed_device=parsed_device, user_ip=request.remote_addr, form=form)
 

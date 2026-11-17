@@ -1,11 +1,11 @@
 from urllib.parse import urlencode
 import requests
 from app.auth.helper import get_ip_from_request, twilio_verify_send, twilio_verify_check, hibp_password_check, get_oauth_providers
-from app.models import NotificationCategory
+from app.models import NotificationCategory, UserDevice
 from app.model_managers import UserManager, LoginTokenManager, LoginRecordManager, UserDeviceManager, \
     NotificationManager
 from flask_login import login_user
-from flask import flash, request, redirect, render_template, url_for, current_app, session, abort
+from flask import flash, request, redirect, render_template, url_for, current_app, session, abort, g
 from app.auth import auth
 from .forms import LoginForm, TwoFactorAuthSelectForm, TwoFactorAuthCodeForm, MagicLinkEmailForm, MagicLinkSelectForm, \
     ForgotPasswordEmailForm, ResetPasswordForm
@@ -23,16 +23,34 @@ NO_2FA_METHOD_MESSAGE = 'No eligible two-factor authentication method is availab
 def _get_login_device(user, login_token):
     user_agent = request.headers.get('User-Agent', '')
     # Determine if the user is using a new device
-    user_device = UserDeviceManager.find_device(user.id, user_agent)
+    devices = g.setdefault('login_devices', {})
+    if user.id in devices:
+        return devices[user.id]
+    user_device = UserDeviceManager.find_device(user.id)
     if not user_device:
         user_device = UserDeviceManager.create_user_device(user_id=user.id, user_agent=user_agent)
+        secret = user_device.set_secret()
+        g.setdefault('device_cookies', {})[user.id] = f'{user_device.uuid36}.{secret}'
         audit.log("User registered new login device", target=user_device, actor=user)
         if login_token.create_account:
             user_device.device_trusted = True
         manage_url = url_for('core.manage_device', uuid36=user_device.uuid36, _external=True)
         NotificationManager.send_notification(user, "New Device Login", "A new device has logged in to your account. Please use the link below to manage it.", NotificationCategory.NEW_DEVICE_LOGIN, link=manage_url)
 
+    devices[user.id] = user_device
+    user_device.user_agent = user_agent[:256]
     return user_device
+
+
+@auth.after_request
+def set_device_cookies(response):
+    for user_id, value in g.get('device_cookies', {}).items():
+        response.set_cookie(
+            UserDeviceManager.cookie_name(user_id), value,
+            max_age=int(UserDevice.CREDENTIAL_LIFETIME.total_seconds()),
+            secure=UserDeviceManager.secure_cookie(), httponly=True, samesite='Lax', path='/',
+        )
+    return response
 
 
 def _requires_two_factor_auth(user, login_token, user_device):
@@ -64,6 +82,10 @@ def _two_factor_methods(user, magic_link_channel=None):
 
 
 def _complete_two_factor_auth(user, login_token, form, can_trust_device):
+    # Revocation may have happened while the verification provider was responding.
+    db.session.refresh(login_token)
+    if not login_token.is_valid(request.view_args['raw_token']):
+        abort(400)
     login_token.immediate_login = True
     login_token.two_factor_verified = True
     if can_trust_device and form.trust_device.data:
@@ -243,7 +265,7 @@ def magic_link(raw_token: str = None):
 
     form = MagicLinkSelectForm()
     form.method.choices = []
-    user_device = UserDeviceManager.find_device(user.id, request.headers.get('User-Agent', ''))
+    user_device = UserDeviceManager.find_device(user.id)
     requires_2fa = _requires_two_factor_auth(user, login_token, user_device)
     if user.email_verified and (not requires_2fa or _two_factor_methods(user, 'email')):
         form.method.choices.append('Email')
@@ -473,7 +495,7 @@ def two_factor_auth(raw_token: str):
 
     # If a code has been sent, show the appropriate form
     form = TwoFactorAuthCodeForm()
-    user_device = UserDeviceManager.find_device(user.id, request.headers.get('User-Agent', ''))
+    user_device = UserDeviceManager.find_device(user.id)
     can_trust_device = (not user_device or not user_device.device_trusted) and not (
         login_token.reset_password or login_token.for_impersonation or
         login_token.verify_phone_number or login_token.create_account
@@ -597,6 +619,10 @@ def login_with_token(raw_token: str):
             db.session.commit()
             audit.log("User verified email address", target=user, actor=user)
 
+    if not user.can_login():
+        flash(CONTACT_ADMINISTRATOR_MESSAGE, 'error')
+        return redirect(url_for('auth.login'))
+
     user_device = _get_login_device(user, login_token)
     db.session.commit()
 
@@ -627,7 +653,7 @@ def login_with_token(raw_token: str):
         flash('Your phone number has been successfully verified.', 'success')
         body = f'The phone number ({user.phone_number}) associated with your {sm.system_setting("application.name")} account has just been verified.\n\nIf you did not perform this action, please secure your account immediately.'
         NotificationManager.send_notification(user, 'Phone Number Verified', body, NotificationCategory.PHONE_NUMBER_CHANGE)
-    LoginRecordManager.create_login_record(user.id, get_ip_from_request(request), user_agent, login_token)
+    LoginRecordManager.create_login_record(user.id, get_ip_from_request(request), user_agent, login_token, user_device)
     # A credential change during redemption must not grant a session with the new identity.
     if user.get_id() != authenticated_user_id or not user.can_login():
         flash(TOKEN_EXPIRED_MESSAGE, 'error')
