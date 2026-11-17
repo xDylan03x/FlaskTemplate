@@ -28,7 +28,7 @@ Open **Group Management** from the system settings menu to view groups, their me
 4. Click **Create Group**.
 
 ## Editing Groups
-1. Click **Edit group** beside the group.
+1. Click **Edit Group** beside the group.
 2. Update its title, description, or selected members.
 3. If you have **Users - Update Permissions**, update permission definitions.
 4. Click **Save**.
@@ -49,7 +49,7 @@ On the individual user editor, inherited permissions show the effective value, a
 Broad permission checks also use inherited definitions. For example, access to the user management area requires at least one effective permission in the Users category.
 
 ## Deleting Groups
-1. Click **Edit group** beside the group.
+1. Click **Edit Group** beside the group.
 2. Click **Delete Group** and confirm.
 
 Deleting a group removes its memberships and permission definitions. Users keep their individual permissions and definitions inherited from other groups. Group deletion cannot be undone.
