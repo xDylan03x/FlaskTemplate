@@ -32,7 +32,13 @@
                     <td>
                         {{ group.users|length }}
                     </td>
-                    <td>{{ group.permissions|length }}</td>
+                    <td>
+                        {% set permissions = namespace(count=0) %}
+                        {% for permission in group.permissions if not permission.key.startswith('authentication_policies.') %}
+                            {% set permissions.count = permissions.count + 1 %}
+                        {% endfor %}
+                        {{ permissions.count }}
+                    </td>
                     <td>
                         <a class="btn btn-sm btn-soft w-max" href="{{ url_for('core.edit_group', uuid36=group.uuid36) }}" {% if not current_user.can('groups.update') %}disabled{% endif %}>
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="size-4">
