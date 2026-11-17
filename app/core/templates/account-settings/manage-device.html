@@ -11,7 +11,7 @@
         {% endfor %}
     </p>
     <p class="body text-base-content">Your IP: {{ user_ip }}</p>
-    <p class="support text-base-content/80 mt-4">If you don't recognize this device or its login activity, please take action to secure your account.</p>
+    <p class="support text-base-content/80 mt-4">If you don't recognize this device or its login activity, please take action to <a class="link" href="{{ url_for('core.security_settings') }}">secure your account</a>.</p>
     <details class="collapse collapse-arrow bg-base-100 border border-base-300 mt-2" name="my-accordion-det-1">
         <summary class="collapse-title font-semibold">Device Logins</summary>
         <div class="collapse-content">
@@ -45,7 +45,7 @@
             {{ form.device_trusted.label(class="label") }}
             <p class="form-help">Reduce the need for two-factor authentication when logging in on this device.</p>
             {% if not device.has_active_credential %}
-                <p class="form-help">This browser credential is expired or inactive. Sign in from that browser to register it again.</p>
+                <p class="form-help">This device's browser credential has expired or is inactive. Signing in from that browser registers a new, untrusted device and requires two-factor authentication if enabled by your settings or policies.</p>
             {% endif %}
         </div>
 

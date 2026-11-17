@@ -1,6 +1,15 @@
 {% extends 'account-settings/base.html' %}
 {% block settings_content %}
 
+    {% if not current_user.phone_number %}
+        <div role="status" class="alert alert-horizontal bg-base-200 border border-base-300 text-sm text-base-content/80 shadow-none mb-4">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-5 shrink-0 text-base-content/60" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25h1.5v5.25m-1.5-9h.008v.008h-.008V7.5ZM21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+            </svg>
+            <p>Text notifications won't work without a phone number. <a class="link link-hover font-medium" href="{{ url_for('core.profile_settings') }}">Add one in your profile</a>.</p>
+        </div>
+    {% endif %}
+
     <form action="" method="post">
         {{ form.csrf_token }}
 

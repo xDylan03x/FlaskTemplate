@@ -198,7 +198,7 @@ def send_phone_number_verification():
         return abort(404)
     _send_phone_verification(current_user)
     audit.log("User requested phone number verification", target=current_user, actor=current_user)
-    return '''<button type="button" class="btn btn-sm btn-neutral join-item" disabled>Link Sent</button>'''
+    return '''<button type="button" class="btn btn-neutral join-item" disabled>Link Sent</button>'''
 
 
 @core.route('/account-settings/notifications', methods=['GET', 'POST'])
@@ -349,7 +349,9 @@ def disable_totp():
 def login_history():
     page = request.args.get('page', 1, type=int)
     records = UserManager.get_logins(current_user.id, page=page)
-    return render_template('account-settings/login-history.html', title="Login History", tab="security", records=records)
+    current_device = UserDeviceManager.find_device(current_user.id)
+    return render_template('account-settings/login-history.html', title="Login History", tab="security", records=records,
+                           current_device_id=current_device.id if current_device else None)
 
 
 @core.route('/account-settings/security/manage-device/<string:uuid36>', methods=['GET', 'POST'])
@@ -365,11 +367,12 @@ def manage_device(uuid36):
     form = DeviceManagerForm()
     if form.validate_on_submit():
         with audit.track(device, actor=user, message="User managing new device"):
-            device.device_trusted = form.device_trusted.data and device.has_active_credential
+            if device.has_active_credential:
+                device.device_trusted = form.device_trusted.data
             db.session.commit()
         flash('Device trust status has been updated.', 'success')
         return redirect(url_for('core.login_history'))
-    form.device_trusted.data = device.device_trusted and device.has_active_credential
+    form.device_trusted.data = device.device_trusted
     parsed_device = parse_user_agent(device.user_agent)
     return render_template('account-settings/manage-device.html', title="Manage Device", tab="security", device=device, parsed_device=parsed_device, user_ip=request.remote_addr, form=form)
 

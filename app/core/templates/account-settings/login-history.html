@@ -5,12 +5,17 @@
         <div class="card bg-base-100 border border-base-300 shadow-sm">
             <div class="divide-y divide-base-300">
                 {% for record in records.items %}
+                    {% set credential_valid = record.user_device.has_active_credential %}
                     <a class="block bg-base-100 p-4 hover:bg-base-200/40 sm:p-5"
                        href="{{ url_for('core.manage_device', uuid36=record.user_device.uuid36) }}">
                         <div class="flex items-center gap-3">
                             <div class="flex size-8 shrink-0 items-center justify-center rounded-full border
-                                {% if record.user_device.device_trusted %}border-base-300 bg-base-200 text-success/80{% else %}border-warning/40 bg-warning/15 text-warning{% endif %}">
-                                {% if record.user_device.device_trusted %}
+                                {% if not credential_valid %}border-warning/40 bg-warning/15 text-warning{% elif record.user_device.device_trusted %}border-success/20 bg-success/10 text-success{% else %}border-error/40 bg-error/15 text-error{% endif %}">
+                                {% if not credential_valid %}
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-5" aria-hidden="true">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                                    </svg>
+                                {% elif record.user_device.device_trusted %}
                                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4" aria-hidden="true">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/>
                                     </svg>
@@ -22,9 +27,14 @@
                             </div>
 
                             <div class="min-w-0 flex-1">
-                                <p class="text-sm font-medium break-words">
-                                    Login at <time datetime="{{ record.occurred_at|datetime_iso }}" x-data x-text="formatDateTime($el.dateTime)">{{ record.occurred_at|format_datetime }}</time>
-                                </p>
+                                <div class="flex flex-wrap items-center justify-between gap-2">
+                                    <p class="text-sm font-medium break-words">
+                                        Login at <time datetime="{{ record.occurred_at|datetime_iso }}" x-data x-text="formatDateTime($el.dateTime)">{{ record.occurred_at|format_datetime }}</time>
+                                    </p>
+                                    {% if current_device_id and record.user_device_id == current_device_id %}
+                                        <span class="badge badge-sm badge-soft badge-primary">This Device</span>
+                                    {% endif %}
+                                </div>
                                 <div class="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-base-content/80">
                                     <div class="flex min-w-0 max-w-full gap-1.5">
                                         <span class="shrink-0 text-base-content/60">IP Address:</span>
@@ -32,7 +42,7 @@
                                     </div>
                                     <div class="flex gap-1.5">
                                         <span class="text-base-content/60">Device:</span>
-                                        <span>{{ 'Trusted' if record.user_device.device_trusted else 'Untrusted' }}</span>
+                                        <span>{{ 'Expired' if not credential_valid else ('Trusted' if record.user_device.device_trusted else 'Untrusted') }}</span>
                                     </div>
                                     <div class="flex min-w-0 max-w-full gap-1.5">
                                         <span class="shrink-0 text-base-content/60">Auth Source:</span>
