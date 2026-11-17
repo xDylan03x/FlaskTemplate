@@ -2,18 +2,20 @@
 {% block content %}
 
     <div class="centered-container">
-        <div class="card bg-base-300 w-xl max-w-xl">
-            <div class="card-body">
-                <h3 class="h3 text-base-content text-center">Enable TOTP</h3>
+        <div class="card bg-base-200 border border-base-300 shadow-sm w-full max-w-lg">
+            <div class="card-body gap-0 p-6 sm:p-8">
+                <h1 class="text-2xl font-bold text-base-content text-center">Enable TOTP</h1>
                 {% if binding_url %}
-                    <p class="support text-base-content/80 text-center">Scan the QR code below with an authenticator app. Then, hit next to verify and enable it.</p>
-                    <img src="{{ qrcode(binding_url, border=2) }}" class="mt-8 w-80 h-auto mx-auto" alt="TOTP QR Code">
-                    <a class="btn btn-sm btn-primary text-neutral-content mt-8 w-full" href="{{ url_for('core.enable_totp', verify=True) }}">Next</a>
+                    <p class="text-sm text-base-content/80 text-center mt-2">Scan the QR code below with an authenticator app. Then, hit next to verify and enable it.</p>
+                    <div class="mt-6 mx-auto w-full max-w-80 rounded-xl border border-base-300 bg-white p-2" style="color-scheme: light">
+                        <img src="{{ qrcode(binding_url, border=4, image_factory=qr_svg_factory) }}" class="block w-full h-auto" alt="TOTP QR Code">
+                    </div>
+                    <a class="btn btn-primary text-primary-content mt-6 w-full" href="{{ url_for('core.enable_totp', verify=True) }}">Next</a>
                 {% else %}
-                    <p class="support text-base-content/80 text-center">Start setup to generate a QR code for your authenticator app.</p>
-                    <form action="{{ url_for('core.enable_totp') }}" method="post">
+                    <p class="text-sm text-base-content/80 text-center mt-2">Start setup to generate a QR code for your authenticator app.</p>
+                    <form class="mt-6" action="{{ url_for('core.enable_totp') }}" method="post">
                         {{ form.csrf_token }}
-                        <button type="submit" class="btn btn-sm btn-primary text-neutral-content mt-8 w-full">Start Setup</button>
+                        <button type="submit" class="btn btn-primary text-primary-content w-full">Start Setup</button>
                     </form>
                 {% endif %}
 

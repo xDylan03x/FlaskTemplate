@@ -2,22 +2,22 @@
 {% block content %}
 
     <div class="centered-container">
-        <div class="card bg-base-300 w-xl max-w-xl">
-            <div class="card-body">
-                <h3 class="h3 text-base-content text-center">Verify TOTP</h3>
-                <p class="support text-base-content/80 text-center">Please enter the code from your authenticator app.</p>
+        <div class="card bg-base-200 border border-base-300 shadow-sm w-full max-w-lg">
+            <div class="card-body gap-0 p-6 sm:p-8">
+                <h1 class="text-2xl font-bold text-base-content text-center">Verify TOTP</h1>
+                <p class="text-sm text-base-content/80 text-center mt-2">Please enter the code from your authenticator app.</p>
 
 
-                <form action="" method="post" autocomplete="off">
+                <form class="mt-6" action="" method="post" autocomplete="off">
                     {{ form.csrf_token }}
 
-                    {{ form.code.label(class="label mt-8") }}
+                    {{ form.code.label(class="label text-sm font-medium text-base-content") }}
                     {{ form.code(class="input mt-1 w-full", id="code", type="text", inputmode="numeric", autocomplete="one-time-code", pattern="[0-9]{6}", maxlength="6") }}
                     {% for error in form.code.errors %}
                         <p class="form-error">{{ error }}</p>
                     {% endfor %}
 
-                    {{ form.submit(class='btn btn-primary text-neutral-content mt-8 w-full') }}
+                    {{ form.submit(class='btn btn-primary text-primary-content mt-6 w-full') }}
                 </form>
 
             </div>

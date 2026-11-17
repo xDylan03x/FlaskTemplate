@@ -3,6 +3,7 @@ import logging
 from twilio.rest import Client
 from sendgrid import SendGridAPIClient
 from flask_qrcode import QRcode
+from qrcode.image.svg import SvgPathImage
 from config import Config
 from flask import Flask
 from flask_migrate import Migrate
@@ -60,6 +61,7 @@ def create_app(cfg: Config = Config) -> Flask:
     sendgrid_client.auth = f'Bearer {sendgrid_client.api_key}'
     sendgrid_client.reset_request_headers()
     qr.init_app(app)
+    app.add_template_global(SvgPathImage, "qr_svg_factory")
     compress.init_app(app)
     pm.init_app(app)
     sm.init_app(app)
