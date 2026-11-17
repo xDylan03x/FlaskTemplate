@@ -39,11 +39,14 @@ def permission_rows(account):
 
 @permissions.command('list')
 @click.argument('user', required=False)
-def list_permissions(user):
+@click.option('--scope', type=click.Choice(['user', 'api']), default='user', show_default=True)
+def list_permissions(user, scope):
     """List definitions, or direct/inherited/effective permissions for USER."""
+    if user is not None and scope != 'user':
+        raise click.ClickException('User definitions are available only in user scope.')
     if user is None:
         echo_table(['Key', 'Default', 'Description'],
-                   [(spec.permission, permission_state(spec.default), spec.description) for spec in pm.all()])
+                   [(spec.permission, permission_state(spec.default), spec.description) for spec in pm.all(scope=scope)])
     else:
         echo_table(['Key', 'Direct', 'Inherited', 'Effective', 'Groups'],
                    permission_rows(get_user(user, include_deleted=True)))

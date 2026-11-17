@@ -1,0 +1,114 @@
+{% extends 'system-settings/base.html' %}
+{% block settings_content %}
+    <form action="" method="post" autocomplete="off" x-data='{{ {"permissions": permission_values} | tojson }}'>
+        {{ form.csrf_token }}
+
+        <div{% if key %} class="grid grid-cols-1 md:grid-cols-2 gap-4"{% endif %}>
+            <div>
+                {{ form.name.label(class="label") }}
+                {{ form.name(class="input mt-1 w-full", maxlength=256) }}
+                {% for error in form.name.errors %}
+                    <p class="form-error">{{ error }}</p>
+                {% endfor %}
+            </div>
+            {% if key %}
+                <div>
+                    <label class="label" for="masked-key">Key</label>
+                    <input class="input mt-1 w-full font-mono" id="masked-key" value="{{ key.masked_key }}" disabled>
+                </div>
+            {% endif %}
+        </div>
+
+        {{ form.expires.label(class="label mt-4") }}
+        {{ form.expires(class="input mt-1 w-full") }}
+        <p class="form-help">Optional. The key remains valid through the selected day in UTC.</p>
+        {% for error in form.expires.errors %}
+            <p class="form-error">{{ error }}</p>
+        {% endfor %}
+
+        {% if key %}
+            <div class="mt-4 flex flex-wrap items-center gap-2">
+                <span class="support text-base-content/80">Status: {{ key.status|title }}</span>
+                {% if key.status == 'valid' %}
+                    <button type="button" class="btn btn-sm btn-soft" onclick="rotate_modal.showModal()">Rotate Key</button>
+                {% endif %}
+                {% if key.status != 'revoked' %}
+                    <button type="button" class="btn btn-sm btn-soft btn-error" onclick="revoke_modal.showModal()">Revoke Key</button>
+                {% endif %}
+            </div>
+            {% if key.status == 'expired' %}
+                <p class="form-help">Set a new expiration date or clear it to renew this key.</p>
+            {% elif key.status == 'revoked' %}
+                <p class="form-help">Revocation is permanent. Create a new key to restore access.</p>
+            {% endif %}
+
+            <details class="collapse collapse-arrow bg-base-100 border border-base-300 mt-8" name="key-details-accordion">
+                <summary class="collapse-title font-semibold">Key Details</summary>
+                <div class="collapse-content">
+                    <dl class="divide-y divide-base-300">
+                        <div class="flex flex-col gap-1 py-2 sm:flex-row sm:justify-between">
+                            <dt class="font-medium">Creator</dt>
+                            <dd class="min-w-0 break-words">{{ key.creator.name if key.creator else 'CLI' }}</dd>
+                        </div>
+                        {% for label, value in [('Created', key.created_at), ('Updated', key.updated_at), ('Last Used', key.last_used_at), ('Revoked', key.revoked_at), ('Rotated', key.rotated_at), ('Previous Key Cutoff', key.previous_valid_until)] %}
+                            {% if value or label == 'Last Used' %}
+                                <div class="flex flex-col gap-1 py-2 sm:flex-row sm:justify-between">
+                                    <dt class="font-medium">{{ label }}</dt>
+                                    <dd>{% if value %}<time datetime="{{ value|datetime_iso }}" x-data x-text="formatDateTime($el.dateTime)">{{ value|format_datetime }}</time>{% else %}Never{% endif %}</dd>
+                                </div>
+                            {% endif %}
+                        {% endfor %}
+                    </dl>
+                </div>
+            </details>
+        {% endif %}
+
+        {% include 'system-settings/api-key-permissions.html' %}
+
+        {% if form.csrf_token is defined %}
+            {% for error in form.csrf_token.errors %}
+                <p class="form-error">{{ error }}</p>
+            {% endfor %}
+        {% endif %}
+        {{ form.submit(class='btn btn-primary text-neutral-content mt-8 w-full') }}
+    </form>
+
+    {% if key and key.status == 'valid' %}
+        <dialog id="rotate_modal" class="modal modal-bottom sm:modal-middle">
+            <div class="modal-box">
+                <h3 class="text-lg font-bold">Rotate API Key</h3>
+                <p class="py-4">Rotate {{ key.name }}? The current key will remain valid for up to seven days, unless it expires or is revoked sooner. Any older key will stop working immediately.</p>
+                <div class="modal-action">
+                    <form method="dialog">
+                        <button class="btn btn-sm">Cancel</button>
+                    </form>
+                    <form action="{{ url_for('core.api_key_action', uuid36=key.uuid36, action='rotate') }}" method="post">
+                        {% if action_form.csrf_token is defined %}
+                            {{ action_form.csrf_token(id='rotate_csrf_token') }}
+                        {% endif %}
+                        <button type="submit" class="btn btn-sm btn-primary">Rotate Key</button>
+                    </form>
+                </div>
+            </div>
+        </dialog>
+    {% endif %}
+    {% if key and key.status != 'revoked' %}
+        <dialog id="revoke_modal" class="modal modal-bottom sm:modal-middle">
+            <div class="modal-box">
+                <h3 class="text-lg font-bold">Warning</h3>
+                <p class="py-4">Permanently revoke {{ key.name }}? Both the current and previous key will stop working immediately. This action cannot be undone.</p>
+                <div class="modal-action">
+                    <form method="dialog">
+                        <button class="btn btn-sm">Cancel</button>
+                    </form>
+                    <form action="{{ url_for('core.api_key_action', uuid36=key.uuid36, action='revoke') }}" method="post">
+                        {% if action_form.csrf_token is defined %}
+                            {{ action_form.csrf_token(id='revoke_csrf_token') }}
+                        {% endif %}
+                        <button type="submit" class="btn btn-sm btn-error">Revoke Key</button>
+                    </form>
+                </div>
+            </div>
+        </dialog>
+    {% endif %}
+{% endblock %}

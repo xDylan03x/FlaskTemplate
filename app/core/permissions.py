@@ -1,6 +1,7 @@
 from ..extensions.flask_permissions import PermissionSpec
 
 permissions = [
+    PermissionSpec(action="Manage", group="API Keys", description="Manage service API keys and browse their audit logs"),
     PermissionSpec(action="Create", group="Users", description="Create new users"),
     PermissionSpec(action="Update", group="Users", description="Edit existing users"),
     PermissionSpec(action="Delete", group="Users", description="Delete existing users"),

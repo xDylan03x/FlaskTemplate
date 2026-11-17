@@ -1,3 +1,4 @@
+from datetime import timedelta
 from flask import render_template, request, flash, redirect, url_for, current_app, abort, session, \
     render_template_string
 from flask_login import login_required, current_user, login_user
@@ -8,15 +9,15 @@ from app import db, twilio_client, audit, sm
 from .forms import ChangePasswordForm, ProfileSettingsForm, NotificationSettingsForm, SecuritySettingsForm, \
     SetupAccountForm, NewUserForm, TOTPVerifyForm, CreateAccountForm, DeviceManagerForm, \
     build_edit_user_form, ApplicationSettingsForm, build_system_settings_form, BugReportForm, build_group_form, \
-    TestEmailForm, TestSMSForm, ConfirmActionForm
+    TestEmailForm, TestSMSForm, ConfirmActionForm, build_api_key_form
 import phonenumbers
-from app.model_managers import UserManager, UserDeviceManager, FileManager, NotificationManager, SystemManager
+from app.model_managers import UserManager, UserDeviceManager, FileManager, NotificationManager, SystemManager, APIKeyManager
 from .helper import send_sms, parse_user_agent, get_routes, get_blueprints, get_extensions, get_update_status, \
     get_platform_info, is_safe_read_query, modify_query, send_email, normalize_external_url, get_messaging_error, logout_session
 from ..model_managers import LoginTokenManager
 from ..extensions.flask_permissions import require_permission
 from app import pm
-from ..models import NotificationCategory, User
+from ..models import NotificationCategory, User, APIKey
 
 
 @core.app_context_processor
@@ -766,3 +767,113 @@ def external_redirect():
     if destination is None:
         abort(400)
     return render_template("external-redirect.html", url=destination)
+
+
+@core.after_request
+def api_key_security_headers(response):
+    if request.endpoint in ('core.api_keys', 'core.edit_api_key', 'core.api_key_action', 'core.api_key_audit_log'):
+        response.headers['Cache-Control'] = 'no-store'
+        response.headers['X-Frame-Options'] = 'DENY'
+        response.headers['Content-Security-Policy'] = "frame-ancestors 'none'"
+    return response
+
+
+def _api_key_response(key, raw_key):
+    title = 'API Key Rotated' if key.rotated_at else 'API Key Created'
+    response = current_app.make_response(render_template('system-settings/api-key-secret.html', title=title,
+                                                         tab='api_keys', key=key, raw_key=raw_key))
+    response.headers['Cache-Control'] = 'no-store'
+    return response
+
+
+@core.route('/system-settings/api-keys')
+@login_required
+@require_permission('api_keys.manage')
+def api_keys():
+    page = max(1, request.args.get('page', 1, type=int))
+    keys = APIKeyManager.get_all_api_keys(page=page)
+    return render_template('system-settings/api-keys.html', title='API Keys', tab='api_keys', keys=keys)
+
+
+@core.route('/system-settings/api-keys/new', methods=['GET', 'POST'])
+@core.route('/system-settings/api-keys/<string:uuid36>', methods=['GET', 'POST'])
+@login_required
+@require_permission('api_keys.manage')
+def edit_api_key(uuid36=None):
+    key = APIKeyManager.get_api_key_by_uuid36(uuid36) if uuid36 else None
+    if uuid36 and key is None:
+        abort(404)
+
+    KeyForm = build_api_key_form(pm)
+    form = KeyForm()
+    form.submit.label.text = 'Save' if key else 'Create API Key'
+    expiration = (key.utc(key.expires_at) - timedelta(days=1)).date() if key and key.expires_at else None
+    form.original_expiration = expiration
+    if form.validate_on_submit():
+        permissions = [permission_key for field_name, permission_key in form.permission_field_map.items()
+                       if form[field_name].data]
+        values = dict(name=form.name.data, expires=form.expires.data,
+                      permissions=permissions, actor=current_user)
+        try:
+            if key is None:
+                key, raw_key = APIKeyManager.create(**values, creator=current_user._get_current_object())
+                return _api_key_response(key, raw_key)
+            APIKeyManager.update(key, **values)
+        except ValueError as error:
+            flash(str(error), 'error')
+        else:
+            flash('API key saved.', 'success')
+            return redirect(url_for('core.edit_api_key', uuid36=key.uuid36))
+    if request.method == 'GET' and key:
+        form.name.data = key.name
+        form.expires.data = expiration
+        definitions = {record.key: record.value for record in key.permissions}
+        for field_name, permission_key in form.permission_field_map.items():
+            form[field_name].data = definitions.get(permission_key, False)
+    return render_template('system-settings/edit-api-key.html', title='Edit API Key' if key else 'New API Key',
+                           tab='api_keys', key=key, form=form, permission_groups=pm.grouped(scope='api'),
+                           permission_values={field_name: bool(form[field_name].data)
+                                              for field_name in form.permission_field_map})
+
+
+@core.route('/system-settings/api-keys/<string:uuid36>/<any(rotate,revoke):action>', methods=['POST'])
+@login_required
+@require_permission('api_keys.manage')
+def api_key_action(uuid36, action):
+    key = APIKeyManager.get_api_key_by_uuid36(uuid36)
+    if key is None:
+        abort(404)
+    if not ConfirmActionForm().validate_on_submit():
+        abort(400)
+    if action == 'rotate':
+        try:
+            raw_key = APIKeyManager.rotate(key, actor=current_user)
+        except ValueError as error:
+            flash(str(error), 'error')
+        else:
+            return _api_key_response(key, raw_key)
+    else:
+        APIKeyManager.revoke(key, actor=current_user)
+        flash('API key revoked.', 'success')
+    return redirect(url_for('core.edit_api_key', uuid36=key.uuid36))
+
+
+@core.route('/system-settings/api-keys/audit-log')
+@login_required
+@require_permission('api_keys.manage')
+def api_key_audit_log():
+    actor = request.args.get('user', '').strip()
+    event_type = request.args.get('event_type', '').strip()
+    page = max(1, request.args.get('page', 1, type=int))
+    records, actors, event_types = audit.browse(actor=actor, event_type=event_type, page=page, category='api_keys')
+    events = [{'record': record, **audit.describe_event(record.message)} for record in records.items]
+    representations = set(actors) | {event['target'] for event in events}
+    identifiers = [value[8:-1] for value in representations if value.startswith('<APIKey ') and value.endswith('>')]
+    keys = db.session.scalars(db.select(APIKey).where(APIKey.uuid36.in_(identifiers))).all()
+    key_labels = {repr(key): f'{key.name} ({key.masked_key})' for key in keys}
+    key_urls = {repr(key): url_for('core.edit_api_key', uuid36=key.uuid36) for key in keys}
+    for event in events:
+        event['target_label'] = key_labels.get(event['target'], event['target'])
+        event['target_url'] = key_urls.get(event['target'])
+    return render_template('system-settings/audit-log.html', title='API Key Audit Log', tab='api_keys', records=records,
+                           events=events, actors=actors, event_types=event_types, actor=actor, event_type=event_type, api_key_labels=key_labels)

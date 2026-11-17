@@ -7,8 +7,12 @@ from flask import has_app_context
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from app import audit, db, pm, sm
-from app.model_managers import UserManager
+from app.model_managers import UserManager, APIKeyManager
 from app.models import LoginToken, UserGroup
+
+
+TABLE_ESCAPES = {code: f'\\x{code:02x}' for code in (*range(32), *range(127, 160))}
+TABLE_ESCAPES.update({10: '\\n', 13: '\\r', 9: '\\t'})
 
 
 class ToolsGroup(click.Group):
@@ -32,7 +36,7 @@ def show_help():
 
 
 def echo_table(headers, rows):
-    rows = [[str(value).replace('\n', '\\n').replace('\r', '\\r').replace('\t', '\\t') for value in row] for row in rows]
+    rows = [[str(value).translate(TABLE_ESCAPES) for value in row] for row in rows]
     widths = [max([len(header)] + [len(row[index]) for row in rows]) for index, header in enumerate(headers)]
     for row in [headers, *rows]:
         click.echo('  '.join(value.ljust(width) for value, width in zip(row, widths)).rstrip())
@@ -84,6 +88,15 @@ def get_group(identifier):
     if group is None:
         raise click.ClickException('Group not found; use a numeric ID or exact group name.')
     return group
+
+
+def get_api_key(identifier):
+    identifier = identifier.strip()
+    key = (APIKeyManager.get_api_key_by_id(int(identifier)) if identifier.isdigit()
+           else APIKeyManager.get_api_key_by_uuid36(identifier))
+    if key is None:
+        raise click.ClickException('API key not found; use a numeric ID or UUID.')
+    return key
 
 
 def get_setting(key):

@@ -1,15 +1,21 @@
 {% extends 'system-settings/base.html' %}
+{% block settings_actions %}
+    {% if tab == 'api_keys' %}
+        <a class="btn btn-sm btn-ghost w-full sm:w-auto" href="{{ url_for('core.api_keys') }}">All API Keys</a>
+    {% endif %}
+{% endblock %}
 {% block settings_content %}
+    {% set actor_labels = api_key_labels|default({}) %}
     <form method="get" x-data @change="$el.requestSubmit()" class="flex flex-col gap-4 sm:flex-row sm:items-end">
         <div class="min-w-0 flex-1">
-            <label class="label" for="audit-user">User</label>
+            <label class="label" for="audit-user">{{ 'Actor' if tab == 'api_keys' else 'User' }}</label>
             <select id="audit-user" name="user" class="select w-full">
-                <option value="">All users</option>
+                <option value="">{{ 'All actors' if tab == 'api_keys' else 'All users' }}</option>
                 {% if actor and actor not in actors %}
                     <option value="{{ actor }}" selected>{{ actor }}</option>
                 {% endif %}
                 {% for value in actors %}
-                    <option value="{{ value }}" {% if actor == value %}selected{% endif %}>{{ value[6:-1] if value.startswith('<User ') and value.endswith('>') else value }}</option>
+                    <option value="{{ value }}" {% if actor == value %}selected{% endif %}>{{ actor_labels.get(value, value[6:-1] if value.startswith('<User ') and value.endswith('>') else value) }}</option>
                 {% endfor %}
             </select>
         </div>
@@ -30,7 +36,7 @@
     <div class="overflow-x-auto mt-8">
         <table class="table table-auto w-full">
             <thead>
-                <tr><th>Time</th><th>User</th><th>Event</th></tr>
+                <tr><th>Time</th><th>{{ 'Actor' if tab == 'api_keys' else 'User' }}</th><th>Event</th></tr>
             </thead>
             <tbody>
                 {% for event in events %}
@@ -38,14 +44,18 @@
                         <td class="align-top">
                             <time datetime="{{ event.record.occurred_at|datetime_iso }}" x-data x-text="formatDateTime($el.dateTime)">{{ event.record.occurred_at|format_datetime }}</time>
                         </td>
-                        <td class="align-top whitespace-nowrap">{{ event.actor[6:-1] if event.actor.startswith('<User ') and event.actor.endswith('>') else event.actor }}</td>
+                        <td class="align-top whitespace-nowrap">{{ actor_labels.get(event.actor, event.actor[6:-1] if event.actor.startswith('<User ') and event.actor.endswith('>') else event.actor) }}</td>
                         <td class="min-w-64 max-w-xl break-words">
                             <details>
                                 <summary class="font-medium link cursor-pointer">{{ event.summary }}</summary>
                                 <pre class="mt-2 whitespace-pre-wrap break-all text-xs">{{ event.record.message }}</pre>
                             </details>
                             {% if event.target and event.target != 'None' %}
-                                <p class="support mt-1 break-all">{{ event.target }}</p>
+                                <p class="support mt-1 break-all">
+                                    {% if event.target_url %}
+                                        <a class="link" href="{{ event.target_url }}">{{ event.target_label }}</a>
+                                    {% else %}{{ event.target }}{% endif %}
+                                </p>
                             {% endif %}
                         </td>
                     </tr>
@@ -62,12 +72,12 @@
         </div>
         <div class="join">
             {% if records.has_prev %}
-                <a class="join-item btn btn-sm btn-ghost" href="{{ url_for('core.admin_audit_log', page=records.prev_num, user=actor, event_type=event_type) }}">Previous</a>
+                <a class="join-item btn btn-sm btn-ghost" href="{{ url_for(request.endpoint, page=records.prev_num, user=actor, event_type=event_type) }}">Previous</a>
             {% else %}
                 <button class="join-item btn btn-sm btn-ghost" disabled>Previous</button>
             {% endif %}
             {% if records.has_next %}
-                <a class="join-item btn btn-sm btn-ghost" href="{{ url_for('core.admin_audit_log', page=records.next_num, user=actor, event_type=event_type) }}">Next</a>
+                <a class="join-item btn btn-sm btn-ghost" href="{{ url_for(request.endpoint, page=records.next_num, user=actor, event_type=event_type) }}">Next</a>
             {% else %}
                 <button class="join-item btn btn-sm btn-ghost" disabled>Next</button>
             {% endif %}

@@ -5,5 +5,5 @@ module = ModuleSpec(
     name="Core",
     description="Application layout, account preferences, and user and system administration.",
     settings=settings,
-    version="1.4.1",
+    version="1.5.0",
 )

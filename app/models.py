@@ -174,6 +174,8 @@ class User(db.Model, UserMixin):
         permission = permission.lower()
         inherited = self.inherited_permissions()
         if "." in permission:
+            if pm.get(permission) is None:
+                return False
             if permission in inherited:
                 return inherited[permission]['value']
             perm_record = self.permissions.filter_by(key=permission).first()
@@ -181,7 +183,7 @@ class User(db.Model, UserMixin):
         # Broad checks use the effective value of each matching permission.
         values = {record.key: record.value for record in self.permissions.all()}
         values.update({key: sources['value'] for key, sources in inherited.items()})
-        return any(value for key, value in values.items() if key.startswith(permission + "."))
+        return any(value for key, value in values.items() if key.startswith(permission + ".") and pm.get(key) is not None)
 
 
 class UserGroup(db.Model):
@@ -570,6 +572,86 @@ class File(db.Model):
 
     def __repr__(self):
         return '<File {}>'.format(self.uuid36)
+
+
+class APIKey(db.Model):
+    """
+    Shared credential for external applications, independent of its creator's account.
+    Stores only current/previous hashes and the current key's last four characters.
+    Permissions are explicit API-scope grants; expiration and revocation apply to both hashes.
+    """
+    id: so.Mapped[int] = so.mapped_column(primary_key=True)
+    uuid36: so.Mapped[str] = so.mapped_column(sa.String(36), unique=True, index=True, nullable=False, default=lambda: str(uuid.uuid4()))
+    created_at: so.Mapped[datetime] = so.mapped_column(sa.DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
+    updated_at: so.Mapped[datetime] = so.mapped_column(sa.DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+
+    name: so.Mapped[str] = so.mapped_column(sa.String(256), nullable=False)
+    expires_at: so.Mapped[Optional[datetime]] = so.mapped_column(sa.DateTime(timezone=True))
+    last_used_at: so.Mapped[Optional[datetime]] = so.mapped_column(sa.DateTime(timezone=True))
+    revoked_at: so.Mapped[Optional[datetime]] = so.mapped_column(sa.DateTime(timezone=True))
+    hashed_key: so.Mapped[str] = so.mapped_column(sa.String(64), unique=True, index=True, nullable=False)
+    last_four: so.Mapped[str] = so.mapped_column(sa.String(4), nullable=False)
+    previous_hashed_key: so.Mapped[Optional[str]] = so.mapped_column(sa.String(64), unique=True, index=True)
+    rotated_at: so.Mapped[Optional[datetime]] = so.mapped_column(sa.DateTime(timezone=True))
+
+    creator_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey('user.id'))
+
+    creator: so.Mapped[Optional["User"]] = so.relationship('User')
+    permissions: so.Mapped[list["APIKeyPermission"]] = so.relationship('APIKeyPermission', back_populates='api_key', cascade='all, delete-orphan')
+
+    @staticmethod
+    def utc(value: datetime | None) -> datetime | None:
+        # SQLite returns naive datetimes even for timezone-aware columns.
+        return value.replace(tzinfo=timezone.utc) if value and value.tzinfo is None else value
+
+    @property
+    def status(self) -> str:
+        if self.revoked_at is not None:
+            return 'revoked'
+        if self.expires_at is not None and self.utc(self.expires_at) <= datetime.now(timezone.utc):
+            return 'expired'
+        return 'valid'
+
+    @property
+    def masked_key(self) -> str:
+        return '••••' + self.last_four
+
+    @property
+    def previous_valid_until(self) -> datetime | None:
+        if self.rotated_at is None:
+            return None
+        deadline = self.utc(self.rotated_at) + timedelta(days=7)
+        return min(deadline, self.utc(self.expires_at)) if self.expires_at else deadline
+
+    def can(self, permission: str) -> bool:
+        permission = permission.lower()
+        if self.status != 'valid':
+            return False
+        return any(record.value and pm.get(record.key, scope='api') is not None
+                   and (record.key == permission if '.' in permission else record.key.startswith(permission + '.'))
+                   for record in self.permissions)
+
+    def __repr__(self):
+        return '<APIKey {}>'.format(self.uuid36)
+
+
+class APIKeyPermission(db.Model):
+    """An explicit API permission definition; absent definitions deny access."""
+    __table_args__ = (sa.UniqueConstraint('api_key_id', 'key', name='uq_api_key_permission_key'),)
+
+    id: so.Mapped[int] = so.mapped_column(primary_key=True)
+    uuid36: so.Mapped[str] = so.mapped_column(sa.String(36), unique=True, index=True, nullable=False, default=lambda: str(uuid.uuid4()))
+    created_at: so.Mapped[datetime] = so.mapped_column(sa.DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
+    updated_at: so.Mapped[datetime] = so.mapped_column(sa.DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+
+    key: so.Mapped[str] = so.mapped_column(sa.String(128), nullable=False)
+    value: so.Mapped[bool] = so.mapped_column(sa.Boolean, nullable=False, default=True)
+
+    api_key_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('api_key.id'), nullable=False)
+    api_key: so.Mapped["APIKey"] = so.relationship('APIKey', back_populates='permissions')
+
+    def __repr__(self):
+        return '<APIKeyPermission {}: {}>'.format(self.key, self.value)
 
 
 @login.user_loader

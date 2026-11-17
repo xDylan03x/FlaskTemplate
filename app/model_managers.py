@@ -1,4 +1,5 @@
 import hashlib
+import re
 import secrets
 import uuid
 import sqlalchemy as sa
@@ -7,9 +8,9 @@ from flask import url_for, request, current_app
 from flask_sqlalchemy.pagination import Pagination
 from app.core.helper import send_email, send_sms
 from app.models import User, LoginToken, LoginRecord, UserNotification, NotificationCategory, UserDevice, File, \
-    SystemSetting, UserPermission, UserSetting, UserGroup
-from app import db, pm, sm
-from datetime import datetime, timedelta, timezone
+    SystemSetting, UserPermission, UserSetting, UserGroup, APIKey, APIKeyPermission
+from app import audit, db, pm, sm
+from datetime import date, datetime, time, timedelta, timezone
 
 
 class SystemManager:
@@ -464,3 +465,161 @@ class FileManager:
             statement = statement.where(File.public == public)
         file = db.session.scalar(statement)
         return file
+
+
+class APIKeyManager:
+    @staticmethod
+    def get_api_key_by_id(id: int) -> APIKey | None:
+        return db.session.get(APIKey, id)
+
+    @staticmethod
+    def get_api_key_by_uuid36(uuid36: str) -> APIKey | None:
+        return db.session.scalar(sa.select(APIKey).where(APIKey.uuid36 == uuid36))
+
+    @staticmethod
+    def get_all_api_keys(page: int = 1, paginate: bool = True) -> Pagination | list[APIKey]:
+        base_statement = sa.select(APIKey).order_by(APIKey.created_at.desc(), APIKey.id.desc())
+        if not paginate:
+            return db.session.scalars(base_statement).all()
+        return db.paginate(base_statement, page=page, per_page=25, error_out=False)
+
+    @staticmethod
+    def _generate_credential() -> tuple[str, str]:
+        abbreviation = re.sub(r'[^a-z0-9]', '', str(sm.system_setting('application.abbreviation')).lower()) or 'app'
+        raw_key = f'{abbreviation}_{secrets.token_urlsafe(32)}'
+        return raw_key, hashlib.sha256(raw_key.encode()).hexdigest()
+
+    @staticmethod
+    def expiration(value: date | None) -> datetime | None:
+        """Convert an inclusive UTC date to an exclusive cutoff."""
+        if value is None:
+            return None
+        try:
+            return datetime.combine(value + timedelta(days=1), time.min, tzinfo=timezone.utc)
+        except OverflowError as error:
+            raise ValueError('Expiration date is too far in the future.') from error
+
+    @staticmethod
+    def permission_keys(preset: str = 'custom', permissions: list[str] | tuple[str, ...] = ()) -> list[str]:
+        if preset not in ('custom', 'full-control'):
+            raise ValueError('Invalid permission preset.')
+        if preset == 'full-control':
+            if permissions:
+                raise ValueError('Custom permissions require the Custom preset.')
+            return [spec.permission for spec in pm.all(scope='api')]
+        keys = sorted({key.lower() for key in permissions})
+        if any(pm.get(key, scope='api') is None for key in keys):
+            raise ValueError('Unknown API permission.')
+        return keys
+
+    @staticmethod
+    def create(name: str, expires: date | None = None, preset: str = 'custom',
+               permissions: list[str] | tuple[str, ...] = (), creator: User | None = None,
+               actor: object = 'CLI') -> tuple[APIKey, str]:
+        """Create a shared credential and return its full value once."""
+        name = APIKeyManager._validate_metadata(name, expires)
+        keys = APIKeyManager.permission_keys(preset, permissions)
+        raw_key, digest = APIKeyManager._generate_credential()
+        key = APIKey(name=name, expires_at=APIKeyManager.expiration(expires),
+                     hashed_key=digest, last_four=raw_key[-4:], creator=creator)
+        key.permissions = [APIKeyPermission(key=value, value=True) for value in keys]
+        db.session.add(key)
+        db.session.commit()
+        audit.log('API key created', target=key, actor=actor, category='api_keys')
+        return key, raw_key
+
+    @staticmethod
+    def _validate_metadata(name: str, expires: date | None) -> str:
+        name = name.strip()
+        if not name or len(name) > 256:
+            raise ValueError('Name must contain between 1 and 256 characters.')
+        if expires and APIKeyManager.expiration(expires) <= datetime.now(timezone.utc):
+            raise ValueError('Expiration must be today or later (UTC).')
+        return name
+
+    @staticmethod
+    def update(key: APIKey, name: str, expires: date | None = None, preset: str = 'custom',
+               permissions: list[str] | tuple[str, ...] = (), actor: object = 'CLI') -> None:
+        name = APIKeyManager._validate_metadata(name, None)
+        cutoff = APIKeyManager.expiration(expires)
+        if cutoff and cutoff <= datetime.now(timezone.utc) and cutoff != key.utc(key.expires_at):
+            raise ValueError('Expiration must be today or later (UTC).')
+        keys = APIKeyManager.permission_keys(preset, permissions)
+        with audit.track(key, actor=actor, message='API key updated', category='api_keys'):
+            key.name = name
+            key.expires_at = cutoff
+            # Reuse retained definitions to avoid inserting duplicate permission keys.
+            existing = {record.key: record for record in key.permissions}
+            key.permissions[:] = [existing[value] if value in existing else APIKeyPermission(key=value, value=True)
+                                  for value in keys]
+            for record in key.permissions:
+                record.value = True
+            db.session.commit()
+
+    @staticmethod
+    def rotate(key: APIKey, actor: object = 'CLI') -> str:
+        """Replace the current credential while retaining one previous hash for seven days."""
+        now = datetime.now(timezone.utc)
+        if key.status != 'valid':
+            raise ValueError('Only valid API keys can be rotated.')
+        raw_key, digest = APIKeyManager._generate_credential()
+        statement = sa.update(APIKey).where(
+            APIKey.id == key.id, APIKey.hashed_key == key.hashed_key, APIKey.revoked_at.is_(None),
+            sa.or_(APIKey.expires_at.is_(None), APIKey.expires_at > now),
+        ).values(
+            previous_hashed_key=key.hashed_key, hashed_key=digest, last_four=raw_key[-4:], rotated_at=now,
+        ).execution_options(synchronize_session=False)
+        result = db.session.execute(statement)
+        if result.rowcount != 1:
+            db.session.rollback()
+            raise ValueError('The API key changed; reload it before rotating.')
+        db.session.commit()
+        db.session.refresh(key)
+        audit.log('API key rotated', target=key, actor=actor, category='api_keys')
+        return raw_key
+
+    @staticmethod
+    def revoke(key: APIKey, actor: object = 'CLI') -> None:
+        statement = sa.update(APIKey).where(
+            APIKey.id == key.id, APIKey.revoked_at.is_(None),
+        ).values(revoked_at=datetime.now(timezone.utc)).execution_options(synchronize_session=False)
+        result = db.session.execute(statement)
+        db.session.commit()
+        db.session.refresh(key)
+        if result.rowcount:
+            audit.log('API key revoked', target=key, actor=actor, category='api_keys')
+
+    @staticmethod
+    def authenticate(raw_key: str) -> tuple[APIKey | None, str]:
+        digest = hashlib.sha256(raw_key.encode()).hexdigest()
+        statement = sa.select(APIKey).where(
+            sa.or_(APIKey.hashed_key == digest, APIKey.previous_hashed_key == digest),
+        ).options(so.selectinload(APIKey.permissions)).execution_options(populate_existing=True)
+        with db.session.no_autoflush:
+            key = db.session.scalar(statement)
+        if key is None:
+            return None, 'unknown key'
+        if key.status != 'valid':
+            return key, key.status
+        if digest == key.previous_hashed_key and (key.previous_valid_until is None or key.previous_valid_until <= datetime.now(timezone.utc)):
+            return key, 'rotation window expired'
+        return key, 'authenticated'
+
+    @staticmethod
+    def record_use(key: APIKey, raw_key: str) -> datetime | None:
+        """Recheck the credential atomically before dispatch, without committing endpoint work."""
+        now = datetime.now(timezone.utc)
+        digest = hashlib.sha256(raw_key.encode()).hexdigest()
+        statement = sa.update(APIKey).where(
+            APIKey.id == key.id, APIKey.revoked_at.is_(None),
+            sa.or_(APIKey.expires_at.is_(None), APIKey.expires_at > now),
+            sa.or_(APIKey.hashed_key == digest, sa.and_(
+                APIKey.previous_hashed_key == digest, APIKey.rotated_at > now - timedelta(days=7),
+            )),
+        ).values(last_used_at=sa.case(
+            (sa.or_(APIKey.last_used_at.is_(None), APIKey.last_used_at < now), now),
+            else_=APIKey.last_used_at,
+        )).returning(APIKey.last_used_at)
+        with db.engine.begin() as connection:
+            used_at = connection.execute(statement).scalar_one_or_none()
+        return key.utc(used_at)

@@ -11,6 +11,7 @@ from flask_login import LoginManager
 from flask_sqlalchemy import SQLAlchemy
 from flask_compress import Compress
 import sentry_sdk
+from sentry_sdk.scrubber import DEFAULT_DENYLIST, EventScrubber
 from werkzeug.middleware.proxy_fix import ProxyFix
 from .commands import create_admin, update_users, update_app, doctor
 from .extensions.flask_permissions import PermissionManager
@@ -28,6 +29,10 @@ compress = Compress()
 pm = PermissionManager()
 sm = SettingsManager()
 audit = AuditManager()
+event_scrubber = EventScrubber(
+    denylist=DEFAULT_DENYLIST + ['raw_key', 'hashed_key', 'previous_hashed_key'],
+    recursive=True, send_default_pii=True,
+)
 
 
 def create_app(cfg: Config = Config) -> Flask:
@@ -70,6 +75,7 @@ def create_app(cfg: Config = Config) -> Flask:
         sentry_sdk.init(
             dsn=app.config.get('SENTRY_DSN'),
             send_default_pii=True,
+            event_scrubber=event_scrubber,
             traces_sample_rate=1.0,
             environment=app.config.get('FLASK_ENV'),
         )
@@ -107,6 +113,8 @@ def create_app(cfg: Config = Config) -> Flask:
 
     from .api import apiv1 as api_blueprint
     app.register_blueprint(api_blueprint, url_prefix='/api/v1')
+    from .api.helper import log_api_key_usage
+    app.after_request(log_api_key_usage)
 
     from .docs import docs as docs_blueprint
     app.register_blueprint(docs_blueprint, url_prefix='/docs')

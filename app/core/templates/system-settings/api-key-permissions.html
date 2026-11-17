@@ -1,0 +1,28 @@
+<details class="collapse collapse-arrow bg-base-100 border border-base-300 {{ 'mt-4' if key else 'mt-8' }}" name="permissions-accordion">
+    <summary class="collapse-title font-semibold">Permissions</summary>
+    <div class="collapse-content">
+        {% if permission_groups %}
+            <button type="button" class="btn btn-sm btn-soft" :aria-pressed="Object.values(permissions).every(Boolean).toString()"
+                    @click="const enabled = !Object.values(permissions).every(Boolean); Object.keys(permissions).forEach(key => permissions[key] = enabled)">Full Control</button>
+            <p class="form-help">Toggle all permissions, or choose individual permissions below.</p>
+            <div class="divide-y divide-base-300">
+                {% for group, permissions in permission_groups.items() %}
+                    <div class="py-4">
+                        <h6 class="h6 text-base-content">{{ group }}</h6>
+                        {% for permission in permissions %}
+                            {% set field = form[permission.permission_field_name] %}
+                            <div class="mt-4">
+                                {{ field(class="checkbox", **{'x-model': ('permissions[' ~ (field.name | tojson) ~ ']') | forceescape}) }}
+                                {{ field.label(class="label") }}
+                                {% if permission.description %}<p class="form-help">{{ permission.description }}</p>{% endif %}
+                                {% for error in field.errors %}<p class="form-error">{{ error }}</p>{% endfor %}
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p class="support text-base-content/80 mt-4">No API permissions are registered. This key will have no permission grants.</p>
+        {% endif %}
+    </div>
+</details>

@@ -1,5 +1,6 @@
+from datetime import datetime, timezone
 from flask_wtf import FlaskForm
-from wtforms import SubmitField, PasswordField, StringField, SelectField, BooleanField, EmailField, SelectMultipleField
+from wtforms import SubmitField, PasswordField, StringField, SelectField, BooleanField, EmailField, SelectMultipleField, DateField
 from wtforms.fields.simple import TelField, HiddenField, TextAreaField
 from wtforms.validators import DataRequired, Email, EqualTo, Optional, Length, ValidationError
 import phonenumbers
@@ -232,6 +233,18 @@ class EditGroupForm(FlaskForm):
     submit = SubmitField('Save')
 
 
+class APIKeyForm(FlaskForm):
+    name = StringField('Name', validators=[DataRequired(), Length(max=256)])
+    expires = DateField('Expiration Date (UTC)', validators=[Optional()])
+    submit = SubmitField('Save')
+
+    def validate_expires(self, field):
+        if field.data and field.data < datetime.now(timezone.utc).date():
+            # Allow unrelated edits without renewing an already expired key.
+            if field.data != getattr(self, 'original_expiration', None):
+                raise ValidationError('Expiration must be today or later (UTC).')
+
+
 class BugReportForm(FlaskForm):
     subject = SelectField(
         'Subject',
@@ -300,3 +313,16 @@ def build_group_form(permission_manager, editing=False, manage_permissions=True,
     DynamicGroupForm.permission_field_map = permission_field_map
     DynamicGroupForm.editable_permission_keys = editable_permission_keys
     return DynamicGroupForm
+
+
+def build_api_key_form(permission_manager):
+    fields = {}
+    permission_field_map = {}
+    for permission in permission_manager.all(scope='api'):
+        field_name = permission.permission_field_name
+        fields[field_name] = BooleanField(label=permission.label, description=permission.description)
+        permission_field_map[field_name] = permission.permission
+
+    DynamicAPIKeyForm = type('DynamicAPIKeyForm', (APIKeyForm,), fields)
+    DynamicAPIKeyForm.permission_field_map = permission_field_map
+    return DynamicAPIKeyForm

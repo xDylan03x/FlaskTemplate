@@ -172,9 +172,7 @@ flask --app app tools permissions set admin@example.com users.update_authenticat
 
 New initial administrators created with `create_admin` receive this permission.
 Existing CLI permission commands also inspect and edit policy keys, including group
-`allow`, `deny`, and `unset` definitions. Run the focused tests with
-`.venv/bin/python -m unittest discover -s tests -v`; they use a temporary SQLite database
-and mocked messaging/verification services.
+`allow`, `deny`, and `unset` definitions.
 
 ### Remembered browsers
 
@@ -265,6 +263,75 @@ Changes are audited as CLI actions, and passwords are excluded from audit logs.
 The admin panel's **Audit Log** browser lists events newest first, with filters for the user who performed
 the action and the event type. Filters apply on selection; click an event name to see the full record. Access requires `ADMIN_PANEL=true`
 and the `system.admin` permission; CLI, system, anonymous, and historical user events are included.
+
+### API keys
+
+Shared service credentials are managed under **System Settings → API Keys** by
+users with `api_keys.manage`. New initial administrators receive this permission.
+For an existing administrator, grant it explicitly:
+
+```sh
+flask --app app tools permissions set admin@example.com api_keys.manage allow
+```
+
+Generate and apply the database migration for `APIKey` and `APIKeyPermission`
+before using this feature. Keys record their creator but remain independent of
+that user's account. CLI-created keys show CLI as their creator.
+
+New keys start with no grants. The **Full Control** button toggles all currently
+registered API permission checkboxes; individual permissions remain editable.
+Saved keys do not gain future permissions automatically.
+The complete credential is shown only after creation or rotation. Rotation retains
+one previous credential for seven days, capped by the key's expiration. Rotating
+again replaces that previous credential. Revocation permanently disables both.
+Expiration dates include the selected day in UTC; changing expiration can renew
+an expired key. Revoked keys cannot be renewed.
+
+```sh
+flask --app app tools permissions list --scope api
+flask --app app tools api-keys create --name "Partner app"
+flask --app app tools api-keys create --name "Reader" --permission widgets.read --expires 2027-12-31
+flask --app app tools api-keys create --name "Integration" --preset full-control
+flask --app app tools api-keys list
+flask --app app tools api-keys show 1
+flask --app app tools api-keys rotate 1
+flask --app app tools api-keys revoke 1
+```
+
+Existing-key commands accept a numeric ID or UUID. Only create and rotate print
+the full credential. Custom grants use repeated `--permission` flags; these
+cannot be combined with `--preset full-control`.
+
+Register permissions with `scope="api"` in a blueprint's permission registration,
+then protect new service routes using the existing permission decorator:
+
+```python
+from app import pm
+from app.api.helper import current_api_key, token_required
+from app.extensions.flask_permissions import PermissionSpec, require_permission
+
+pm.register(PermissionSpec(action="Read", group="Widgets", scope="api"))
+
+@apiv1.route('/widgets')
+@token_required
+@require_permission('widgets.read', scope='api')
+def widgets():
+    return {'key_id': current_api_key.uuid36}
+```
+
+Clients send `Authorization: Bearer <key>`. Missing/invalid keys return JSON 401;
+insufficient permissions return JSON 403. Browser sessions do not authenticate
+service routes. Keep `@token_required` above the permission decorator. Existing
+permissions default to user scope, and names can exist independently in each scope.
+Existing uploads, files, and notifications retain their current authentication.
+
+The API key audit explorer uses the existing audit UI and works with
+`ADMIN_PANEL=false`. It records key management and outcomes of requests reaching
+`@token_required`, including rejected authentication and permissions. Events contain
+the route template, method, response status, source IP, and known key identity;
+headers, query strings, bodies, full keys, and key digests are excluded. Last-used
+time records valid authentication, including subsequent permission denial.
+Audit persistence retains the existing best-effort error handling.
 
 ### Cloning The Repository
 To make things easier in the future, you can set up your application repository

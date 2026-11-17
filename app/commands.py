@@ -261,6 +261,7 @@ def create_admin():
     password = secrets.token_urlsafe(12)
     user = UserManager.create_user(email=email, name=name, email_verified=True)
     user.set_password(password)
+    user.set_permission('api_keys.manage', True)
     user.set_permission('users.create', True)
     user.set_permission('users.update', True)
     user.set_permission('users.delete', True)

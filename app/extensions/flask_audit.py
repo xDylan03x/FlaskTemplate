@@ -85,13 +85,15 @@ class AuditManager:
         except Exception:
             current_app.logger.exception("Failed to save audit logs.")
 
-    def log(self, message: str, target: object = None, actor: object = None):
+    def log(self, message: str, target: object = None, actor: object = None, category: str = None):
         audit_record = {
             "target_type": type(target).__name__,
             "target_repr": str(target),
             "actor": str(actor) if actor else "System",
             "message": message
         }
+        if category is not None:
+            audit_record["category"] = category
         self._record(self._create_audit_message(audit_record))
 
     @staticmethod
@@ -115,7 +117,7 @@ class AuditManager:
             'target': fields.get('Target Representation', ''),
         }
 
-    def browse(self, actor='', event_type='', page=1):
+    def browse(self, actor='', event_type='', page=1, category=''):
         from ..models import AuditEvent
 
         # Extract only the header fields in SQL; do not load every full snapshot.
@@ -131,10 +133,11 @@ class AuditManager:
 
         actor_field = field('Actor', 'Unknown')
         summary_field = field('Message', 'Other')
-        actors = self.db.session.scalars(self.db.select(actor_field).distinct().order_by(actor_field)).all()
-        summaries = self.db.session.scalars(self.db.select(summary_field).distinct()).all()
+        conditions = [field('Category', '') == category] if category else []
+        actors = self.db.session.scalars(self.db.select(actor_field).where(*conditions).distinct().order_by(actor_field)).all()
+        summaries = self.db.session.scalars(self.db.select(summary_field).where(*conditions).distinct()).all()
         types = sorted({self.event_type(summary) for summary in summaries})
-        query = self.db.select(AuditEvent)
+        query = self.db.select(AuditEvent).where(*conditions)
         if actor:
             query = query.where(actor_field == actor)
         if event_type:
@@ -145,7 +148,7 @@ class AuditManager:
         return records, actors, types
 
     @contextmanager
-    def track(self, target: object, actor: object = None, message: str = None):
+    def track(self, target: object, actor: object = None, message: str = None, category: str = None):
         """
         Track the target object as changes are made throughout it.
         Snapshots ORM columns and relationship identifiers, or plain objects.
@@ -189,6 +192,8 @@ class AuditManager:
             "has_changes": len(differences) > 0
         }
 
+        if category is not None:
+            audit_record["category"] = category
         self._record(self._create_audit_message(audit_record))
 
     def _get_state(self, target: object):
@@ -201,7 +206,7 @@ class AuditManager:
                 snapshot = {
                     attr.key: copy.deepcopy(getattr(target, attr.key))
                     for attr in state.mapper.column_attrs
-                    if attr.key not in ('password_hash', 'hashed_token', 'secret_hash')
+                    if attr.key not in ('password_hash', 'hashed_token', 'secret_hash', 'hashed_key', 'previous_hashed_key')
                 }
                 for relationship in state.mapper.relationships:
                     if state.session is not None and relationship.lazy == 'dynamic' and relationship.key in ('settings', 'permissions'):
@@ -249,6 +254,8 @@ class AuditManager:
         Centralized method to handle the recorded data.
         """
         log_lines = []
+        if record.get("category") is not None:
+            log_lines.append(f"Category: {record['category']}")
         if "target_type" in record:
             log_lines.append(f"Target Type: {record['target_type']}")
         if "target_repr" in record:
