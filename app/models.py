@@ -431,6 +431,8 @@ class UserGroupPermission(db.Model):
 
 
 class NotificationCategory(enum.Enum):
+    USER_SENT = "notifications.user_sent"
+
     # Account
     PERIODIC_PASSWORD_RESET = "notifications.security_alerts"
     PASSWORD_RESET = "notifications.security_alerts"

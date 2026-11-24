@@ -9,7 +9,7 @@ from app import db, twilio_client, audit, sm
 from .forms import ChangePasswordForm, ProfileSettingsForm, NotificationSettingsForm, SecuritySettingsForm, \
     SetupAccountForm, NewUserForm, TOTPVerifyForm, CreateAccountForm, DeviceManagerForm, \
     build_edit_user_form, ApplicationSettingsForm, build_system_settings_form, BugReportForm, build_group_form, \
-    TestEmailForm, TestSMSForm, ConfirmActionForm, build_api_key_form
+    TestEmailForm, TestSMSForm, ConfirmActionForm, build_api_key_form, MassNotificationForm
 import phonenumbers
 from app.model_managers import UserManager, UserDeviceManager, FileManager, NotificationManager, SystemManager, APIKeyManager
 from .helper import send_sms, parse_user_agent, get_routes, get_blueprints, get_extensions, get_update_status, \
@@ -539,6 +539,27 @@ def group_settings():
     page = request.args.get('page', 1, type=int)
     groups = UserManager.get_all_user_groups(page=page)
     return render_template('system-settings/groups.html', title="Group Management", tab='groups', groups=groups)
+
+
+@core.route('/system-settings/groups/send-notification', methods=['GET', 'POST'])
+@login_required
+@require_permission('groups.send_notification')
+def mass_notification():
+    form = MassNotificationForm()
+    groups = UserManager.get_all_user_groups(paginate=False)
+    form.groups.choices = [(group.id, group.title) for group in groups]
+    if form.validate_on_submit():
+        recipient_count = NotificationManager.send_mass_notification(
+            form.groups.data, form.subject.data.strip(), form.message.data.strip(), form.channel.data,
+            link=(form.link.data or '').strip() or None, sender=current_user._get_current_object())
+        if not recipient_count:
+            form.groups.errors.append('The selected groups have no users to notify.')
+        else:
+            audit.log(f"User sent mass notification to {recipient_count} users in groups: " + ', '.join(str(group_id) for group_id in form.groups.data), actor=current_user)
+            group_count = len(set(form.groups.data))
+            flash(f'Notification sent to {group_count} {"group" if group_count == 1 else "groups"}.', 'success')
+            return redirect(url_for('core.group_settings'))
+    return render_template('system-settings/mass-notification.html', title="Send Notification", tab='groups', form=form)
 
 
 @core.route('/system-settings/groups/new', methods=['GET', 'POST'])

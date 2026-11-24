@@ -15,6 +15,7 @@ order: 21
 | Groups - Create            | Create groups                                    |
 | Groups - Update            | Modify group details and membership              |
 | Groups - Delete            | Delete groups                                    |
+| Groups - Send Notification | Send notifications to users in selected groups   |
 | Users - Update Permissions | Change permission definitions on users or groups |
 | Users - Update Authentication Policies | Change authentication policies on users or groups |
 
@@ -34,6 +35,17 @@ Open **Group Management** from the system settings menu to view groups, their me
 4. Click **Save**.
 
 Group managers without **Users - Update Permissions** can still manage membership and group details. Permission controls are locked, and submitted changes to those definitions are ignored.
+
+## Sending Notifications
+1. Click **Send Notification** beside **New Group**.
+2. Enter a subject, message, and optional link.
+3. Choose **Web** or **Email and Web**.
+4. Select one or more groups and click **Send Notification**.
+
+The sender is your current account, and the category is `notifications.user_sent`.
+The selected channel applies directly without a notification preference setting.
+Users in multiple selected groups receive the notification once per channel. Deleted users are excluded.
+You need **Groups - Send Notification** to use this feature.
 
 ## Permission Inheritance
 Each registered permission supports three group definitions:

@@ -22,4 +22,5 @@ permissions = [
     PermissionSpec(action='Add Members', group='Groups', description='Add users to groups, including their inherited permissions', scope='api'),
     PermissionSpec(action='Remove Members', group='Groups', description='Remove users from groups and their inherited permissions', scope='api'),
     PermissionSpec(action='Send', group='Notifications', description='Send notifications using the target user\'s delivery preferences', scope='api'),
+    PermissionSpec(action='Send Mass', group='Notifications', description='Send mass notifications to user groups over selected channels', scope='api'),
 ]

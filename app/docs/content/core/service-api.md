@@ -54,6 +54,7 @@ changes, so they are excluded from API responses.
 | PUT | `/groups/<group_id>/members/<user_id>` | `groups.add_members` |
 | DELETE | `/groups/<group_id>/members/<user_id>` | `groups.remove_members` |
 | POST | `/users/<user_id>/notifications` | `notifications.send` |
+| POST | `/notifications/mass` | `notifications.send_mass` |
 
 Directory and membership lists accept `?page=1` (positive integers) and return
 ten items per page with `total` and `has_more`. Collections are named `users`,
@@ -135,7 +136,7 @@ those changes. These routes do not edit a group's permission definitions.
 # Notifications
 
 Send JSON with `title`, `body`, `category`, and optional `link`. Category must be a
-registered `NotificationCategory` value, currently `notifications.security_alerts`.
+registered `NotificationCategory` value: `notifications.security_alerts` or `notifications.user_sent`.
 Titles are limited to 512 characters and bodies to 10,000 characters. Links may be
 root-relative paths or HTTP(S) URLs; external links use the existing redirect flow.
 
@@ -145,6 +146,32 @@ the sender, recipient, or delivery channels. Success returns `201` with
 `{"status": "success"}`. This records the manager completing its work rather than
 confirming provider delivery. A provider error may occur after another channel
 has already been processed; retries can create duplicate notifications.
+
+## Mass Notifications
+
+Send `POST /api/v1/notifications/mass` with the **Notifications - Send Mass** API permission:
+
+```json
+{
+  "title": "Office update",
+  "body": "Please review the latest announcement.",
+  "link": "https://example.com/announcements",
+  "channel": "email",
+  "group_ids": [1, 2]
+}
+```
+
+`link` is optional. Choose `web` for Web or `email` for Email and Web. The selected
+channel applies directly without recipient preference settings. `group_ids` must
+be a non-empty list of existing group IDs; invalid groups reject the entire request
+before delivery. Deleted users are excluded, and overlapping memberships receive
+one notification per channel. Groups with no eligible users return `400`.
+
+The category is always `notifications.user_sent`. Since service keys do not have
+a current user, the sender identifies the API key, matching single-user API notifications.
+The response is `201` with `{"status": "success", "recipient_count": 2}`. The existing
+`notifications.send` permission does not grant mass notification access. Delivery uses
+the same manager as the web form; retrying can create duplicate notifications.
 
 Existing browser upload, file, and notification routes retain their authentication
 and response formats.

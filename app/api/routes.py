@@ -584,3 +584,40 @@ def send_user_notification(user_id):
                                           sender=f'API key {current_api_key.uuid36}')
     _api_audit('API sent notification', user)
     return jsonify(status='success'), 201
+
+
+@apiv1.route('/notifications/mass', methods=['POST'])
+@token_required
+@require_permission('notifications.send_mass', scope='api')
+def send_mass_notification():
+    data = _api_json(('title', 'body', 'link', 'channel', 'group_ids'), required=('title', 'body', 'channel', 'group_ids'))
+    title = _api_text(data['title'], 'title', 512)
+    body = _api_text(data['body'], 'body', 10000, multiline=True)
+    channel = data['channel']
+    if channel not in ('web', 'email'):
+        _api_error(400, 'channel must be web or email (Email and Web).')
+    group_ids = data['group_ids']
+    if not isinstance(group_ids, list) or not group_ids:
+        _api_error(400, 'group_ids must be a non-empty list of group IDs.')
+    if any(type(group_id) is not int or group_id < 1 or group_id > 2**63 - 1 for group_id in group_ids):
+        _api_error(400, 'group_ids must contain positive integer group IDs.')
+    group_ids = sorted(set(group_ids))
+    groups = db.session.scalars(db.select(UserGroup).where(UserGroup.id.in_(group_ids))).all()
+    if len(groups) != len(group_ids):
+        _api_error(404, 'Group not found.')
+    link = data.get('link')
+    if link is not None:
+        link = _api_text(link, 'link', 2048)
+        try:
+            valid_link = route_url(link)
+        except ValueError:
+            _api_error(400, 'Invalid notification link.')
+        if valid_link == '/' and link != '/':
+            _api_error(400, 'Invalid notification link.')
+    recipient_count = NotificationManager.send_mass_notification(group_ids, title, body, channel, link=link,
+                                                                sender=f'API key {current_api_key.uuid36}')
+    if not recipient_count:
+        _api_error(400, 'The selected groups have no users to notify.')
+    for group in groups:
+        _api_audit('API sent mass notification', group)
+    return jsonify(status='success', recipient_count=recipient_count), 201

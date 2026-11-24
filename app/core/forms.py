@@ -6,7 +6,7 @@ from wtforms.validators import DataRequired, Email, EqualTo, Optional, Length, V
 import phonenumbers
 from app import db
 from app.models import User
-from .helper import normalize_phone_number
+from .helper import normalize_phone_number, route_url
 
 COUNTRY_CODE_CHOICES = [
     ("US", "US +1"),
@@ -135,6 +135,24 @@ class NotificationSettingsForm(FlaskForm):
     security_alerts_email = BooleanField('Email')
     security_alerts_text = BooleanField('Text')
     submit = SubmitField('Save')
+
+
+class MassNotificationForm(FlaskForm):
+    subject = StringField('Subject', validators=[DataRequired(), Length(max=512)])
+    message = TextAreaField('Message', validators=[DataRequired()])
+    link = StringField('Link (Optional)', validators=[Optional(), Length(max=2048)])
+    channel = SelectField('Channel', choices=[('web', 'Web'), ('email', 'Email and Web')], default='web', validators=[DataRequired()])
+    groups = SelectMultipleField('Groups', coerce=int, validators=[DataRequired(message='Select at least one group.')])
+    submit = SubmitField('Send Notification')
+
+    def validate_link(self, field):
+        field.data = field.data.strip()
+        try:
+            valid_link = route_url(field.data)
+        except ValueError:
+            raise ValidationError('Enter a valid link.')
+        if valid_link == '/' and field.data != '/':
+            raise ValidationError('Enter a valid link.')
 
 
 class SecuritySettingsForm(FlaskForm):

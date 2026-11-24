@@ -11,6 +11,7 @@ permissions = [
     PermissionSpec(action="Create", group="Groups", description="Create new groups"),
     PermissionSpec(action="Update", group="Groups", description="Edit existing groups"),
     PermissionSpec(action="Delete", group="Groups", description="Delete existing groups"),
+    PermissionSpec(action="Send Notification", group="Groups", description="Send mass notifications to user groups"),
     PermissionSpec(action="Admin", group="System", description="View admin dashboard"),
     PermissionSpec(action="Update", group="System", description="Edit system settings"),
     PermissionSpec(action="2FA Required", group="Authentication Policies", description="Require 2FA for every password login. When disabled, users choose their own 2FA preference."),

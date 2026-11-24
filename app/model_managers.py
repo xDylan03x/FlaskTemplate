@@ -382,17 +382,33 @@ class UserDeviceManager:
 
 class NotificationManager:
     @staticmethod
-    def send_notification(user: User, title: str, body: str, category: NotificationCategory, link: str|None = None, sender: str|User = "System") -> None:
+    def send_mass_notification(group_ids: list[int], title: str, body: str, channel: str, link: str|None = None, sender: str|User = "System") -> int:
+        if channel not in ('web', 'email'):
+            raise ValueError('Invalid mass notification channel.')
+        users = db.session.scalars(sa.select(User).where(
+            User.deleted == False,
+            User.groups.any(UserGroup.id.in_(group_ids)),
+        )).all()
+        channels = ['web', 'email'] if channel == 'email' else ['web']
+        for user in users:
+            NotificationManager.send_notification(user, title, body, NotificationCategory.USER_SENT,
+                                                  link=link, sender=sender, channels=channels)
+        return len(users)
+
+    @staticmethod
+    def send_notification(user: User, title: str, body: str, category: NotificationCategory, link: str|None = None, sender: str|User = "System", channels: list[str]|None = None) -> None:
         # Determine sender information
         sender_title = sender
         if isinstance(sender, User):
             sender_title = sender.email
-        # Determine notification channels from user settings
-        channels_to_send = ['web']
-        if user.get_setting(f"{category.value}_via_email"):
-            channels_to_send.append('email')
-        if user.get_setting(f"{category.value}_via_text"):
-            channels_to_send.append('text')
+        # Use explicit channels when supplied; otherwise use the user's settings.
+        channels_to_send = channels
+        if channels_to_send is None:
+            channels_to_send = ['web']
+            if user.get_setting(f"{category.value}_via_email"):
+                channels_to_send.append('email')
+            if user.get_setting(f"{category.value}_via_text"):
+                channels_to_send.append('text')
         # Add notification records to database
         notifications_to_send = []
         for channel in channels_to_send:

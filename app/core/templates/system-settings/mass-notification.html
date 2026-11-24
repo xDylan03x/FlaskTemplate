@@ -1,0 +1,55 @@
+{% extends 'system-settings/base.html' %}
+{% block settings_content %}
+    <form action="" method="post" autocomplete="off">
+        {{ form.csrf_token }}
+        {% if form.csrf_token is defined %}
+            {% for error in form.csrf_token.errors %}
+                <p class="form-error">{{ error }}</p>
+            {% endfor %}
+        {% endif %}
+
+        {{ form.subject.label(class="label") }}
+        {{ form.subject(class="input mt-1 w-full", maxlength="512") }}
+        {% for error in form.subject.errors %}
+            <p class="form-error">{{ error }}</p>
+        {% endfor %}
+
+        {{ form.message.label(class="label mt-4") }}
+        {{ form.message(class="textarea mt-1 w-full", rows="6") }}
+        {% for error in form.message.errors %}
+            <p class="form-error">{{ error }}</p>
+        {% endfor %}
+
+        {{ form.link.label(class="label mt-4") }}
+        {{ form.link(class="input mt-1 w-full", maxlength="2048", placeholder="https://example.com or /page") }}
+        {% for error in form.link.errors %}
+            <p class="form-error">{{ error }}</p>
+        {% endfor %}
+
+        {{ form.channel.label(class="label mt-4") }}
+        {{ form.channel(class="select mt-1 w-full") }}
+        {% for error in form.channel.errors %}
+            <p class="form-error">{{ error }}</p>
+        {% endfor %}
+
+        <fieldset class="mt-4">
+            <legend class="label">{{ form.groups.label.text }}</legend>
+            <p class="support mt-1">Select one or more groups.</p>
+            <div class="mt-2 divide-y divide-base-300 rounded-box border border-base-300 bg-base-100">
+                {% for value, label, checked, render_kw in form.groups.iter_choices() %}
+                    <label class="flex items-center gap-3 p-4 hover:bg-base-200/40">
+                        <input type="checkbox" name="{{ form.groups.name }}" value="{{ value }}" class="checkbox" {% if checked %}checked{% endif %}>
+                        <span class="text-sm font-medium">{{ label }}</span>
+                    </label>
+                {% else %}
+                    <p class="p-4 text-sm text-base-content/60">No groups added yet.</p>
+                {% endfor %}
+            </div>
+            {% for error in form.groups.errors %}
+                <p class="form-error">{{ error }}</p>
+            {% endfor %}
+        </fieldset>
+
+        {{ form.submit(class='btn btn-primary text-neutral-content mt-8 w-full', disabled=not form.groups.choices) }}
+    </form>
+{% endblock %}
