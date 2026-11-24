@@ -336,7 +336,7 @@ def build_group_form(permission_manager, editing=False, manage_permissions=True,
 def build_api_key_form(permission_manager):
     fields = {}
     permission_field_map = {}
-    for permission in permission_manager.all(scope='api'):
+    for permission in permission_manager.all(scope='api', include_hidden=True):
         field_name = permission.permission_field_name
         fields[field_name] = BooleanField(label=permission.label, description=permission.description)
         permission_field_map[field_name] = permission.permission

@@ -142,7 +142,7 @@ class User(db.Model, UserMixin):
     def set_setting(self, setting: str, value: str | bool) -> None:
         setting_record = self.settings.filter_by(key=setting).first()
         if setting_record is None:
-            if setting not in [setting_spec.setting for setting_spec in sm.all()]:
+            if setting not in [setting_spec.setting for setting_spec in sm.all(include_hidden=True)]:
                 raise ValueError(f"Invalid permission: {setting}")
             setting_record = UserSetting(key=setting, value=str(value), user_id=self.id)
             db.session.add(setting_record)
@@ -152,7 +152,7 @@ class User(db.Model, UserMixin):
     def set_permission(self, permission: str, value: bool) -> None:
         permission_record = self.permissions.filter_by(key=permission).first()
         if permission_record is None:
-            if permission not in [perm_spec.permission for perm_spec in pm.all()]:
+            if permission not in [perm_spec.permission for perm_spec in pm.all(include_hidden=True)]:
                 raise ValueError(f"Invalid permission: {permission}")
             permission_record = UserPermission(key=permission, value=value, user_id=self.id)
             db.session.add(permission_record)

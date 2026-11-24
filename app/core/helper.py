@@ -315,14 +315,14 @@ def get_update_status():
         ).scalar_subquery()
         return db.session.scalar(db.select(User.id).where(defined_count < len(keys)).limit(1)) is not None
 
-    system_keys = {setting.database_key for setting in sm.all(scope="system")}
+    system_keys = {setting.database_key for setting in sm.all(scope="system", include_hidden=True)}
     stored_system_keys = set(db.session.scalars(db.select(SystemSetting.key)))
     return {
         "System/User Settings": (
             not system_keys.issubset(stored_system_keys)
-            or users_need_update(UserSetting, [setting.setting for setting in sm.all()])
+            or users_need_update(UserSetting, [setting.setting for setting in sm.all(include_hidden=True)])
         ),
-        "User Permissions": users_need_update(UserPermission, [permission.permission for permission in pm.all()]),
+        "User Permissions": users_need_update(UserPermission, [permission.permission for permission in pm.all(include_hidden=True)]),
     }
 
 

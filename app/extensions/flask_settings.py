@@ -13,6 +13,7 @@ class SettingSpec:
     order: int = -1
     scope: Literal["user", "system"] = "user"
     storage_key: str | None = None  # Optional existing database key for compatibility
+    hidden: bool = False  # Omit from generated web management forms
     # When printed out, the setting will be shown as Key (Group) (i.e. Theme (Preferences))
 
     @property
@@ -97,7 +98,7 @@ class SettingsManager:
                 setting.order = self._group_next_order(setting.group, setting.scope)
             else:
                 # If the order is available, allow the setting to keep it, otherwise, assign the next available order in the group
-                if setting.order in [s.order for s in self.grouped(setting.scope).get(setting.group, [])]:
+                if setting.order in [s.order for s in self.grouped(setting.scope, include_hidden=True).get(setting.group, [])]:
                     setting.order = self._group_next_order(setting.group, setting.scope)
             self._registry[setting.scope][setting.setting] = setting
 
@@ -110,16 +111,16 @@ class SettingsManager:
             spec = next((s for s in self._registry[scope].values() if s.database_key == setting), None)
         return spec
 
-    def all(self, scope: str = "user") -> list[SettingSpec]:
+    def all(self, scope: str = "user", *, include_hidden: bool = False) -> list[SettingSpec]:
         return sorted(
-            self._registry[scope].values(),
+            (setting for setting in self._registry[scope].values() if include_hidden or not setting.hidden),
             key=lambda p: (p.group.lower(), p.key.lower())
         )
 
-    def grouped(self, scope: str = "user") -> dict[str, list[SettingSpec]]:
+    def grouped(self, scope: str = "user", *, include_hidden: bool = False) -> dict[str, list[SettingSpec]]:
         groups = {}
 
-        for setting in self.all(scope):
+        for setting in self.all(scope, include_hidden=include_hidden):
             groups.setdefault(setting.group, []).append(setting)
         for group in groups:
             groups[group] = sorted(groups[group], key=lambda s: s.order)
@@ -140,7 +141,7 @@ class SettingsManager:
         SystemManager.set_setting(setting, value)
 
     def _group_next_order(self, group: str, scope: str = "user") -> int:
-        groups = self.grouped(scope)
+        groups = self.grouped(scope, include_hidden=True)
         if group not in groups:
             return 0
         return max(s.order for s in groups[group]) + 1

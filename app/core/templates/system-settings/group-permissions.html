@@ -1,4 +1,6 @@
-{% for policies in [false, true] %}
+{% set policy_groups = permission_groups.get('Authentication Policies', []) %}
+{% set regular_groups = permission_groups | reject('equalto', 'Authentication Policies') | list %}
+{% for policies in [false, true] if (policies and policy_groups) or (not policies and regular_groups) %}
     {% set section_title = 'Authentication Policies' if policies else 'Permissions' %}
     {% set management_permission = 'users.update_authentication_policies' if policies else 'users.update_permissions' %}
     {% set enabled_label = 'Enabled' if policies else 'Allow' %}

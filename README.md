@@ -36,6 +36,8 @@ from app.extensions.flask_settings import SettingSpec
 settings = [
     SettingSpec(key="Compact View", group="Preferences", default=False),
     SettingSpec(key="Enabled", group="Exports", default=True, scope="system"),
+    SettingSpec(key="Last Export", group="Exports", default="", scope="system", hidden=True),
+    SettingSpec(key="Dismissed Tip", group="Preferences", default=False, hidden=True),
 ]
 ```
 
@@ -73,6 +75,37 @@ saved settings. The three original system settings retain their database keys
 through `storage_key`, so both their old bare names and new group-prefixed names
 access the same saved values. New settings normally omit `storage_key`.
 Environment and deployment settings remain in `config.py`.
+
+### Hidden settings and user permissions
+
+Set `hidden=True` on a `SettingSpec` to omit it from generated web management
+forms. User settings forms are manually defined, so the flag is metadata for
+user settings until those forms use the filtered registry. User permissions can
+also be hidden from user and group management:
+
+```python
+from app.extensions.flask_permissions import PermissionSpec
+
+permissions = [
+    PermissionSpec(action="Run", group="Internal Jobs", default=False, hidden=True),
+]
+```
+
+Hidden user permissions are omitted from permission controls, group permission
+counts, and web conflict warnings. Saving a generated web management form cannot
+change hidden system settings or user permissions, even if their fields are
+included in a crafted request.
+Hidden entries remain registered: defaults, storage aliases, programmatic
+updates, permission inheritance, and authorization checks still work normally.
+Navigation links continue to follow those authorization checks.
+
+Both managers exclude hidden entries by default in `all()` and `grouped()`;
+hidden-only groups are omitted. Pass `include_hidden=True` when the full registry
+is needed, for example `sm.grouped(scope="system", include_hidden=True)` or
+`pm.all(include_hidden=True)`. Internal initialization, validation, and updates
+include hidden entries explicitly so they continue to function normally. CLI and API
+behavior, including API permission management, is unchanged. Existing specs
+remain visible by default; no database migration is required.
 
 ---
 

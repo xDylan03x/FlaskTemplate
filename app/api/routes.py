@@ -417,7 +417,7 @@ def recover_user(user_id):
 
 
 def _api_preference_specs():
-    return {spec.setting: spec for spec in sm.all() if spec.group in USER_PREFERENCE_GROUPS}
+    return {spec.setting: spec for spec in sm.all(include_hidden=True) if spec.group in USER_PREFERENCE_GROUPS}
 
 
 @apiv1.route('/users/<int:user_id>/preferences', methods=['GET'])
@@ -466,7 +466,7 @@ def update_user_preferences(user_id):
 @require_permission('user_permissions.read', scope='api')
 def read_user_permissions(user_id):
     user = _api_user(user_id)
-    return jsonify(user_id=user.id, permissions={spec.permission: user.can(spec.permission) for spec in pm.all()})
+    return jsonify(user_id=user.id, permissions={spec.permission: user.can(spec.permission) for spec in pm.all(include_hidden=True)})
 
 
 @apiv1.route('/groups', methods=['GET'])

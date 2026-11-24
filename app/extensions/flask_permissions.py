@@ -13,6 +13,7 @@ class PermissionSpec:
     default: bool = False  # The default permission value for new users
     order: int = -1  # The order in which the permission should be displayed in the UI
     scope: Literal["user", "api"] = "user"
+w    hidden: bool = False  # Omit from generated user permission management forms
     # When printed out, the permission will be shown as Action Group (i.e. Create Users)
 
     @property
@@ -67,7 +68,7 @@ class PermissionManager:
                 permission.order = self._group_next_order(permission.group, permission.scope)
             else:
                 # If the order is available, allow the permission to keep it, otherwise, assign the next available order in the group
-                if permission.order in [p.order for p in self.grouped(permission.scope).get(permission.group, [])]:
+                if permission.order in [p.order for p in self.grouped(permission.scope, include_hidden=True).get(permission.group, [])]:
                     permission.order = self._group_next_order(permission.group, permission.scope)
             self._registry[permission.scope][permission.permission] = permission
 
@@ -77,16 +78,16 @@ class PermissionManager:
     def get(self, permission: str, scope: str = "user") -> PermissionSpec | None:
         return self._registry[scope].get(permission)
 
-    def all(self, scope: str = "user") -> list[PermissionSpec]:
+    def all(self, scope: str = "user", *, include_hidden: bool = False) -> list[PermissionSpec]:
         return sorted(
-            self._registry[scope].values(),
+            (permission for permission in self._registry[scope].values() if include_hidden or not permission.hidden),
             key=lambda p: (p.group.lower(), p.action.lower())
         )
 
-    def grouped(self, scope: str = "user") -> dict[str, list[PermissionSpec]]:
+    def grouped(self, scope: str = "user", *, include_hidden: bool = False) -> dict[str, list[PermissionSpec]]:
         groups = {}
 
-        for permission in self.all(scope):
+        for permission in self.all(scope, include_hidden=include_hidden):
             groups.setdefault(permission.group, []).append(permission)
         for group in groups:
             groups[group] = sorted(groups[group], key=lambda p: p.order)
@@ -105,7 +106,7 @@ class PermissionManager:
         return current_user.can(permission)
 
     def _group_next_order(self, group: str, scope: str = "user") -> int:
-        groups = self.grouped(scope)
+        groups = self.grouped(scope, include_hidden=True)
         if group not in groups:
             return 0
         return max(p.order for p in groups[group]) + 1

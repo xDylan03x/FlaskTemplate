@@ -20,7 +20,7 @@ def setting_rows(specs):
 @settings.command('list')
 def list_settings():
     """Show effective values and whether they are saved or defaults."""
-    echo_table(['Key', 'Value', 'Source'], setting_rows(sm.all(scope='system')))
+    echo_table(['Key', 'Value', 'Source'], setting_rows(sm.all(scope='system', include_hidden=True)))
 
 
 @settings.command('get')

@@ -58,8 +58,9 @@ def _save_group_permissions(group, form):
 
 def _warn_group_permission_conflicts(users):
     conflicts = []
+    hidden_permission_keys = {spec.permission for spec in pm.all(include_hidden=True) if spec.hidden}
     for user in users:
-        keys = [key for key, sources in user.inherited_permissions().items() if sources['conflict']]
+        keys = [key for key, sources in user.inherited_permissions().items() if sources['conflict'] and key not in hidden_permission_keys]
         if keys:
             conflicts.append(f'{user.name} ({", ".join(sorted(keys))})')
     if conflicts:
@@ -538,7 +539,8 @@ def impersonate_user(uuid36: str = None):
 def group_settings():
     page = request.args.get('page', 1, type=int)
     groups = UserManager.get_all_user_groups(page=page)
-    return render_template('system-settings/groups.html', title="Group Management", tab='groups', groups=groups)
+    hidden_permission_keys = {spec.permission for spec in pm.all(include_hidden=True) if spec.hidden}
+    return render_template('system-settings/groups.html', title="Group Management", tab='groups', groups=groups, hidden_permission_keys=hidden_permission_keys)
 
 
 @core.route('/system-settings/groups/send-notification', methods=['GET', 'POST'])
@@ -852,7 +854,7 @@ def edit_api_key(uuid36=None):
         for field_name, permission_key in form.permission_field_map.items():
             form[field_name].data = definitions.get(permission_key, False)
     return render_template('system-settings/edit-api-key.html', title='Edit API Key' if key else 'New API Key',
-                           tab='api_keys', key=key, form=form, permission_groups=pm.grouped(scope='api'),
+                           tab='api_keys', key=key, form=form, permission_groups=pm.grouped(scope='api', include_hidden=True),
                            permission_values={field_name: bool(form[field_name].data)
                                               for field_name in form.permission_field_map})
 

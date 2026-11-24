@@ -64,7 +64,7 @@ def list_permissions(group):
     definitions = {record.key: record.value for record in selected.permissions}
     echo_table(['Key', 'Definition'], [(spec.permission,
                permission_state(definitions[spec.permission]) if spec.permission in definitions else 'unset')
-               for spec in pm.all()])
+               for spec in pm.all(include_hidden=True)])
 
 
 @group_permissions.command('set')

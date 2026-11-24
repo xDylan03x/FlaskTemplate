@@ -315,7 +315,7 @@ def update_app():
         "application.default_theme": "SITE_THEME",
         "application.admin_email": "ADMIN_EMAIL",
     }
-    for setting in sm.all(scope="system"):
+    for setting in sm.all(scope="system", include_hidden=True):
         if db.session.scalar(db.select(SystemSetting).where(SystemSetting.key == setting.database_key)) is None:
             variable = legacy_variables.get(setting.setting)
             value = (os.environ.get(variable) if variable else None) or setting.default

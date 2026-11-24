@@ -70,10 +70,10 @@ class UserManager:
         db.session.add(user)
         db.session.commit()
         # Default settings
-        for setting in sm.all():
+        for setting in sm.all(include_hidden=True):
             user.set_setting(setting.setting, setting.default)
         # Default permissions
-        for perm in pm.all():
+        for perm in pm.all(include_hidden=True):
             user.set_permission(perm.permission, perm.default)
         db.session.commit()
         if send_welcome_email:
@@ -136,7 +136,7 @@ class UserManager:
         Generates missing user permissions from the default.
         :param user:
         """
-        for permission in pm.all():
+        for permission in pm.all(include_hidden=True):
             user_permission_record = db.session.scalar(sa.select(UserPermission).where(UserPermission.user_id == user.id, UserPermission.key == permission.permission))
             if user_permission_record is None:
                 user_permission_record = UserPermission(key=permission.permission, value=permission.default, user_id=user.id)
@@ -149,7 +149,7 @@ class UserManager:
         Generates missing user settings from the default.
         :param user:
         """
-        for setting in sm.all():
+        for setting in sm.all(include_hidden=True):
             user_setting_record = db.session.scalar(sa.select(UserSetting).where(UserSetting.user_id == user.id, UserSetting.key == setting.setting))
             if user_setting_record is None:
                 user_setting_record = UserSetting(key=setting.setting, value=str(setting.default), user_id=user.id)
@@ -167,7 +167,7 @@ class UserManager:
         user.status = 'disabled'
         LoginTokenManager.invalidate_user_tokens(user.id)
         user.phone_number_verified = False
-        for perm in pm.all():
+        for perm in pm.all(include_hidden=True):
             if not perm.is_authentication_policy:
                 user.set_permission(perm.permission, False)
         db.session.commit()
@@ -522,7 +522,7 @@ class APIKeyManager:
         if preset == 'full-control':
             if permissions:
                 raise ValueError('Custom permissions require the Custom preset.')
-            return [spec.permission for spec in pm.all(scope='api')]
+            return [spec.permission for spec in pm.all(scope='api', include_hidden=True)]
         keys = sorted({key.lower() for key in permissions})
         if any(pm.get(key, scope='api') is None for key in keys):
             raise ValueError('Unknown API permission.')

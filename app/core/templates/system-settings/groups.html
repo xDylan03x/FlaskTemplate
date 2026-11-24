@@ -38,7 +38,7 @@
                     </td>
                     <td>
                         {% set permissions = namespace(count=0) %}
-                        {% for permission in group.permissions if not permission.key.startswith('authentication_policies.') %}
+                        {% for permission in group.permissions if not permission.key.startswith('authentication_policies.') and permission.key not in hidden_permission_keys %}
                             {% set permissions.count = permissions.count + 1 %}
                         {% endfor %}
                         {{ permissions.count }}

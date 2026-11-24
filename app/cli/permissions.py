@@ -18,7 +18,7 @@ def permission_rows(account):
     direct = {record.key: record.value for record in account.permissions}
     inherited = account.inherited_permissions()
     rows = []
-    for spec in pm.all():
+    for spec in pm.all(include_hidden=True):
         definition = inherited.get(spec.permission)
         sources = ''
         if definition:
@@ -46,7 +46,7 @@ def list_permissions(user, scope):
         raise click.ClickException('User definitions are available only in user scope.')
     if user is None:
         echo_table(['Key', 'Default', 'Description'],
-                   [(spec.permission, permission_state(spec.default), spec.description) for spec in pm.all(scope=scope)])
+                   [(spec.permission, permission_state(spec.default), spec.description) for spec in pm.all(scope=scope, include_hidden=True)])
     else:
         echo_table(['Key', 'Direct', 'Inherited', 'Effective', 'Groups'],
                    permission_rows(get_user(user, include_deleted=True)))
