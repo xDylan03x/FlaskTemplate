@@ -13,7 +13,7 @@ class PermissionSpec:
     default: bool = False  # The default permission value for new users
     order: int = -1  # The order in which the permission should be displayed in the UI
     scope: Literal["user", "api"] = "user"
-w    hidden: bool = False  # Omit from generated user permission management forms
+    hidden: bool = False  # Omit from generated user permission management forms
     # When printed out, the permission will be shown as Action Group (i.e. Create Users)
 
     @property
