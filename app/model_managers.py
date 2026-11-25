@@ -6,7 +6,7 @@ import sqlalchemy as sa
 from sqlalchemy import orm as so
 from flask import url_for, request, current_app
 from flask_sqlalchemy.pagination import Pagination
-from app.core.helper import send_email, send_sms
+from app.core.helper import send_email, send_sms, format_notification_sms
 from app.models import User, LoginToken, LoginRecord, UserNotification, NotificationCategory, UserDevice, File, \
     SystemSetting, UserPermission, UserSetting, UserGroup, APIKey, APIKeyPermission
 from app import audit, db, pm, sm
@@ -399,8 +399,12 @@ class NotificationManager:
     def send_notification(user: User, title: str, body: str, category: NotificationCategory, link: str|None = None, sender: str|User = "System", channels: list[str]|None = None) -> None:
         # Determine sender information
         sender_title = sender
+        author_name = None if sender == "System" else sender
+        author_email = None
         if isinstance(sender, User):
             sender_title = sender.email
+            author_name = sender.name
+            author_email = sender.email
         # Use explicit channels when supplied; otherwise use the user's settings.
         channels_to_send = channels
         if channels_to_send is None:
@@ -418,19 +422,19 @@ class NotificationManager:
         db.session.commit()
         # Send each notification over their channel
         for notification in notifications_to_send:
-            message_body = f'From: {notification.sender}\n\n{notification.title}\n{notification.body}'
-            if notification.link:
-                message_body += f'\n\nView on Website: {notification.link}'
             if notification.channel == 'email' and user.email:
                 notification.status = "sending"
                 db.session.commit()
-                notification.external_id = send_email(notification.title, message_body, user.email)
+                notification.external_id = send_email(notification.title, notification.body, user.email,
+                                                       link=notification.link, author_name=author_name,
+                                                       author_email=author_email, reply_to=author_email)
                 if notification.external_id:
                     notification.sent_timestamp = datetime.now(tz=timezone.utc)
                     notification.status = "sent"
             elif notification.channel == 'text' and user.phone_number:
                 notification.status = "sending"
                 db.session.commit()
+                message_body = format_notification_sms(notification.title, notification.body, notification.link)
                 notification.external_id = send_sms(message_body, user.phone_number)
                 if notification.external_id:
                     notification.sent_timestamp = datetime.now(tz=timezone.utc)

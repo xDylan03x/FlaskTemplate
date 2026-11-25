@@ -4,7 +4,7 @@ from sqlalchemy.exc import IntegrityError
 import phonenumbers
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
-from ..core.helper import get_s3_client, route_url, datetime_iso, normalize_phone_number
+from ..core.helper import get_s3_client, route_url, datetime_iso, normalize_phone_number, is_external_url
 from app import db, audit, pm, sm
 from app.api import apiv1
 from app.models import File, User, UserGroup, NotificationCategory, user_group_members
@@ -138,6 +138,7 @@ def notifications(uuid36: str = None):
                 "body": n.body,
                 "sender": n.sender,
                 "link": route_url(n.link) if n.link else None,
+                "link_external": is_external_url(n.link),
                 "timestamp": datetime_iso(n.created_at),
             })
 

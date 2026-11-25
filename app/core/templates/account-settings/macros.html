@@ -102,7 +102,7 @@
                     {% if notification.link or not notification.read %}
                         <div class="flex items-center gap-3">
                             {% if notification.link %}
-                                <a href="{{ route_url(notification.link) }}" class="link link-hover text-xs font-medium text-base-content/80">View</a>
+                                <a href="{{ route_url(notification.link) }}" {% if is_external_url(notification.link) %}target="_blank" rel="noopener noreferrer" {% endif %}class="link link-hover text-xs font-medium text-base-content/80">View</a>
                             {% endif %}
                             {% if not notification.read %}
                                 <button type="button"

@@ -9,13 +9,13 @@ import sys
 from werkzeug.sansio.utils import host_is_trusted
 from app import sendgrid_client, twilio_client, db, sm, audit
 from sendgrid.helpers.mail import Mail, From, ReplyTo
-from flask import current_app, url_for, session
+from flask import current_app, url_for, session, render_template, request, has_request_context
 from flask_login import current_user, logout_user
 from device_detector import DeviceDetector
 import boto3
 import phonenumbers
 from datetime import timezone
-from urllib.parse import urlsplit, urlunsplit
+from urllib.parse import urlsplit, urlunsplit, urljoin
 
 READ_ONLY_PREFIXES = ("select", "show", "describe", "explain", "pragma")
 BLOCKED_SQL_WORDS = (
@@ -93,14 +93,16 @@ def _normalize_local_url(value: str):
         return value
 
     # Absolute URL pointing to one of this application's trusted hosts.
+    trusted_hosts = current_app.config.get("TRUSTED_HOSTS") or []
+    if not trusted_hosts:
+        host = request.host if has_request_context() else current_app.config.get("SERVER_NAME")
+        trusted_hosts = [host] if host else []
     if (
             parts.scheme in {"http", "https"}
             and not parts.username
             and not parts.password
-            and host_is_trusted(
-        parts.netloc,
-        current_app.config.get("TRUSTED_HOSTS", []),
-    )
+            and trusted_hosts
+            and host_is_trusted(parts.netloc, trusted_hosts)
     ):
         return value
 
@@ -117,6 +119,15 @@ def normalize_external_url(value: str):
         return None
 
     return value
+
+
+def is_external_url(url: str | None) -> bool:
+    if not url or _normalize_local_url(url):
+        return False
+    try:
+        return bool(normalize_external_url(url))
+    except ValueError:
+        return False
 
 
 def logout_session(preserve_user=False):
@@ -168,6 +179,30 @@ def get_messaging_error(exception: Exception) -> str:
     return ' '.join(detail.split())[:1000]
 
 
+def message_url(link: str | None) -> str | None:
+    """Resolve notification links for use outside the application."""
+    if not link:
+        return None
+    link = link.strip()
+    if "\\" in link or any(ord(char) < 32 or ord(char) == 127 for char in link):
+        return None
+    try:
+        if link.startswith('/') and not link.startswith('//'):
+            return urljoin(url_for('core.index', _external=True), link)
+        return normalize_external_url(link)
+    except ValueError:
+        return None
+
+
+def format_notification_sms(title: str, body: str, link: str | None = None) -> str:
+    app_name = sm.system_setting("application.name")
+    parts = [f'{app_name}: {title}', body.strip()]
+    action_url = message_url(link)
+    if action_url:
+        parts.append(action_url)
+    return '\n\n'.join(part for part in parts if part)
+
+
 def send_email(
         subject: str,
         body: str,
@@ -177,7 +212,11 @@ def send_email(
         sender_name=None,
         template_id=None,
         reply_to=None,
-        raise_errors=False) -> str:
+        raise_errors=False,
+        *,
+        link=None,
+        author_name=None,
+        author_email=None) -> str:
     """Send an email directly using SendGrid. Use NotificationManager.send_notification() for most cases."""
     if sender is None:
         sender = current_app.config["FROM_EMAIL"]
@@ -186,13 +225,38 @@ def send_email(
     if template_id is None:
         template_id = current_app.config["SENDGRID_EMAIL_TEMPLATE_ID"]
 
+    app_name = sm.system_setting("application.name")
+    action_url = message_url(link)
+    body = body.replace('\r\n', '\n').replace('\r', '\n').strip()
+    preview = ' '.join(body.split())
+    if len(preview) > 140:
+        preview = preview[:137].rstrip() + '...'
+    paragraphs = [paragraph for paragraph in re.split(r'\n\s*\n', body) if paragraph.strip()]
+    html_body = render_template('email/message.html', title=subject,
+                                paragraphs=paragraphs, action_url=action_url,
+                                author_name=author_name, author_email=author_email)
+    text_parts = [f'{app_name}: {subject}', body]
+    if action_url:
+        text_parts.append(action_url)
+    if author_name or author_email:
+        author = ' · '.join(part for part in [author_name, author_email] if part)
+        text_parts.append(f'Sent by {author}')
+
     message = Mail(from_email=From(sender, sender_name), to_emails=recipient)
     if reply_to:
         message.reply_to = ReplyTo(reply_to)
     message.dynamic_template_data = {
-        'body': body.replace('\n', '<br>'),
+        'body': html_body,
         'subject': subject,
-        'preheader': preheader
+        'preheader': preheader or preview,
+        'app_name': app_name,
+        'title': subject,
+        'message': body,
+        'author_name': author_name or '',
+        'author_email': author_email or '',
+        'action_url': action_url or '',
+        'action_label': 'View details',
+        'text_body': '\n\n'.join(part for part in text_parts if part),
     }
     message.template_id = template_id
     try:

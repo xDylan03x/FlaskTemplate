@@ -457,7 +457,13 @@ See PostgreSQL's [createuser](https://www.postgresql.org/docs/current/app-create
 3. Create an API key with **Mail Send** access. Add **Template Engine: Read** access so `flask --app app doctor` can validate the configured template. Save the key in `SENDGRID_API_KEY`.
 4. Create a Dynamic Template, add a version, and make that version active. Copy its `d-...` template ID into `SENDGRID_EMAIL_TEMPLATE_ID`.
 
-The application sends these dynamic fields: `subject`, `preheader`, and `body`. Set the template's subject to `{{subject}}`. A minimal HTML version can use:
+Set the template's subject to `{{subject}}`. The application supplies a minimal
+content fragment in `body`, including the title, message paragraphs, optional
+**View details** link, and sender attribution. It uses the application's system
+font stack and compact typography, inheriting the surrounding text color. Your
+SendGrid template controls branding, backgrounds, width, and outer spacing; the
+fragment adds no card, border, background, or repeated application name. A basic
+SendGrid HTML version can use:
 
 ```html
 <!doctype html>
@@ -469,7 +475,29 @@ The application sends these dynamic fields: `subject`, `preheader`, and `body`. 
 </html>
 ```
 
-The app converts line breaks in its message body to HTML, so the triple braces preserve that formatting. This template handles welcome emails, magic links, password reset links, and notifications. The separate Twilio Verify template below handles numeric 2FA codes.
+Keep `{{{body}}}` in triple braces to preserve the application's HTML layout.
+Message content is escaped before rendering, with paragraph spacing, line breaks,
+and clickable URLs. Existing templates containing `{{{body}}}` receive the new
+formatting automatically and can retain their own branding and layout. This
+template handles welcome emails, magic links, password reset links,
+and notifications. The separate Twilio Verify template below handles numeric 2FA codes.
+
+Set the template's plain-text version to `{{{text_body}}}` to preserve literal
+URLs and punctuation. The app also supplies
+`app_name`, `title`, `message`, `author_name`, `author_email`, `action_url`, and
+`action_label` for custom templates. Use escaped double braces for these text
+fields. An omitted preheader defaults to a short excerpt of the message.
+
+User-sent notification emails keep the verified application address as **From**,
+show the author's display name and email beneath the message, and use their
+email as **Reply-To**. System messages omit that attribution. SMS notifications
+use `Application Name: Title`, followed by the message and optional URL, without
+the email footer or verbose link labels. Message bodies are not truncated.
+
+Root-relative notification links become full URLs for email and SMS, using the
+current request's origin. Background jobs that send root-relative links must set
+Flask's `SERVER_NAME` and `PREFERRED_URL_SCHEME` configuration, or pass an absolute
+HTTP(S) URL. Web notification records retain their original content and links.
 
 See [SendGrid sender verification](https://www.twilio.com/docs/sendgrid/ui/account-and-settings/verifying-your-account), [API keys](https://www.twilio.com/docs/sendgrid/ui/account-and-settings/api-keys), and [Dynamic Templates](https://www.twilio.com/docs/sendgrid/ui/sending-email/how-to-send-an-email-with-dynamic-templates).
 

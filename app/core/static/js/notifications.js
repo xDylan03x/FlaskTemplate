@@ -27,6 +27,10 @@ document.addEventListener('alpine:init', () => {
         },
 
         async viewNotification(notification) {
+            if (notification.link_external) {
+                window.open(notification.link, '_blank', 'noopener,noreferrer');
+                return this.markAsRead(notification.id);
+            }
             await this.markAsRead(notification.id);
             window.location.href = notification.link;
         },

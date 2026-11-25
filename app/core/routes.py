@@ -789,7 +789,7 @@ def external_redirect():
     destination = normalize_external_url(next_url)
     if destination is None:
         abort(400)
-    return render_template("external-redirect.html", url=destination)
+    return render_template("external-redirect.html", title="External Website", url=destination)
 
 
 @core.after_request

@@ -103,8 +103,9 @@ def create_app(cfg: Config = Config) -> Flask:
 
     from .core import core as core_blueprint
     app.register_blueprint(core_blueprint)
-    from .core.helper import route_url, datetime_iso, format_datetime
+    from .core.helper import route_url, datetime_iso, format_datetime, is_external_url
     app.add_template_global(route_url, name="route_url")
+    app.add_template_global(is_external_url, name="is_external_url")
     app.add_template_filter(datetime_iso, name="datetime_iso")
     app.add_template_filter(format_datetime, name="format_datetime")
 
